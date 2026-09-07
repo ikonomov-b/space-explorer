@@ -1,0 +1,185 @@
+# External tools: how to call them
+
+Written 2026-09-07. Every external program this project drives, with the exact command, the directory it runs from, what it needs on `PATH`, and what success looks like. It exists so no one has to re-derive an invocation or hunt for an install path.
+
+Scope: this document is about *calling* the tools. Installing them and the versions they are pinned to are in [src/README.md](../src/README.md#toolchain) and [decision 0016](decisions/0016-platform-confirmed-and-toolchain-pinned.md); what each command is evidence *for* is in [progress.md](progress.md). Invocations are single-sourced here, so other documents link to this one instead of repeating a command.
+
+Verified on the reference workstation: Debian 13 x86_64, .NET SDK 10.0.400, Godot 4.7.2 stable .NET, git 2.47.3, gh 2.100.0.
+
+## Quick reference
+
+Every command runs from the repository root unless stated otherwise.
+
+| Tool | Canonical call | Detail |
+| --- | --- | --- |
+| `dotnet` | `dotnet build` / `dotnet test` | [below](#dotnet) |
+| `godot` | `godot --path src/SpaceExplorer.Game --editor` | [below](#godot) |
+| Smoke scripts | `tests/SpaceExplorer.Game.Smoke/smoke.sh` | [below](#exported-build-smoke-scripts) |
+| Docs tool | `dotnet run tools/docs.cs -- --check` | [below](#the-documentation-tool-toolsdocscs) |
+| `git` | `git ls-files -z -- '*.md'` (used by the docs tool) | [below](#git) |
+| `gh` | `gh run list --branch main --limit 5` | [below](#gh-continuous-integration-status) |
+| CI | `.github/workflows/ci.yml` | [below](#github-actions) |
+
+## Environment first: `PATH` and `DOTNET_ROOT`
+
+The .NET SDK is a user-local install at `~/.dotnet`, put on `PATH` by `~/.bashrc`. Debian's `~/.bashrc` returns early for non-interactive shells, so **`dotnet` is not on `PATH` in scripts, hooks, `bash -c` invocations, or agent shells**, only in interactive terminals. Export it, or call the binary by absolute path:
+
+```sh
+export DOTNET_ROOT="$HOME/.dotnet"
+export PATH="$PATH:$HOME/.dotnet:$HOME/.dotnet/tools"
+# or, without touching the environment:
+~/.dotnet/dotnet --version    # 10.0.400
+```
+
+This applies to Godot too: `Godot.NET.Sdk` shells out to MSBuild, so a Godot build or export from a shell without `dotnet` on `PATH` fails inside the engine rather than at the prompt.
+
+`godot` needs no such setup here — `~/.local/bin/godot` resolves in non-interactive shells and symlinks to `~/.local/opt/godot-4.7.2-mono/Godot_v4.7.2-stable_mono_linux.x86_64`. Use that absolute path as the fallback, or set `GODOT` (the smoke scripts read it).
+
+## `dotnet`
+
+SDK 10.0.400, pinned in `global.json` with `latestPatch` roll-forward; every assembly targets `net10.0`. Package versions are central in `Directory.Packages.props`. `Directory.Build.props` makes warnings errors, so a warning fails the build.
+
+```sh
+dotnet --version                       # 10.0.400
+dotnet --list-sdks                     # 10.0.400 [/home/bobi/.dotnet/sdk]
+
+dotnet restore                         # solution-wide; SpaceExplorer.sln is picked up implicitly
+dotnet build                           # every project, zero warnings expected
+dotnet build --no-restore              # what CI runs after its own restore
+dotnet test                            # all test projects
+dotnet test --no-build                 # what CI runs after its own build
+dotnet test tests/SpaceExplorer.Core.Tests                        # one project
+dotnet test --filter FullyQualifiedName~CanonicalWriter           # one class or method
+```
+
+Applications:
+
+```sh
+dotnet run --project src/SpaceExplorer.Cli -- diagnostics
+# runtime  .NET 10.0.11
+# platform linux-x64 (Debian GNU/Linux 13 (trixie))
+# sqlite   3.53.3
+
+dotnet run --project src/SpaceExplorer.Cli -- --help   # usage; exits 0
+                                                       # unknown command exits 2
+```
+
+The `--` separator matters: everything before it is for `dotnet`, everything after it is for the program.
+
+Two build knobs worth knowing rather than rediscovering. `CI=true` turns on `ContinuousIntegrationBuild`, so `CI=true dotnet build` reproduces the CI build locally. And `src/SpaceExplorer.Core/BannedSymbols.txt` is enforced at build time by `Microsoft.CodeAnalysis.BannedApiAnalyzers` ([decision 0008](decisions/0008-random-stream-derivation.md)): `System.Random`, `Guid.NewGuid`, `DateTime.Now`, `Environment.TickCount`, and `string.GetHashCode` in Core fail the build as `RS0030`. That is a feature, not a misconfiguration — authoritative code draws from seeded streams.
+
+## `godot`
+
+Godot 4.7.2 stable, .NET edition. The project is `src/SpaceExplorer.Game`, its renderer is `gl_compatibility`, and its export templates live in `~/.local/share/godot/export_templates/4.7.2.stable.mono/`.
+
+```sh
+godot --version                                        # 4.7.2.stable.mono.official.ed1daf0bf
+godot --path src/SpaceExplorer.Game --editor           # open the editor
+godot --path src/SpaceExplorer.Game                    # run the main scene (Main.tscn)
+godot --headless --path src/SpaceExplorer.Game --import   # import assets; run before any export
+```
+
+Exports. The preset names are exactly `Linux` and `Windows Desktop`, and they must be quoted:
+
+```sh
+godot --headless --path src/SpaceExplorer.Game --export-release "Linux"
+godot --headless --path src/SpaceExplorer.Game --export-release "Windows Desktop"
+```
+
+With no output path, each preset writes to its `export_path`: `build/linux/SpaceExplorer.Game.x86_64` and `build/windows/SpaceExplorer.Game.exe`. Pass a path as a final argument to override it, which is what the smoke scripts do. The Windows preset disables resource modification, so **cross-exporting the Windows build from Linux needs no Wine**; running it still requires Windows ([requirement R2](requirements.md)).
+
+Both presets set `embed_pck=false`, so an exported build is a directory, not one file: the binary, its `.pck`, and a `data_SpaceExplorer.Game_*` folder holding the .NET assemblies and `libe_sqlite3.so`. Copy the whole directory when you move a build.
+
+Running an exported build takes engine arguments first, then `--`, then the game's own:
+
+```sh
+build/smoke/linux/SpaceExplorer.Game.x86_64 --headless -- --smoke
+# SMOKE OK godot=4.7.2.stable.mono dotnet=10.0.11 sqlite=3.53.3
+```
+
+`Main.cs` reads `--smoke` through `OS.GetCmdlineUserArgs()`, which returns only what follows `--`. Without the separator the flag reaches the engine, which does not know it, and the check never runs.
+
+## Exported-build smoke scripts
+
+Thin wrappers over the two commands above: import, export with the platform's preset, launch the build, require `SMOKE OK` in the output. They export to `build/smoke/<platform>/`, deleting that directory first, so they never disturb `build/linux` or `build/windows`.
+
+```sh
+tests/SpaceExplorer.Game.Smoke/smoke.sh                # Linux
+GODOT=~/.local/opt/godot-4.7.2-mono/Godot_v4.7.2-stable_mono_linux.x86_64 \
+  tests/SpaceExplorer.Game.Smoke/smoke.sh              # with an explicit editor binary
+```
+
+```powershell
+powershell -ExecutionPolicy Bypass -File tests\SpaceExplorer.Game.Smoke\smoke.ps1   # Windows only
+```
+
+Exit 0 means the marker was printed. Non-zero means either the export failed, the build exited non-zero, or the marker was absent; the script prints which. On Windows the script launches `SpaceExplorer.Game.console.exe`, the console wrapper, because the plain `.exe` detaches from the console and its output and exit code would not reach the script. Neither script runs in CI yet — that waits on provisioning Godot and its templates on the runners.
+
+## The documentation tool (`tools/docs.cs`)
+
+A file-based C# program: no project file, no build step, just the pinned SDK.
+
+```sh
+dotnet run tools/docs.cs                 # regenerate the decision table in docs/decisions/README.md
+dotnet run tools/docs.cs -- --check      # verify only; exit 1 on any problem
+dotnet run tools/docs.cs -- --external   # also resolve every cited external URL (network)
+```
+
+A clean `--check` prints one line — the document, link, and record counts followed by `0 problem(s)` — and exits 0. Any problem is listed one per line and exits 1.
+
+`--check` verifies internal links and anchors, decision-record numbering and headings, that each record is referenced from a document other than an index, and that the generated decision table is current. CI runs it on Ubuntu only. `--external` is never run in CI; it needs the network, and Epic's Unreal Engine licence page answers automated requests with HTTP 403 and has to be opened in a browser.
+
+One rule that surprises people: the tool indexes **only Markdown files tracked by git**. A new document is invisible to the checker and absent from the generated tables until it is at least `git add`ed. If a link to a new page reports "link target not found", stage the page.
+
+## `git`
+
+Beyond ordinary version control, git is a runtime dependency of the docs tool, which shells out to it:
+
+```sh
+git ls-files -z -- '*.md'      # the tool's own document discovery
+```
+
+So the docs tool must run inside the work tree, and an unstaged document is not seen. Repository practice for this project: work on `main`, and finish a piece of work with the docs check green before committing.
+
+## `gh` (continuous integration status)
+
+Not a build dependency; this is how CI results are read back after a push, without opening a browser.
+
+```sh
+gh run list --branch main --limit 5              # recent runs and their conclusions
+gh run view <run-id>                             # jobs in one run
+gh run view <run-id> --log-failed                # only the failing step's log
+gh run watch <run-id>                            # follow a run to completion
+```
+
+## GitHub Actions
+
+`.github/workflows/ci.yml` runs on every push to `main` and every pull request, on `ubuntu-latest` and `windows-latest` with `fail-fast: false`. It uses `actions/checkout@v7` and `actions/setup-dotnet@v6` with `global-json-file: global.json`, so the runners install the same 10.0.400 SDK, then runs:
+
+```sh
+dotnet restore
+dotnet build --no-restore
+dotnet test --no-build
+dotnet run tools/docs.cs -- --check      # ubuntu-latest only
+```
+
+To reproduce that sequence locally, run those four commands with `CI=true` exported. The runners build and test the libraries only; no job launches an exported game, which is why requirement R2 is still undemonstrated.
+
+## Native SQLite (called indirectly)
+
+There is no `sqlite3` command in the workflow. `Microsoft.Data.Sqlite` 10.0.11 carries the native library through SQLitePCLRaw, and `SpaceExplorer.Persistence.SqliteRuntime.GetLibraryVersion()` reports its version. Two ways to confirm the native library loads:
+
+```sh
+dotnet run --project src/SpaceExplorer.Cli -- diagnostics   # from the SDK
+tests/SpaceExplorer.Game.Smoke/smoke.sh                     # from an exported build, no SDK involved
+```
+
+The second is the one that matters, because it proves the library loads without an installed SDK or editor.
+
+## What is deliberately not in the flow
+
+Saves a search. There is **no** style or formatting gate: `EnforceCodeStyleInBuild` was removed because `.editorconfig` sets indentation only, so no IDE rule ever reached the build, and the flag promised enforcement it did not deliver ([finding 27](review.md#27-code-style-enforcement-is-nominal)). What does gate the build is compiler warnings, which are errors, plus the banned-symbol analyzer in Core. There is no `dotnet format` step.
+
+There is no benchmark command. `tests/SpaceExplorer.Benchmarks` was deleted rather than carried empty ([finding 26](review.md#26-the-benchmarks-project-is-empty)); BenchmarkDotNet returns to `Directory.Packages.props` with the first real measurement, at the M0a generator.
+
+No Wine is needed for the Windows export. PowerShell is not needed on Linux; `smoke.ps1` is for Windows only. No containers, and no package manager beyond NuGet with central versions.
