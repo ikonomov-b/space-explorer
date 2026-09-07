@@ -1,11 +1,15 @@
-# Linux and Windows test matrix (decision 0014). Exported-build smoke tests join at the M0a gate,
-# once Godot and its export templates are provisioned on the runners.
+# Linux and Windows test matrix (decision 0014). Exported-build smoke tests run in CI (M0a exit
+# criterion 12): Godot 4.7.2 mono and its export templates are downloaded from the official GitHub
+# release for each OS and cached by version. Decision 0016 pins the version; nothing here changes it.
 name: CI
 
 on:
   push:
     branches: [main]
   pull_request:
+
+env:
+  GODOT_VERSION: 4.7.2-stable
 
 jobs:
   build-and-test:
@@ -24,3 +28,67 @@ jobs:
       - run: dotnet test --no-build
       - run: dotnet run tools/docs.cs -- --check
         if: matrix.os == 'ubuntu-latest'
+
+      - name: Cache Godot editor and export templates (Linux)
+        id: cache-godot-linux
+        if: matrix.os == 'ubuntu-latest'
+        uses: actions/cache@v6
+        with:
+          path: |
+            ~/godot-mono
+            ~/.local/share/godot/export_templates/4.7.2.stable.mono
+          key: godot-${{ env.GODOT_VERSION }}-${{ matrix.os }}
+
+      - name: Install Godot editor and export templates (Linux)
+        if: matrix.os == 'ubuntu-latest' && steps.cache-godot-linux.outputs.cache-hit != 'true'
+        run: |
+          set -euo pipefail
+          curl -fsSL -o godot.zip "https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}/Godot_v${GODOT_VERSION}_mono_linux_x86_64.zip"
+          curl -fsSL -o templates.zip "https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}/Godot_v${GODOT_VERSION}_mono_export_templates.tpz"
+          mkdir -p ~/godot-mono
+          unzip -q godot.zip -d ~/godot-mono
+          chmod +x "$HOME/godot-mono/Godot_v${GODOT_VERSION}_mono_linux_x86_64/Godot_v${GODOT_VERSION}_mono_linux.x86_64"
+          mkdir -p ~/.local/share/godot/export_templates
+          unzip -q templates.zip -d ~/.local/share/godot/export_templates
+          mv ~/.local/share/godot/export_templates/templates ~/.local/share/godot/export_templates/4.7.2.stable.mono
+
+      - name: Set GODOT path (Linux)
+        if: matrix.os == 'ubuntu-latest'
+        run: echo "GODOT=$HOME/godot-mono/Godot_v${GODOT_VERSION}_mono_linux_x86_64/Godot_v${GODOT_VERSION}_mono_linux.x86_64" >> "$GITHUB_ENV"
+
+      - name: Exported-build smoke test (Linux)
+        if: matrix.os == 'ubuntu-latest'
+        run: tests/SpaceExplorer.Game.Smoke/smoke.sh
+
+      - name: Cache Godot editor and export templates (Windows)
+        id: cache-godot-windows
+        if: matrix.os == 'windows-latest'
+        uses: actions/cache@v6
+        with:
+          path: |
+            ~/godot-mono
+            ~/AppData/Roaming/Godot/export_templates/4.7.2.stable.mono
+          key: godot-${{ env.GODOT_VERSION }}-${{ matrix.os }}
+
+      - name: Install Godot editor and export templates (Windows)
+        if: matrix.os == 'windows-latest' && steps.cache-godot-windows.outputs.cache-hit != 'true'
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          Invoke-WebRequest -Uri "https://github.com/godotengine/godot/releases/download/$env:GODOT_VERSION/Godot_v${env:GODOT_VERSION}_mono_win64.zip" -OutFile godot.zip
+          Invoke-WebRequest -Uri "https://github.com/godotengine/godot/releases/download/$env:GODOT_VERSION/Godot_v${env:GODOT_VERSION}_mono_export_templates.tpz" -OutFile templates.zip
+          Expand-Archive -Path godot.zip -DestinationPath "$HOME\godot-mono"
+          $templatesDir = "$HOME\AppData\Roaming\Godot\export_templates"
+          New-Item -ItemType Directory -Force -Path $templatesDir | Out-Null
+          Expand-Archive -Path templates.zip -DestinationPath $templatesDir
+          Rename-Item -Path (Join-Path $templatesDir "templates") -NewName "4.7.2.stable.mono"
+
+      - name: Set GODOT path (Windows)
+        if: matrix.os == 'windows-latest'
+        shell: pwsh
+        run: echo "GODOT=$HOME\godot-mono\Godot_v${env:GODOT_VERSION}_mono_win64\Godot_v${env:GODOT_VERSION}_mono_win64_console.exe" >> $env:GITHUB_ENV
+
+      - name: Exported-build smoke test (Windows)
+        if: matrix.os == 'windows-latest'
+        shell: pwsh
+        run: tests/SpaceExplorer.Game.Smoke/smoke.ps1
