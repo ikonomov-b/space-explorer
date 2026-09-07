@@ -9,11 +9,14 @@ public class ReferenceTableTests
     private static readonly PackId PackA = PackId.FromSpecificationHash(ContentHash.Of("pack-a"u8));
     private static readonly PackId PackB = PackId.FromSpecificationHash(ContentHash.Of("pack-b"u8));
 
+    private static PrimitiveRevisionRef Ref(PackId pack, uint localId, string content) =>
+        new(new PrimitiveId(pack, localId), ContentHash.Of(System.Text.Encoding.ASCII.GetBytes(content)));
+
     [Fact]
-    public void A_handle_resolves_to_the_entry_at_its_index()
+    public void A_handle_resolves_to_the_exact_reference_at_its_index()
     {
-        var first = new PrimitiveId(PackA, 1);
-        var second = new PrimitiveId(PackB, 5);
+        PrimitiveRevisionRef first = Ref(PackA, 1, "a1");
+        PrimitiveRevisionRef second = Ref(PackB, 5, "b5");
         ReferenceTable table = ReferenceTable.Create([first, second]);
 
         Assert.Equal(2, table.Count);
@@ -24,7 +27,7 @@ public class ReferenceTableTests
     [Fact]
     public void Resolving_a_handle_past_the_end_fails_explicitly()
     {
-        ReferenceTable table = ReferenceTable.Create([new PrimitiveId(PackA, 1)]);
+        ReferenceTable table = ReferenceTable.Create([Ref(PackA, 1, "a1")]);
         Assert.Throws<ArgumentOutOfRangeException>(() => table.Resolve(new Handle(1)));
     }
 
@@ -45,14 +48,21 @@ public class ReferenceTableTests
     [Fact]
     public void Building_a_table_rejects_a_repeated_identity()
     {
-        var repeated = new PrimitiveId(PackA, 1);
+        PrimitiveRevisionRef repeated = Ref(PackA, 1, "a1");
         Assert.Throws<ArgumentException>(() => ReferenceTable.Create([repeated, repeated]));
+    }
+
+    [Fact]
+    public void Two_revisions_of_one_identity_are_also_rejected()
+    {
+        // A generated ID has one hash for life (decision 0033), so a table naming two is malformed.
+        Assert.Throws<ArgumentException>(() => ReferenceTable.Create([Ref(PackA, 1, "a1"), Ref(PackA, 1, "a1-other")]));
     }
 
     [Fact]
     public void The_same_local_id_in_different_packs_is_not_a_repeat()
     {
-        ReferenceTable table = ReferenceTable.Create([new PrimitiveId(PackA, 1), new PrimitiveId(PackB, 1)]);
+        ReferenceTable table = ReferenceTable.Create([Ref(PackA, 1, "a1"), Ref(PackB, 1, "b1")]);
         Assert.Equal(2, table.Count);
     }
 }

@@ -14,9 +14,9 @@ public class ICrossPackageSetOperationsTests
     {
         MethodInfo method = typeof(ICrossPackageSetOperations).GetMethod(name)!;
 
-        Assert.Equal(typeof(IReadOnlySet<PrimitiveId>), method.ReturnType);
+        Assert.Equal(typeof(IReadOnlySet<PrimitiveRevisionRef>), method.ReturnType);
         Assert.Equal(
-            [typeof(IReadOnlySet<PrimitiveId>), typeof(IReadOnlySet<PrimitiveId>)],
+            [typeof(IReadOnlySet<PrimitiveRevisionRef>), typeof(IReadOnlySet<PrimitiveRevisionRef>)],
             method.GetParameters().Select(p => p.ParameterType));
     }
 
