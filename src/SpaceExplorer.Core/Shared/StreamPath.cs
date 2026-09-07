@@ -93,6 +93,11 @@ public static class StreamPath
         return Encoding.UTF8.GetBytes(path);
     }
 
-    private static bool IsPermitted(char character) =>
+    /// <summary>
+    /// The frozen character set: ASCII letters, digits, <c>_</c> and <c>-</c>. Shared with
+    /// <see cref="CanonicalWriter.WriteText"/>, so canonical text and path segments admit exactly the
+    /// same bytes and neither can drift from the other.
+    /// </summary>
+    internal static bool IsPermitted(char character) =>
         character is (>= 'a' and <= 'z') or (>= 'A' and <= 'Z') or (>= '0' and <= '9') or '_' or '-';
 }
