@@ -34,6 +34,10 @@ Verified 2026-09-07 on Debian 13 x86_64. All steps are user-local and need no ro
 
 Same versions: .NET SDK 10.0.400, `Godot_v4.7.2-stable_mono_win64.exe`, and the templates under `%APPDATA%\Godot\export_templates\4.7.2.stable.mono\`. These steps are recorded as tested once the first Windows gate runs ([requirement R2](../docs/requirements.md)).
 
+## Runtime data
+
+The game and the command-line tool write player data to the data root of [decision 0018](../docs/decisions/0018-data-root-region-encoding-and-save-integrity.md): `~/.local/share/SpaceExplorer` on Linux (honouring `XDG_DATA_HOME`) and `%LOCALAPPDATA%\SpaceExplorer` on Windows, with rebuildable caches under `~/.cache/SpaceExplorer` or `%LOCALAPPDATA%\SpaceExplorer\cache`. Set `SPACE_EXPLORER_DATA_DIR` to redirect the data root; tests use temporary directories. Nothing is written inside the repository.
+
 ## Commands
 
 From the repository root:

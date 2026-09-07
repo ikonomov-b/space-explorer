@@ -23,7 +23,7 @@ File name: `NNNN-short-title.md`. Use [0000-template.md](0000-template.md).
 | [0013](0013-host-simulates-hazards.md) | The host simulates hazards for every avatar | Accepted |
 | [0014](0014-tooling-and-licence.md) | Repository tooling aligned with the stack; licence deferred with notice | Accepted |
 | [0015](0015-greybox-prototype.md) | Disposable greybox expedition prototype in parallel with M0a | Accepted |
-| [0016](0016-platform-confirmed-and-toolchain-pinned.md) | Platform confirmed: Godot 4.7.2 .NET on .NET 10; toolchain pinned; solution scaffolded | Accepted |
+| [0016](0016-platform-confirmed-and-toolchain-pinned.md) | Platform confirmed: Godot 4.7.2 .NET on .NET 10; toolchain pinned; solution scaffolded | Accepted; open item 1 resized by [0017](0017-region-extent-cap-and-storage-derivation.md), open item 4 cleared by [review finding 17](../review.md#17-alternatives-table-omits-the-mainstream-engines) |
 | [0017](0017-region-extent-cap-and-storage-derivation.md) | Region extent cap 2,048 m; per-region storage derived from the constants | Accepted |
 | [0018](0018-data-root-region-encoding-and-save-integrity.md) | Data root, package layout, region encoding, and save integrity | Accepted |
 | [0019](0019-generator-version-1-frozen.md) | Generator version 1: mix construction, path grammar, and bounded sampling frozen | Accepted |

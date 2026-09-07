@@ -16,7 +16,7 @@ All nineteen findings were cleared on 2026-09-07; the status table links each to
 | 6 | [Uniqueness by rejection](#6-uniqueness-by-rejection) | Foundational | Cleared, [decision 0007](decisions/0007-artifact-collision-substitution-and-campaign-salt.md) |
 | 7 | [Random stream derivation](#7-random-stream-derivation) | Foundational | Cleared, [decision 0008](decisions/0008-random-stream-derivation.md) |
 | 8 | [Folder layout versus assembly boundaries](#8-folder-layout-versus-assembly-boundaries) | Foundational | Cleared, [decision 0009](decisions/0009-solution-layout.md) |
-| 9 | [Units, coordinates, and region bounds](#9-units-coordinates-and-region-bounds) | Foundational | Cleared, [decision 0010](decisions/0010-units-coordinates-and-region-bounds.md) |
+| 9 | [Units, coordinates, and region bounds](#9-units-coordinates-and-region-bounds) | Foundational | Cleared, [decision 0010](decisions/0010-units-coordinates-and-region-bounds.md); extent cap superseded by [decision 0017](decisions/0017-region-extent-cap-and-storage-derivation.md) |
 | 10 | [Requirements provenance and repeated policy text](#10-requirements-provenance-and-repeated-policy-text) | Gap | Cleared, [decision 0011](decisions/0011-requirements-single-source.md) |
 | 11 | [Concept wording that will become requirements](#11-concept-wording-that-will-become-requirements) | Inconsistency | Cleared, [decision 0012](decisions/0012-core-travel-model.md) |
 | 12 | [Travel topology](#12-travel-topology) | Gap | Cleared, [decision 0012](decisions/0012-core-travel-model.md) |
@@ -46,7 +46,7 @@ Affects: [technical design](technical-design.md#destination-identity-and-determi
 
 Apply by extending the Region record's minimum contents and making "bytes per region" the gate that confirms the cost.
 
-**Status:** Cleared 2026-09-07 by [decision 0001](decisions/0001-materialize-authoritative-terrain.md). Materialize at acceptance; cross-OS terrain match is a measured target at M0b. Applied to the technical design and development plan.
+**Status:** Cleared 2026-09-07 by [decision 0001](decisions/0001-materialize-authoritative-terrain.md). Materialize at acceptance; cross-OS terrain match is a measured target at M0b. Applied to the technical design and development plan. The size table above counts heights only and never the adopted 4 km at 2 m combination; the corrected derivation is in [finding 18](#18-region-storage-constants-are-over-determined).
 
 ### 2. Random primitive sets are untested as content
 
@@ -168,7 +168,7 @@ Affects: [technical design](technical-design.md#destination-identity-and-determi
 
 Authoritative checks run on fixed-point values in the core; the Godot adapter converts to floats for rendering and physics. Rule out double-precision builds unless measurements force them.
 
-**Status:** Cleared 2026-09-07 by [decision 0010](decisions/0010-units-coordinates-and-region-bounds.md). All proposed constants adopted: int32 fixed-point at 1/256 m, region-local frame, 4,096 m cap, 2 m cells with int16 heights at 1/16 m, 20 Hz tick. Applied to technical design, development plan, and glossary.
+**Status:** Cleared 2026-09-07 by [decision 0010](decisions/0010-units-coordinates-and-region-bounds.md). All proposed constants adopted: int32 fixed-point at 1/256 m, region-local frame, 4,096 m cap, 2 m cells with int16 heights at 1/16 m, 20 Hz tick. Applied to technical design, development plan, and glossary. Later the same day the cap was found inconsistent with the per-region storage budget and reduced to 2,048 m by [decision 0017](decisions/0017-region-extent-cap-and-storage-derivation.md); see [finding 18](#18-region-storage-constants-are-over-determined).
 
 ## Smaller findings
 
