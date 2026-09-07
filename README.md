@@ -4,7 +4,7 @@ A PC game concept about wormhole expeditions, generated planetary systems, artif
 
 Development is Linux-first with native Linux and Windows releases; the full platform policy is in [docs/requirements.md](docs/requirements.md). The stack is Godot 4.7.2 .NET with C# on .NET 10, an engine-independent generator, and SQLite persistence, confirmed and pinned in [decision 0016](docs/decisions/0016-platform-confirmed-and-toolchain-pinned.md). The engine is free to use; performance and execution on Windows remain to be validated.
 
-The solution scaffold, pinned toolchain, structural tests, and an exported-build smoke test are in place; build commands are in [src/README.md](src/README.md). No playable build or gameplay code exists yet.
+The solution scaffold, pinned toolchain, structural tests, and an exported-build smoke test are in place, and the core's deterministic random foundation is implemented and frozen under generator version 1 ([decision 0019](docs/decisions/0019-generator-version-1-frozen.md)); build commands are in [src/README.md](src/README.md). No world generation, persistence schema, or playable build exists yet.
 
 ## Documents
 

@@ -26,3 +26,4 @@ File name: `NNNN-short-title.md`. Use [0000-template.md](0000-template.md).
 | [0016](0016-platform-confirmed-and-toolchain-pinned.md) | Platform confirmed: Godot 4.7.2 .NET on .NET 10; toolchain pinned; solution scaffolded | Accepted |
 | [0017](0017-region-extent-cap-and-storage-derivation.md) | Region extent cap 2,048 m; per-region storage derived from the constants | Accepted |
 | [0018](0018-data-root-region-encoding-and-save-integrity.md) | Data root, package layout, region encoding, and save integrity | Accepted |
+| [0019](0019-generator-version-1-frozen.md) | Generator version 1: mix construction, path grammar, and bounded sampling frozen | Accepted |

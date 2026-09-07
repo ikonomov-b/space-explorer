@@ -16,6 +16,8 @@ Reviewed 2026-09-07. Normative terminology for the project documents ([decision 
 | Package | An immutable on-disk bundle with a manifest and data files. Either a set package or a world package. | [Decision 0006](decisions/0006-pack-identity-and-allocation.md) |
 | Handle | A package-local unsigned index into that package's reference table. Not an identity; tables cannot be reordered in place. | [Sets](technical-design.md#primitive-sets-and-compact-references) |
 | Content hash | A specified hash such as SHA-256 over a canonical binary encoding. Never a runtime object hash. | [Determinism](technical-design.md#destination-identity-and-determinism) |
+| Generator version | The integer identifying the frozen set of authoritative generation algorithms: the mixer construction and its domain constants, PCG32 initialisation and output, bounded sampling, and the stream-path grammar. Manifests pin it, and changing any frozen algorithm increments it. Currently 1. | [Decision 0008](decisions/0008-random-stream-derivation.md), [decision 0019](decisions/0019-generator-version-1-frozen.md) |
+| Stream path | The stable canonical path, such as `system/planet/0/region/3/artifact/2`, that addresses one random stream within a world and forms part of an artifact's identity. Segments are non-empty runs of `[A-Za-z0-9_-]` joined by `/`, case-sensitive, encoded as UTF-8. | [Decision 0008](decisions/0008-random-stream-derivation.md), [decision 0019](decisions/0019-generator-version-1-frozen.md) |
 
 ## Worlds and destinations
 

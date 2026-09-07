@@ -1,15 +1,15 @@
 # Source layout and build
 
-The tree is laid out by assembly as fixed in [decision 0009](../docs/decisions/0009-solution-layout.md); the platform confirmation and toolchain pins are in [decision 0016](../docs/decisions/0016-platform-confirmed-and-toolchain-pinned.md). The [technical design](../docs/technical-design.md) and [technology decision](../docs/technology-stack.md) define what each assembly owns. The platform policy is in [requirements.md](../docs/requirements.md). No gameplay or generation code exists yet.
+The tree is laid out by assembly as fixed in [decision 0009](../docs/decisions/0009-solution-layout.md); the platform confirmation and toolchain pins are in [decision 0016](../docs/decisions/0016-platform-confirmed-and-toolchain-pinned.md). The [technical design](../docs/technical-design.md) and [technology decision](../docs/technology-stack.md) define what each assembly owns. The platform policy is in [requirements.md](../docs/requirements.md). The core's deterministic random foundation is implemented and frozen under generator version 1 ([decision 0019](../docs/decisions/0019-generator-version-1-frozen.md)); no world generation, persistence schema, or gameplay code exists yet.
 
 | Path | Assembly | Contents |
 | --- | --- | --- |
-| `src/SpaceExplorer.Core/` | class library, no Godot reference | Generation, registry, campaign rules, valuation, random streams, binary formats, and the network contract. `BannedSymbols.txt` enforces [decision 0008](../docs/decisions/0008-random-stream-derivation.md) at build time. |
+| `src/SpaceExplorer.Core/` | class library, no Godot reference | Generation, registry, campaign rules, valuation, random streams, binary formats, and the network contract. `Shared/` holds the frozen determinism primitives `Pcg32`, `Mix64`, `StreamPath`, `RandomStream`, and `GeneratorVersion` ([decision 0019](../docs/decisions/0019-generator-version-1-frozen.md)). `BannedSymbols.txt` enforces [decision 0008](../docs/decisions/0008-random-stream-derivation.md) at build time. |
 | `src/SpaceExplorer.Persistence/` | class library, no Godot reference | SQLite adapter through `Microsoft.Data.Sqlite` and set/world package I/O. `SqliteRuntime` reports the native library version for diagnostics and smoke tests. |
 | `src/SpaceExplorer.Cli/` | console application | Primitive-set generator, validator, and inspector. Only `diagnostics` exists so far. |
 | `src/SpaceExplorer.Game/` | Godot 4.7.2 .NET project | `project.godot`, the `Main` scene with the exported-build smoke entry point, export presets for Linux and Windows Desktop, the rendering and ENet adapters, and runtime assets under `assets/`. |
 | `content/` | data | Authored templates, allocation ledgers, and numeric tables consumed without Godot. |
-| `tests/SpaceExplorer.Core.Tests/`, `tests/SpaceExplorer.Persistence.Tests/` | xUnit.net | Architecture tests that Core and Persistence never reference Godot, the native SQLite load test, and later the two-process determinism test. |
+| `tests/SpaceExplorer.Core.Tests/`, `tests/SpaceExplorer.Persistence.Tests/` | xUnit.net | Architecture tests that Core and Persistence never reference Godot, the native SQLite load test, the `Shared/` suite pinning the frozen random foundation against its published reference vectors, and later the two-process determinism test. |
 | `tests/SpaceExplorer.Benchmarks/` | BenchmarkDotNet | Core measurements; none yet. |
 | `tests/SpaceExplorer.Game.Smoke/` | scripts | `smoke.sh` and `smoke.ps1` export the game and run the exported build's smoke check on Linux and Windows. |
 
