@@ -15,9 +15,9 @@ out/
 coverage/
 tmp/
 temp/
+node_modules/
 
 # Game/runtime state
 *.log
 *.tmp
 *.bak
-
