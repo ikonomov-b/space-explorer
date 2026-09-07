@@ -35,7 +35,7 @@ Two notes on the record above. An initial TypeScript scaffold was created and th
 
 | Milestone | Status |
 | --- | --- |
-| P0: greybox expedition prototype | **Not started; next.** `prototypes/` holds only its README. Its exit record precedes the set specification record of M0a criterion 1 ([decision 0022](decisions/0022-p0-gates-the-first-frozen-content-format.md)); the owner's P0 assessment settles location, scope, and players. |
+| P0: greybox expedition prototype | **In progress.** Built at `prototypes/p0-expedition/`: one hard-coded region, three sites, four artifacts, a two-slot cargo limit with a swap prompt, a return to the home anchor, a sale screen, and a destination-choice screen, exactly decision 0015's scope ([decision 0025](decisions/0025-p0-assessment-location-scope-and-players.md)). Builds clean, imports, and passes its smoke check both from source and from a headless Linux export on the Debian 13 workstation on 2026-09-07. Not done: the exit record itself, which needs three to five real players ([decision 0015](decisions/0015-greybox-prototype.md)) and is not something a build or a smoke check can stand in for; its exit record still precedes the set specification record of M0a criterion 1 ([decision 0022](decisions/0022-p0-gates-the-first-frozen-content-format.md)). |
 | M0a: primitive-set foundation | **In progress.** Of the plan's exit criteria below, one is done, three are partial, and eleven are not started. The frozen random foundation is not itself one of the plan's M0a criteria; it appears under Determinism in the verification table. The canonical encoding and content hash appear in criterion 5. |
 | M0b: world generation and save prototype | **Not started.** |
 | M1: solo playable expedition | **Not started.** |
@@ -64,7 +64,7 @@ The plan's M0a row, decomposed in its own order.
 | 14 | Reference machines recorded | **Partial.** The Linux workstation is recorded in decision 0016; no Windows reference machine is identified. |
 | 15 | Content gate: reviewer sort against a pre-recorded threshold, and the silhouette comparison finds no near-duplicates | Not started. Blocked on criteria 1 and 11 ([decision 0002](decisions/0002-primitive-set-content-gate.md)). |
 
-Immediate next step: P0, the greybox expedition prototype, on the pinned Godot stack ([decision 0022](decisions/0022-p0-gates-the-first-frozen-content-format.md)). The authored template vocabulary of criterion 1 and the set specification record it determines follow the P0 exit record, because that record fixes the fields hashed under [decision 0020](decisions/0020-canonical-encoding-and-content-hash.md) and therefore every derived `pack_id`. A reader for the canonical format, needed by criterion 3, may proceed meanwhile.
+Immediate next step: run P0 sessions with three to five real players and record the exit record ([decision 0015](decisions/0015-greybox-prototype.md)); the prototype itself is built and ready at `prototypes/p0-expedition/`. The authored template vocabulary of M0a criterion 1 and the set specification record it determines wait on that exit record, because that record fixes the fields hashed under [decision 0020](decisions/0020-canonical-encoding-and-content-hash.md) and therefore every derived `pack_id`. A reader for the canonical format, needed by criterion 3, may proceed meanwhile.
 
 ## Verification and performance targets
 
@@ -114,4 +114,4 @@ Carried from [decision 0016](decisions/0016-platform-confirmed-and-toolchain-pin
 
 ## Design documentation
 
-Complete and self-consistent as of 2026-09-07: the nineteen documentation-stage [review](review.md) findings are cleared, twenty-four [decision records](decisions/README.md) are accepted, and every internal link and anchor resolves. The implementation review of the same day raised [findings 20 to 27](review.md#findings-raised-by-the-implementation-review), all cleared: one by a technical-design change and seven by decisions 0021 to 0024. Apart from the random foundation and the canonical encoding, the design statements are untested against code.
+Complete and self-consistent as of 2026-09-07: the nineteen documentation-stage [review](review.md) findings are cleared, twenty-five [decision records](decisions/README.md) are accepted, and every internal link and anchor resolves. The implementation review of the same day raised [findings 20 to 27](review.md#findings-raised-by-the-implementation-review), all cleared: one by a technical-design change and seven by decisions 0021 to 0024; decision 0025 settles the P0 assessment decision 0022 reserved. Apart from the random foundation and the canonical encoding, the design statements are untested against code.

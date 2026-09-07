@@ -1,0 +1,15 @@
+<Project Sdk="Godot.NET.Sdk/4.7.2">
+
+  <!--
+    Disposable greybox prototype (decision 0015, decision 0025). Isolated from src/: no
+    ProjectReference to any SpaceExplorer assembly, and nothing under src/ references this project.
+    TargetFramework is repeated on purpose: the Godot editor inserts its minimum (net8.0) into any
+    csproj that does not state one, because it does not evaluate Directory.Build.props.
+  -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <EnableDynamicLoading>true</EnableDynamicLoading>
+    <RootNamespace>P0Expedition</RootNamespace>
+  </PropertyGroup>
+
+</Project>
