@@ -40,8 +40,8 @@ The nineteen findings of the documentation stage were cleared on 2026-09-07; the
 | 30 | [Surface sky is decorative rather than astronomically derived](#30-surface-sky-is-decorative-rather-than-astronomically-derived) | Gap | Cleared, [decision 0032](decisions/0032-astronomically-consistent-surface-sky.md) |
 | 31 | [A generated definition can never receive a second revision](#31-a-generated-definition-can-never-receive-a-second-revision) | Inconsistency | Cleared, [decision 0033](decisions/0033-generated-definitions-have-one-revision.md) |
 | 32 | [The storage policy sits inside the hashed definition that M0b's measurement will change](#32-the-storage-policy-sits-inside-the-hashed-definition-that-m0bs-measurement-will-change) | Foundational | Cleared, [decision 0034](decisions/0034-storage-policy-pinned-by-manifests.md) |
-| 33 | [The generator implementation a regenerate primitive pins has no identity](#33-the-generator-implementation-a-regenerate-primitive-pins-has-no-identity) | Gap | Open |
-| 34 | [The category registry has no home, no revision identity, and no stated role in decoding](#34-the-category-registry-has-no-home-no-revision-identity-and-no-stated-role-in-decoding) | Gap | Open |
+| 33 | [The generator implementation a regenerate primitive pins has no identity](#33-the-generator-implementation-a-regenerate-primitive-pins-has-no-identity) | Gap | Cleared, [decision 0035](decisions/0035-category-registry-record-and-generator-revision-identifiers.md) |
+| 34 | [The category registry has no home, no revision identity, and no stated role in decoding](#34-the-category-registry-has-no-home-no-revision-identity-and-no-stated-role-in-decoding) | Gap | Cleared, [decision 0035](decisions/0035-category-registry-record-and-generator-revision-identifiers.md) |
 | 35 | [Two set manifests can install under one pack identifier](#35-two-set-manifests-can-install-under-one-pack-identifier) | Gap | Open |
 | 36 | [The shared content-addressed stores have no reference index and no deletion rule](#36-the-shared-content-addressed-stores-have-no-reference-index-and-no-deletion-rule) | Gap | Open |
 | 37 | [One transform type cannot span the frame hierarchy](#37-one-transform-type-cannot-span-the-frame-hierarchy) | Foundational | Open |
@@ -451,7 +451,7 @@ Affects: [decision 0031](decisions/0031-primitive-complete-composition-and-stora
 
 **Proposed solution.** Per-category generator revision identifiers in the category registry, in stream-path form such as `terrain-heightfield/1`, pinned by the set and world manifests and admitted by the `dependencies` row; `GeneratorVersion` stays the random foundation's version; retention is per revision identifier, not per whole generator; the join handshake advertises the retained identifiers so a mismatch fails before any package moves. The M0a record that fixes the category vocabulary can carry this.
 
-**Status:** Open.
+**Status:** Cleared 2026-09-07 by [decision 0035](decisions/0035-category-registry-record-and-generator-revision-identifiers.md). Applied to the technical design, development plan, glossary, and content README.
 
 ### 34. The category registry has no home, no revision identity, and no stated role in decoding
 
@@ -461,7 +461,7 @@ Affects: the `category` and `parameters` rows of the [registry](technical-design
 
 **Proposed solution.** The category registry is a canonical data record with an integer revision in its domain label, `category-registry/N`, following the `set-specification/1` pattern of [decision 0020](decisions/0020-canonical-encoding-and-content-hash.md); each pack manifest pins the revision and hash it was generated under; each definition record's domain label carries the registry revision so the reader selects the parameter schema before allocating; the game lists the revisions it supports and refuses others with a compatibility error. The M0a record that fixes the category vocabulary can carry this.
 
-**Status:** Open.
+**Status:** Cleared 2026-09-07 by [decision 0035](decisions/0035-category-registry-record-and-generator-revision-identifiers.md). Applied to the technical design, development plan, glossary, and content README.
 
 ### 35. Two set manifests can install under one pack identifier
 

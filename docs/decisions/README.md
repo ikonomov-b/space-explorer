@@ -43,4 +43,5 @@ File name: `NNNN-short-title.md`. Use [0000-template.md](0000-template.md). A re
 | [0032](0032-astronomically-consistent-surface-sky.md) | Astronomically consistent surface sky | Accepted |
 | [0033](0033-generated-definitions-have-one-revision.md) | A generated definition has one revision for life; revisions belong to authored template packs | Accepted |
 | [0034](0034-storage-policy-pinned-by-manifests.md) | Storage policy is pinned per category by the world and set manifests, not by the definition | Accepted |
+| [0035](0035-category-registry-record-and-generator-revision-identifiers.md) | The category registry is a versioned canonical record that definition labels carry; generator revisions are identifiers it lists | Accepted |
 <!-- generated:end decisions -->
