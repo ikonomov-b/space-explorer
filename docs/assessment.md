@@ -12,6 +12,8 @@ Recommend a small playable prototype that demonstrates the expedition-and-trade 
 
 The [concept](concept.md) contains only the game idea. Scope, milestones, measurements, and production decisions belong in the separate [development plan](development-plan.md); implementation contracts belong in the [technical design](technical-design.md).
 
+Following the platform discussion, Linux-primary development, native Linux/Windows releases, and free 3D tooling are explicit requirements; Python is optional. The separate [technology decision](technology-stack.md) selects Godot .NET/C# and SQLite as working defaults and records the alternatives and validation gates. This does not change the gameplay/market assessment.
+
 ## Similar projects
 
 The overlap column reports supported features. Implications are analysis for Space Explorer, not claims that competitors lack every other feature. Store descriptions establish advertised scope; historical development posts are used only as engineering evidence. This is a targeted comparison, not an exhaustive catalogue.
@@ -42,10 +44,11 @@ These resolutions preserve the expedition-and-artifact objective while making am
 | 5. Saving and online visits | No distinction between immutable geography, player history, host ownership, or updates. | [Concept 5](concept.md#5-remembering-destinations-and-exploring-together) explains enduring places and evolving history. [Persistence](technical-design.md#persistence-and-compatibility) and [multiplayer](technical-design.md#multiplayer-and-trust-boundary) specify the contracts. |
 | 6. Artifacts | Unique IDs do not ensure unique appearances; future exploration duration conflicts with predefined value. | [Concept 6](concept.md#6-the-artifacts) clarifies visible variety and effort/reward intent. The [registry](technical-design.md#primitive-registry-and-composition) defines duplicate handling; [valuation](technical-design.md#artifact-valuation-and-transactions) proposes fixed effort scores. |
 | 7. Goal/economy | No meaningful collection choices, buyers, credit sinks, failure recovery, or duplicate-sale rules. | [Concept 7](concept.md#7-the-players-goal) adds retention-versus-sale motivation. The [plan](development-plan.md#core-release-contents) and [transactions](technical-design.md#artifact-valuation-and-transactions) define progression and recovery. |
-| 8. Primitives | Immutable IDs do not freeze assets or algorithms; "combinable" cannot validate an entire structure. | [Concept 8](concept.md#8-randomness-from-expandable-primitives) explains coherent combinations and preserved worlds. [Registry](technical-design.md#primitive-registry-and-composition) and [determinism](technical-design.md#destination-identity-and-determinism) pin definitions, grammar, randomness, and dependencies. |
+| 8. Primitives | No explicit primitive-set foundation; immutable IDs do not freeze assets or algorithms; "combinable" cannot validate an entire structure. | [Concept 8](concept.md#8-randomness-from-expandable-primitives) identifies saved random primitive sets as reusable units. [M0a](development-plan.md#milestones) generates/stores them before worlds; the [registry](technical-design.md#primitive-registry-and-composition) defines pack-local `uint32` IDs, compact references, and frozen dependencies. |
 | 9. Core release | "Basic structures" gave no usable completion boundary. | [Concept 9](concept.md#9-the-core-experience) stays conceptual. The separate [development plan](development-plan.md#milestones) defines the solo slice and connected core release. |
 | Cross-cutting scope/usability | No surface scale, control baseline, performance criteria, or validation plan. | The [plan](development-plan.md) proposes bounded regions, accessibility requirements, benchmark targets, and experiments, without claiming measured results. |
 | Cross-cutting trust | Local editable saves cannot establish globally trusted item ownership. | The [technical design](technical-design.md#multiplayer-and-trust-boundary) scopes the economy to private campaigns and separates future public trade from offline inventories. |
+| Platform and implementation stack | Native development/distribution, language choice, and library boundaries were unspecified. | The [technology decision](technology-stack.md) selects Godot .NET/C# and SQLite, compares Python/GDScript alternatives, and requires Linux/Windows packaging, canonical-data, and mixed-OS co-op tests. |
 
 ## Evidence behind the highest-risk changes
 
@@ -59,7 +62,7 @@ The timing and pricing recommendations are design deductions: identical content 
 
 ## Decisions and validation still needed
 
-Documentation cannot supply absent player feedback, production capacity, or benchmarks. The [decision register](development-plan.md#decisions-before-production-commitments) identifies the next evidence needed for travel pacing, valuation, engine/platform choice, numeric budgets, presentation, internet transport, schedule, and costs.
+Documentation cannot supply absent player feedback, production capacity, or benchmarks. The [decision register](development-plan.md#decisions-before-production-commitments) identifies the next evidence needed for travel pacing, valuation, stack validation and minimum hardware, numeric budgets, presentation, internet connectivity, schedule, and costs. Platform/library defaults are separately listed [for confirmation](technology-stack.md#gap-filling-decisions-for-confirmation).
 
 The recommended prototype focuses on short expeditions, private cooperation, and fixed effort-based prices. Mandatory days-long waiting or literal elapsed-time pricing would be material alternative designs. They remain visible in the concept rather than being silently discarded.
 

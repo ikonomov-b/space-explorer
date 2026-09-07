@@ -1,6 +1,6 @@
 # Space Explorer: game concept
 
-A PC game about travelling through wormholes, exploring unfamiliar planetary systems, and collecting distinctive artifacts.
+A PC game for native Linux and Windows about travelling through wormholes, exploring unfamiliar planetary systems, and collecting distinctive artifacts.
 
 This document describes the game concept. The [assessment](assessment.md) discusses its relevance and similar projects. The [development plan](development-plan.md) and [technical design](technical-design.md) cover proposed implementation and validation.
 
@@ -74,7 +74,7 @@ Environmental challenges and limited carrying capacity give expeditions stakes. 
 
 ## 8. Randomness from expandable primitives
 
-Planetary systems, explorable environments, and artifacts are composed from predefined primitives that can combine into larger structures. Compatible combinations create variety while retaining coherence.
+Planetary systems, explorable environments, and artifacts are composed from primitives that can combine into larger structures. A small predefined vocabulary supplies the templates and constraints for generating random primitive sets. These sets are saved as reusable basic construction units before they are used to compose destinations and discoveries. Compatible combinations create variety while retaining coherence.
 
 Each primitive has a permanent numeric identity. The library can expand with new primitives, while existing worlds keep the content and composition that defined them. New possibilities enrich future destinations without rewriting old discoveries.
 

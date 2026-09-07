@@ -1,10 +1,16 @@
 # Space Explorer: technical design draft
 
-Reviewed 2026-09-07. This is a proposed implementation contract for the [concept](concept.md). No engine, database, transport service, or library is selected, and no benchmark result is claimed. Requirements below apply to a future implementation.
+Reviewed 2026-09-07. This is a proposed implementation contract for the [concept](concept.md). The [technology decision](technology-stack.md) selects Godot 4 .NET/C#, SQLite with `Microsoft.Data.Sqlite`, and Godot ENet as the working stack. No internet relay service is selected and no benchmark result is claimed. Requirements below apply to a future implementation.
 
 ## Architecture and ownership
 
+Linux is the primary development environment; Linux and Windows are required native game/CLI targets. The full daily development loop must work on Linux without Windows-only tools. Keep the core generator and save format independent of operating-system APIs. Pin compatible dependency versions for both platforms; package required runtimes and native libraries where their redistribution terms allow. Define and test the supported OS/distribution, CPU, and graphics matrix rather than assuming one build runs on every Linux installation. No Wine/Proton compatibility layer is part of the Linux target. Windows execution tests remain necessary even when builds are produced on Linux.
+
+Use platform-appropriate writable user-data locations and portable relative asset paths. Test case sensitivity, path separators, native dependency loading, and save exchange between Linux and Windows. Network messages and saved data use explicit portable encodings rather than raw process memory layouts. The same campaign must remain compatible when a Linux host invites a Windows guest or vice versa.
+
 Separate the deterministic generator, content registry, world store, campaign simulation, renderer, and network transport. Generation returns data independent of rendered frames or player input. Solo play uses the same command validation as hosted play.
+
+The domain, registry, and generation libraries use C# without Godot dependencies and serve both a command-line tool and the game. Keep database and engine APIs behind adapters. Worker tasks return plain data; apply scene changes through the Godot adapter on the appropriate thread. Core data and serialization contracts must not contain Godot node/resource references. Keep unsigned buffers in the core and use explicit, range-checked conversions at engine boundaries; engine serialization must not implicitly define the compact storage format.
 
 The campaign owns credits, artifact custody, progression, and destination references. World packages own immutable specifications and pinned dependencies. Presentation caches can be rebuilt without changing discovery locations or tradeable objects.
 
@@ -16,11 +22,15 @@ Re-entering an existing specification in the same campaign selects that world's 
 
 Derive random streams from the seed and stable paths such as `system/planet/region/site/artifact`. Pin the random algorithm and derivation method. Never use current time, frame count, thread scheduling, unordered iteration, or an unspecified language hash as random input. Adding optional details must not consume randomness from an unrelated artifact stream.
 
+The working PRNG is PCG32 XSH-RR. Freeze its initialization, stream derivation, bounded sampling, integer overflow behavior, and reference test vectors under a generator version. Use canonical binary encodings and a specified content hash such as SHA-256, not runtime object hashes. Integer/quantized authoritative calculations and persisted accepted data limit floating-point variation; C# or a fixed seed alone does not prove cross-platform determinism.
+
 Save accepted descriptors and composition graphs explicitly. Reconstruct terrain using pinned algorithms and specified authoritative coordinates. Cosmetic GPU differences are acceptable; collision surfaces, routes, and artifact placements must not depend on them. Cross-platform reproduction must be verified on supported builds. A guest receives authoritative descriptors or chunks if local reconstruction differs.
 
 In the core release, determine all site and artifact recipes before accepting a destination; meshes and textures may load later. This makes reachability, predefined values, and uniqueness verifiable before play. Later region expansion must preserve these guarantees.
 
 ## Generation lifecycle
+
+Prerequisite: generate, validate, and durably publish reusable primitive sets as M0a work, using the registry contract below. Destination generation selects exact saved set manifests; it does not recreate primitive definitions from the current library on each journey.
 
 The main sequence is `draft -> reserved -> generating -> validating -> ready`. Generation and validation may pause, fail, or be cancelled; paused work resumes its saved stage. A ready world can be revisited and never returns to draft.
 
@@ -41,13 +51,29 @@ Closing the game saves progress and stops computation; restarting resumes durabl
 
 | Field | Contract |
 | --- | --- |
-| `pack_id`, `primitive_id` | Stable pack namespace and immutable numeric ID within the pack; never recycle identities. |
+| `pack_id`, `primitive_id` | Stable pack namespace plus a pack-local unsigned 32-bit ID (`uint` in C#). Reserve zero as invalid; allocate monotonically in stable order, persist the allocation ledger, and never recycle identities. Reject overflow rather than wrapping. |
 | `revision`, `content_hash` | Identify exact definition and asset contents. A changed mesh or rule is a new revision even if its filename is unchanged. |
 | `category` | Stellar body, terrain, biome element, site component, artifact component, or another supported kind. |
 | `parameters` | Typed ranges, units, defaults, and bounded variation. |
 | `connectors`, `constraints` | Compatible attachment types, adjacency rules, exclusions, spatial bounds, and environmental preconditions. |
 | `dependencies` | Exact required primitive revisions and assets; missing dependencies invalidate a pack. |
 | `provenance` | Author/source and recorded content reuse terms. |
+
+### Primitive sets and compact references
+
+A primitive definition is a typed reusable building block. A primitive set is an immutable, validated collection of exact primitive revisions plus its composition rules and dependencies; it is the first stored construction unit. An instance in a world or artifact has its own identity, placement, and parameters and is not the primitive definition itself.
+
+Generate sets from a small authored vocabulary and explicit compatibility rules, not unconstrained random geometry. Fix the seed, template versions, generator/grammar versions, count/work budgets, and base pack manifest/allocation state; generate candidates in stable order; validate definitions and dependency closure; then commit accepted definitions, membership, allocation state, and a manifest together. Independent reproduction uses the same starting allocation state, not whichever IDs happen to be free locally. Bound retries and report exhaustion. Store the accepted output as well as the seed so loading does not depend on rerunning a changed generator. Publishing a changed set produces a new manifest/revision rather than mutating a saved set.
+
+The full definition identity is `(pack_id, primitive_id)`; exact content also includes its revision/hash. A random `uint` or a truncated hash alone is not a unique global identity. Independently authored packs have distinct namespaces, and revisions of a pack share a coordinated allocation ledger. Duplicate allocation fails validation. After `4,294,967,295`, creation needs a new namespace or a versioned format change; practical set-size limits are much smaller and are measured separately.
+
+For one pinned pack revision, membership can be sorted, deduplicated `uint` vectors. For mixed packs/revisions, store an immutable reference table mapping package-local `uint` handles to full exact identities; composition nodes use those handles. A handle is not a permanent primitive ID, and tables cannot be reordered in place. Union/intersection/difference across packages must resolve or remap full identities first. Preserve node order, repeated instances, transforms, and edges in composition graphs: graph nodes are not deduplicated set membership.
+
+Store packed vectors using a versioned format with explicit little-endian fields, lengths, and integrity checks; reject invalid lengths, out-of-range handles, and resource-limit violations before allocation. A million packed IDs occupy 4,000,000 bytes (about 3.81 MiB), excluding headers, reference tables, parameters, assets, and runtime collection overhead. Unsignedness provides the identifier range; fixed-width unboxed layout provides the storage saving. Do not allocate an array or bitset spanning the entire `uint` ID space.
+
+Use SQLite metadata tables for indexed lookup and constraints, and BLOBs for compact vectors/recipes. SQLite INTEGER is signed and variable-width: bind primitive IDs as signed 64-bit values with a `1..4,294,967,295` range constraint. It is not a native four-byte unsigned column. The [technology decision](technology-stack.md#selected-components) records the supporting library/type references.
+
+### Composition validation
 
 Each world pins a complete registry manifest and grammar revision. Rules define weights, maximum depth, component count, and work bounds. Geometric compatibility and semantic validity are separate: attached pieces can still form an unreachable site or an artifact too heavy for every supported loadout.
 
@@ -61,6 +87,7 @@ Before committing a world, compare its appearance recipes with the campaign's ex
 
 | Record | Minimum contents |
 | --- | --- |
+| Primitive set | Manifest identity, generation specification, accepted definitions, membership/reference table, exact dependencies, provenance, and validation result. |
 | Campaign | Branch ID, players, permissions, credits, upgrades, inventory/cargo, catalogue, and destination index. |
 | World manifest | Specification identity, seed/inputs, pinned versions, accepted descriptors, dependency hashes, and validation result. |
 | Region | Stable ID, recipe, authoritative geometry where required, sites, environmental profile, and completion state. |
@@ -71,7 +98,7 @@ Before committing a world, compare its appearance recipes with the campaign's ex
 
 Store descriptors, recipes, and changes instead of every rendered polygon. Deduplicate immutable assets by content hash and compress region data. Mesh/texture caches have a size limit and can be evicted. Never evict the only copy of a recipe, required asset, unreconstructible geometry, or player action.
 
-Inventory, artifact custody, and credits change in one atomic transaction. A crash leaves either the old state or the committed new state, never a paid sale with an artifact still in inventory. Use a transactional store or equivalent durable journal; choose the implementation in M0. World packages need an equivalent commit protocol: write and verify data first, publish references last, and recover incomplete work on restart.
+Inventory, artifact custody, and credits change in one atomic SQLite transaction through `Microsoft.Data.Sqlite`. A crash leaves either the old state or the committed new state, never a paid sale with an artifact still in inventory. Coordinate campaign writes, enable relational constraints, retain durable settings, and test failure recovery. External immutable primitive/world packages need a separate commit protocol: write and verify data first, publish database references last, and recover incomplete work on restart. A database transaction alone does not atomically commit external asset files.
 
 Keep rolling recoverable saves and verify checksums on load. Low disk space pauses generation before endangering the active campaign. Archiving preserves both the world package and mutable state. Removing an archive is an explicit user operation with its loss of access explained.
 
@@ -107,7 +134,7 @@ Joining exchanges protocol versions, campaign identity, manifests, and state rev
 
 Disconnecting never undoes hazards already applied: committed emergency recovery retains its field cache. Otherwise persist the guest's location and cargo and suspend that avatar; on rejoin restore it, keeping the ship return route available. Disconnect/rejoin must not duplicate items or provide free extraction. When the host exits, the session ends and resumes from its last durable state. Independent hosts cannot merge campaigns automatically.
 
-Internet access needs a selected platform invitation/relay service or a documented directly reachable host. A LAN demonstration is insufficient. Before M2, choose the transport, account requirements, costs, and service-unavailable behavior. Solo play remains usable offline.
+Use Godot's high-level multiplayer with ENet as the initial transport. Internet access still needs a selected platform invitation/relay service or a documented directly reachable UDP host; ENet itself does not supply a relay or solve all NAT restrictions. A LAN demonstration is insufficient. Before M2, choose the connectivity approach, account requirements, costs, and service-unavailable behavior and test Linux/Windows in both host directions. Solo play remains usable offline.
 
 Bound message and package sizes, entity counts, nesting, decompressed data, and content types. Guests and imported worlds cannot execute supplied scripts. Checksums detect corruption but do not prove that an offline owner has not edited a save. Private host trust is sufficient here. A future public market requires a separate server-controlled ownership model and cannot trust arbitrary offline inventories.
 
