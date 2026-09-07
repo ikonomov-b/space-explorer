@@ -44,7 +44,7 @@ The nineteen findings of the documentation stage were cleared on 2026-09-07; the
 | 34 | [The category registry has no home, no revision identity, and no stated role in decoding](#34-the-category-registry-has-no-home-no-revision-identity-and-no-stated-role-in-decoding) | Gap | Cleared, [decision 0035](decisions/0035-category-registry-record-and-generator-revision-identifiers.md) |
 | 35 | [Two set manifests can install under one pack identifier](#35-two-set-manifests-can-install-under-one-pack-identifier) | Gap | Open |
 | 36 | [The shared content-addressed stores have no reference index and no deletion rule](#36-the-shared-content-addressed-stores-have-no-reference-index-and-no-deletion-rule) | Gap | Open |
-| 37 | [One transform type cannot span the frame hierarchy](#37-one-transform-type-cannot-span-the-frame-hierarchy) | Foundational | Open |
+| 37 | [One transform type cannot span the frame hierarchy](#37-one-transform-type-cannot-span-the-frame-hierarchy) | Foundational | Cleared, [decision 0036](decisions/0036-frames-and-transforms-typed-by-connector-kind.md) |
 | 38 | [Planet-level fields have no spherical form and the flat region bounds the explorable body radius](#38-planet-level-fields-have-no-spherical-form-and-the-flat-region-bounds-the-explorable-body-radius) | Foundational | Open |
 | 39 | [Nothing is defined beyond the region edge](#39-nothing-is-defined-beyond-the-region-edge) | Gap | Open |
 | 40 | [Physical derivation rules are missing](#40-physical-derivation-rules-are-missing) | Gap | Open |
@@ -495,7 +495,7 @@ Affects: the transform and attachment-transform clauses of [decision 0031](decis
 
 **Proposed solution.** The connector kind decides the transform type: orbital elements plus epoch for an orbit connector, latitude, longitude, height, and heading for a surface anchor, and a rigid fixed-point transform only inside a region or an artifact. The units table gains a row per frame, system, planet-fixed, region-local, and artifact-local, each with its integer width, unit, and scale, so that no frame reuses another's position type by default. The category registry record of the M0a immediate step is where this lands.
 
-**Status:** Open.
+**Status:** Cleared 2026-09-07 by [decision 0036](decisions/0036-frames-and-transforms-typed-by-connector-kind.md). Applied to the technical design and glossary.
 
 ### 38. Planet-level fields have no spherical form and the flat region bounds the explorable body radius
 

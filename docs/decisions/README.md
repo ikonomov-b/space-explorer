@@ -18,7 +18,7 @@ File name: `NNNN-short-title.md`. Use [0000-template.md](0000-template.md). A re
 | [0007](0007-artifact-collision-substitution-and-campaign-salt.md) | Campaign branch in the world specification; per-artifact substitution on appearance collision | Accepted |
 | [0008](0008-random-stream-derivation.md) | Random stream derivation, rejection sampling, and build-time enforcement | Accepted; mixer clause superseded by [0021](0021-sha256-stream-derivation.md) |
 | [0009](0009-solution-layout.md) | Solution layout by assembly; authored content outside the Godot project | Accepted; Benchmarks project superseded by [0024](0024-tests-comments-index-and-scaffolding-trimmed.md) |
-| [0010](0010-units-coordinates-and-region-bounds.md) | Units, coordinates, region bounds, and simulation tick | Accepted; region extent cap superseded by [0017](0017-region-extent-cap-and-storage-derivation.md) |
+| [0010](0010-units-coordinates-and-region-bounds.md) | Units, coordinates, region bounds, and simulation tick | Accepted; region extent cap superseded by [0017](0017-region-extent-cap-and-storage-derivation.md), single position type and coordinate-frame row superseded by [0036](0036-frames-and-transforms-typed-by-connector-kind.md) |
 | [0011](0011-requirements-single-source.md) | Requirements document as the single source for platform policy and provenance | Accepted |
 | [0012](0012-core-travel-model.md) | Core travel model: hub and spoke, two tiers with a snapping distance control, one guest | Accepted |
 | [0013](0013-host-simulates-hazards.md) | The host simulates hazards for every avatar | Accepted |
@@ -44,4 +44,5 @@ File name: `NNNN-short-title.md`. Use [0000-template.md](0000-template.md). A re
 | [0033](0033-generated-definitions-have-one-revision.md) | A generated definition has one revision for life; revisions belong to authored template packs | Accepted |
 | [0034](0034-storage-policy-pinned-by-manifests.md) | Storage policy is pinned per category by the world and set manifests, not by the definition | Accepted |
 | [0035](0035-category-registry-record-and-generator-revision-identifiers.md) | The category registry is a versioned canonical record that definition labels carry; generator revisions are identifiers it lists | Accepted |
+| [0036](0036-frames-and-transforms-typed-by-connector-kind.md) | Four frames; the connector kind decides the transform type; a units row per frame | Accepted |
 <!-- generated:end decisions -->
