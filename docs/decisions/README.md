@@ -50,4 +50,5 @@ File name: `NNNN-short-title.md`. Use [0000-template.md](0000-template.md). A re
 | [0039](0039-one-manifest-per-pack-identifier.md) | One set manifest per pack identifier; a differing second manifest is a reproduction failure | Accepted |
 | [0040](0040-reference-index-and-deletion-sweep.md) | A data-root reference index for shared content; deletion is an explicit confirmed sweep | Accepted |
 | [0041](0041-planet-fields-tangent-regions-minimum-radius-and-far-field.md) | Cube-sphere planet fields, tangent-plane regions, a minimum landable radius, and a derived far field | Accepted |
+| [0042](0042-category-registry-revision-1-first-content-records-generator-and-publish-protocol.md) | Category registry revision 1, the first content records, the set generator, and the publish protocol | Accepted |
 <!-- generated:end decisions -->

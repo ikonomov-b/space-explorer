@@ -1,0 +1,35 @@
+{
+  "pack": "9067bdefc5d1ae827c74cf7e878109cb",
+  "retries": 16,
+  "templates": [
+    { "id": 1, "label": "flat-texture", "category": "texture-recipe",
+      "parameters": { "pattern": ["flat"], "scale": [65536, 65536], "colour-a": [[40, 220], [40, 220], [40, 220], [255, 255]], "colour-b": [[40, 220], [40, 220], [40, 220], [255, 255]], "contrast": [0, 0] } },
+    { "id": 2, "label": "patterned-texture", "category": "texture-recipe",
+      "parameters": { "pattern": ["noise", "stripes", "cells", "speckle"], "scale": [655, 131072], "colour-a": [[0, 255], [0, 255], [0, 255], [255, 255]], "colour-b": [[0, 255], [0, 255], [0, 255], [255, 255]], "contrast": [8192, 65535] } },
+    { "id": 3, "label": "matte-material", "category": "surface-material",
+      "parameters": { "shader": ["standard-opaque"], "base-colour": [[30, 230], [30, 230], [30, 230], [255, 255]], "roughness": [32768, 65535], "metallic": [0, 8192] } },
+    { "id": 4, "label": "metal-material", "category": "surface-material",
+      "parameters": { "shader": ["metallic"], "base-colour": [[120, 255], [120, 255], [120, 255], [255, 255]], "roughness": [0, 32768], "metallic": [49152, 65535] } },
+    { "id": 5, "label": "small-solid", "category": "geometry-recipe",
+      "parameters": { "shape": ["sphere", "box", "cylinder", "capsule", "cone", "torus"], "size": [1311, 32768], "segments": [6, 32], "displacement": [0, 1311] } },
+    { "id": 6, "label": "solid-part", "category": "artifact-part",
+      "parameters": { "mass": [50, 20000] },
+      "connectors": { "attach": { "provides": ["socket"], "requires": ["plug"] } } },
+    { "id": 7, "label": "found-artifact", "category": "artifact",
+      "parameters": { "family": ["mineral", "biological", "relic"], "tier": [1, 2] } },
+    { "id": 8, "label": "main-sequence-star", "category": "star",
+      "parameters": { "mass": [1600000000, 60000000000], "radius": [25600000000, 512000000000], "luminosity": [8000, 60000000], "effective-temperature": [2800, 10000], "spectral-class": ["A", "F", "G", "K", "M"] } },
+    { "id": 9, "label": "airless-atmosphere", "category": "atmosphere",
+      "parameters": { "model": ["airless"], "surface-pressure": [0, 0], "composition": ["none"], "scattering-tint": [[0, 0], [0, 0], [0, 0], [0, 0]] } },
+    { "id": 10, "label": "thin-atmosphere", "category": "atmosphere",
+      "parameters": { "model": ["thin", "dense"], "surface-pressure": [100, 5000000], "composition": ["nitrogen-oxygen", "carbon-dioxide", "methane"], "scattering-tint": [[60, 255], [60, 255], [60, 255], [255, 255]] } },
+    { "id": 11, "label": "rocky-planet", "category": "planet",
+      "parameters": { "mass": [100, 200000], "radius": [134217728, 2560000000], "albedo": [3000, 45000], "pole-declination": [-536870912, 536870912], "sidereal-period": [720000, 172800000], "body-type": ["rocky", "icy", "ocean"] } }
+  ],
+  "requests": [
+    { "template": 1, "count": 2 }, { "template": 2, "count": 4 },
+    { "template": 3, "count": 3 }, { "template": 4, "count": 3 },
+    { "template": 5, "count": 6 }, { "template": 6, "count": 6 }, { "template": 7, "count": 4 },
+    { "template": 8, "count": 2 }, { "template": 9, "count": 1 }, { "template": 10, "count": 2 }, { "template": 11, "count": 3 }
+  ]
+}
