@@ -16,7 +16,7 @@ File name: `NNNN-short-title.md`. Use [0000-template.md](0000-template.md). A re
 | [0005](0005-discoverer-hosts-every-visit.md) | A discovered system is reachable only through its discoverer | Accepted |
 | [0006](0006-pack-identity-and-allocation.md) | 128-bit pack identifiers, one pack per generation run, normative terminology | Accepted |
 | [0007](0007-artifact-collision-substitution-and-campaign-salt.md) | Campaign branch in the world specification; per-artifact substitution on appearance collision | Accepted |
-| [0008](0008-random-stream-derivation.md) | Random stream derivation, rejection sampling, and build-time enforcement | Accepted |
+| [0008](0008-random-stream-derivation.md) | Random stream derivation, rejection sampling, and build-time enforcement | Accepted; mixer clause superseded by [0021](0021-sha256-stream-derivation.md) |
 | [0009](0009-solution-layout.md) | Solution layout by assembly; authored content outside the Godot project | Accepted |
 | [0010](0010-units-coordinates-and-region-bounds.md) | Units, coordinates, region bounds, and simulation tick | Accepted; region extent cap superseded by [0017](0017-region-extent-cap-and-storage-derivation.md) |
 | [0011](0011-requirements-single-source.md) | Requirements document as the single source for platform policy and provenance | Accepted |
@@ -27,6 +27,7 @@ File name: `NNNN-short-title.md`. Use [0000-template.md](0000-template.md). A re
 | [0016](0016-platform-confirmed-and-toolchain-pinned.md) | Platform confirmed: Godot 4.7.2 .NET with C# on .NET 10; toolchain pinned; solution scaffolded | Accepted |
 | [0017](0017-region-extent-cap-and-storage-derivation.md) | Region extent cap reduced to 2,048 m; per-region storage derived from the constants | Accepted |
 | [0018](0018-data-root-region-encoding-and-save-integrity.md) | Data root, package layout, region encoding, and save integrity | Accepted |
-| [0019](0019-generator-version-1-frozen.md) | Generator version 1: mix construction, path grammar, and bounded sampling frozen | Accepted |
+| [0019](0019-generator-version-1-frozen.md) | Generator version 1: mix construction, path grammar, and bounded sampling frozen | Accepted; mix construction superseded by [0021](0021-sha256-stream-derivation.md) |
 | [0020](0020-canonical-encoding-and-content-hash.md) | Canonical encoding format 1 and the SHA-256 content hash | Accepted |
+| [0021](0021-sha256-stream-derivation.md) | Generator version 2: SHA-256 stream derivation | Accepted |
 <!-- generated:end decisions -->
