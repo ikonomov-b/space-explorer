@@ -2,7 +2,7 @@
 
 Reviewed 2026-09-07. This review inspects the documentation-stage repository for foundational decisions that would be costly to reverse once implementation starts, plus smaller gaps and inconsistencies. Each finding states the failure mechanism, a proposed solution, and a status. Clearing a finding means recording the decision in [decisions/](decisions/README.md) and applying the change to the affected documents; the status row then links to both.
 
-All seventeen findings were cleared on 2026-09-07; the status table links each to its decision record or to the document it changed. Checks performed for this review: every internal link and anchor in the documents resolves; all 54 cited external URLs respond, except Epic's Unreal Engine licence page, which answers automated requests with HTTP 403 and must be opened in a browser; the worked valuation and byte-size examples are arithmetically correct. The scaffold of [decision 0016](decisions/0016-platform-confirmed-and-toolchain-pinned.md) builds and its tests pass; the design statements themselves are not yet tested against generator code. Terms used below are defined in the [glossary](glossary.md).
+All nineteen findings were cleared on 2026-09-07; the status table links each to its decision record or to the document it changed. Checks performed for this review: every internal link and anchor in the documents resolves; all 54 cited external URLs respond, except Epic's Unreal Engine licence page, which answers automated requests with HTTP 403 and must be opened in a browser; the worked valuation and byte-size examples are arithmetically correct. The scaffold of [decision 0016](decisions/0016-platform-confirmed-and-toolchain-pinned.md) builds and its tests pass; the design statements themselves are not yet tested against generator code. Terms used below are defined in the [glossary](glossary.md).
 
 ## Status
 
@@ -25,6 +25,8 @@ All seventeen findings were cleared on 2026-09-07; the status table links each t
 | 15 | [Infrastructure-first plan versus fun-first assessment](#15-infrastructure-first-plan-versus-fun-first-assessment) | Process | Cleared, [decision 0015](decisions/0015-greybox-prototype.md) |
 | 16 | [Missing comparables](#16-missing-comparables) | Relevance | Cleared, applied to the [assessment](assessment.md#similar-projects) |
 | 17 | [Alternatives table omits the mainstream engines](#17-alternatives-table-omits-the-mainstream-engines) | Relevance | Cleared, applied to the [technology decision](technology-stack.md#alternatives-considered) |
+| 18 | [Region storage constants are over-determined](#18-region-storage-constants-are-over-determined) | Inconsistency | Cleared, [decision 0017](decisions/0017-region-extent-cap-and-storage-derivation.md) |
+| 19 | [Data location, encoding, and save integrity unspecified](#19-data-location-encoding-and-save-integrity-unspecified) | Gap | Cleared, [decision 0018](decisions/0018-data-root-region-encoding-and-save-integrity.md) |
 
 ## Foundational findings
 
@@ -251,3 +253,25 @@ Affects: [alternatives considered](technology-stack.md#alternatives-considered),
 **Proposed solution.** Add one row per engine stating licence terms, Linux editor status, and language fit, each taken from the vendor's own pages on the day of the check, and give the rejection reason in terms of R1 to R5. Name the runner-up so a failed M0 validation has a documented fallback.
 
 **Status:** Cleared 2026-09-07, applied to the [technology decision](technology-stack.md#alternatives-considered). Five rows added with official sources; Flax is recorded as the runner-up. Epic's licence page is not machine-verifiable (HTTP 403) and its royalty figures need a browser check.
+
+## Findings raised after the platform confirmation
+
+### 18. Region storage constants are over-determined
+
+Affects: [decision 0010](decisions/0010-units-coordinates-and-region-bounds.md), [decision 0001](decisions/0001-materialize-authoritative-terrain.md), [units table](technical-design.md#units-coordinates-and-bounds), [resource-use check](development-plan.md#verification-and-performance-targets).
+
+**Why it can go wrong.** Decision 0010 fixed a 4,096 m extent cap and 2 m cells and quoted about 2 MB raw per maximal region; decision 0001 budgets 0.1 to 1 MB per region. Both numbers came from the table in [finding 1](#1-terrain-authority-is-left-as-an-or), which sized heights alone at 2 km with 2 m cells and 4 km with 4 m cells, never 4 km with 2 m cells, and never with the biome byte. For the adopted combination a maximal region is 2,048 × 2,048 × 3 bytes = 12.0 MiB raw. Raw bytes = 3 × (extent / cell)², so the cap, the cell size, and the budget could not all hold, and the resource-use gate would have failed on arithmetic rather than on engineering.
+
+**Proposed solution.** Keep two constants and derive the third. Keeping the cap and the cells raises the budget to about 2 MiB compressed; keeping the cap and the budget coarsens cells to 4 m, which decision 0001 would turn into 4 m collision facets; keeping the cells and the budget lowers the cap to 2,048 m, 3 MiB raw. Lower the cap: it is an upper bound nothing depends on, a 2 km crossing already takes about 17 minutes on foot against a 15 to 30 minute expedition, and it quarters the terrain meshing workload. Restate the raw figure correctly and keep the biome map at 4 m cells as the fallback if compression disappoints.
+
+**Status:** Cleared 2026-09-07 by [decision 0017](decisions/0017-region-extent-cap-and-storage-derivation.md). Cap reduced to 2,048 m; 3 MiB raw, at most 1 MiB compressed; other constants unchanged. Applied to the technical design, development plan, glossary, and the decisions index.
+
+### 19. Data location, encoding, and save integrity unspecified
+
+Affects: [architecture](technical-design.md#architecture-and-ownership), [persistence](technical-design.md#persistence-and-compatibility), [multiplayer trust boundary](technical-design.md#multiplayer-and-trust-boundary).
+
+**Why it can go wrong.** The design asked for platform-appropriate user-data locations, content-hash deduplication, and compressed region data without naming a directory, a layout, an encoding, or a compressor, so the game, the command-line tool, and the tests could each pick their own and disagree, and Godot's default `user://` would put gigabytes of world data in a roaming profile on Windows. It also noted that checksums cannot detect an edited save and stopped there, leaving credits and artifact values as plain numbers in a database anyone can open.
+
+**Proposed solution.** One data root owned by Persistence in the local application data folder with an environment override, caches in a separate deletable root, packages named by content hash, a fixed region encoding of delta-predicted heights and run-length-coded biome rows under Brotli from the .NET base library, and a deterrent against casual editing: derive credits and custody from a tag-chained ledger, tag every record with a keyed hash, verify invariants at load, and disclose a modified campaign to guests instead of locking the owner out.
+
+**Status:** Cleared 2026-09-07 by [decision 0018](decisions/0018-data-root-region-encoding-and-save-integrity.md). Applied to the technical design, development plan, technology decision, and glossary.

@@ -6,7 +6,7 @@ Reviewed 2026-09-07. This is a proposed implementation contract for the [concept
 
 The platform policy is fixed in [requirements.md](requirements.md). Its engineering consequences: keep the core generator and save format independent of operating-system APIs; pin compatible dependency versions for both platforms; package required runtimes and native libraries where their redistribution terms allow; define and test the supported OS/distribution, CPU, and graphics matrix rather than assuming one build runs on every Linux installation; and run Windows execution tests even when builds are produced on Linux.
 
-Use platform-appropriate writable user-data locations and portable relative asset paths. Test case sensitivity, path separators, native dependency loading, and save exchange between Linux and Windows. Network messages and saved data use explicit portable encodings rather than raw process memory layouts. The same campaign must remain compatible when a Linux host invites a Windows guest or vice versa.
+Player data lives in the data root defined under [storage location and layout](#storage-location-and-layout), never in the install directory, and assets use portable relative paths. Test case sensitivity, path separators, native dependency loading, and save exchange between Linux and Windows. Network messages and saved data use explicit portable encodings rather than raw process memory layouts. The same campaign must remain compatible when a Linux host invites a Windows guest or vice versa.
 
 Separate the deterministic generator, content registry, world store, campaign simulation, renderer, and network transport. Generation returns data independent of rendered frames or player input. Solo play uses the same command validation as hosted play.
 
@@ -36,8 +36,8 @@ Authoritative quantities use the following versioned constants ([decision 0010](
 | --- | --- |
 | Length unit | Metre; authoritative positions are int32 fixed-point at 1/256 m per axis. |
 | Coordinate frame | Region-local with the origin at the region centre; a stored or transmitted position is a region ID plus local fixed-point coordinates. |
-| Region extent cap | 4,096 m per axis. |
-| Heightfield | 2 m cells; int16 heights at 1/16 m, about 2 km of vertical range per region. |
+| Region extent cap | 2,048 m per axis ([decision 0017](decisions/0017-region-extent-cap-and-storage-derivation.md)). Larger areas are adjacent regions. |
+| Heightfield | 2 m cells; int16 heights at 1/16 m, a vertical range of ±2,048 m. A maximal region is 1,024 × 1,024 cells: 2 MiB of heights and 1 MiB of biome indices raw. |
 | Simulation tick | Fixed host step at 20 Hz; durations in ticks; suit reserves and hazard exposure in integer units per tick. |
 | Planetary values | Integers in documented units defined with the numeric tables. |
 
@@ -103,15 +103,15 @@ Before committing a world, compare its appearance recipes with the campaign's ex
 | Record | Minimum contents |
 | --- | --- |
 | Primitive set | Set manifest identity, generation specification, the pack it publishes with its accepted definitions, membership/reference table, exact dependencies, provenance, and validation result. |
-| Campaign | Branch ID, players, permissions, credits, upgrades, inventory/cargo, catalogue, and destination index. |
+| Campaign | Branch ID, players, permissions, upgrades, catalogue, destination index, and the modified flag; credits and inventory/cargo are derived from the transaction ledger and cached. |
 | World manifest | Specification identity, seed/inputs, pinned versions, accepted descriptors, variation overlay, dependency hashes, and validation result. |
 | Region | Stable ID, recipe, authoritative heightfield and biome map, site anchors, traversal graph, hazard volumes, artifact placements, environmental profile, and completion state. Stored at acceptance for every region of an accepted world. |
 | Artifact | Stable ID, origin, appearance graph, physical properties, valuation inputs/version, and predefined value. |
 | Mutable state | Discoveries, pickups, current custody, field caches, annotations, and claimed survey rewards. |
-| Transaction | Unique command ID, state revision, validated inventory/credit changes, and committed result. |
+| Transaction | Unique command ID, state revision, validated inventory/credit changes, committed result, the previous row's tag, and this row's integrity tag. |
 | Generation job | Specification, reserved charge, completed tasks, checkpoints, progress, and failure state. |
 
-Store descriptors, recipes, and changes instead of every rendered polygon. Deduplicate immutable assets by content hash and compress region data. Mesh/texture caches have a size limit and can be evicted. Never evict the only copy of a recipe, required asset, authoritative region data, or player action.
+Store descriptors, recipes, and changes instead of every rendered polygon. Deduplicate immutable packages by content hash and compress region data as specified under [region encoding and compression](#region-encoding-and-compression). Mesh/texture caches have a size limit and can be evicted. Never evict the only copy of a recipe, required asset, authoritative region data, or player action.
 
 Inventory, artifact custody, and credits change in one atomic SQLite transaction through `Microsoft.Data.Sqlite`. A crash leaves either the old state or the committed new state, never a paid sale with an artifact still in inventory. Coordinate campaign writes, enable relational constraints, retain durable settings, and test failure recovery. External immutable primitive/world packages need a separate commit protocol: write and verify data first, publish database references last, and recover incomplete work on restart. A database transaction alone does not atomically commit external asset files.
 
@@ -120,6 +120,30 @@ Keep rolling recoverable saves and verify checksums on load. Low disk space paus
 Save format, generator, and content versions are independent. Every authoritative result of an accepted world is materialized at acceptance, so old generator versions are not retained; cosmetic regeneration may use any version. Export includes dependencies or a verified means of obtaining them; a seed alone is not a portable save. Export and migration serve the owner's backup and change of machine; a world is never transferred into another campaign ([decision 0005](decisions/0005-discoverer-hosts-every-visit.md)).
 
 Migrate a copy, verify world identities and item/credit totals, and retain the original backup. Missing content causes a specific compatibility error; never substitute a current primitive or silently reroll a planet. Old worlds stay frozen by default. Applying new content requires a separately identified branch.
+
+### Storage location and layout
+
+Player data never lives in the repository or the install directory. Persistence owns a single data root: the operating system's local application data folder plus `SpaceExplorer`, which is `$XDG_DATA_HOME/SpaceExplorer` (by default `~/.local/share/SpaceExplorer`) on Linux and `%LOCALAPPDATA%\SpaceExplorer` on Windows. The environment variable `SPACE_EXPLORER_DATA_DIR` overrides it; tests use temporary directories. Rebuildable caches live under the cache root, `$XDG_CACHE_HOME/SpaceExplorer` (by default `~/.cache/SpaceExplorer`) on Linux and `%LOCALAPPDATA%\SpaceExplorer\cache` on Windows, and deleting them never loses a discovery. Roaming or cloud-synced profile folders are never used, because SQLite locking and multi-gigabyte world data do not tolerate them. Godot's `user://` directory holds engine settings and logs only; the command-line tool reaches campaign data without Godot ([decision 0018](decisions/0018-data-root-region-encoding-and-save-integrity.md)).
+
+```text
+<data root>/
+  campaigns/<branch-id>/campaign.db                   SQLite: campaign state, transaction ledger, destination index, generation jobs
+  campaigns/<branch-id>/worlds/<specification-hash>/  world package: manifest.bin, artifacts.bin, regions/<region-id>.bin
+  packs/<pack-id>/<content-hash>.bin                  immutable set packages, shared by every campaign
+  backups/<branch-id>/                                rolling recoverable copies of campaign.db
+<cache root>/
+  meshes/, textures/                                  rebuildable presentation caches, size-limited, evictable
+```
+
+Package files are named by content hash, so identical data is stored once and every load verifies integrity before use. The publish protocol for packages stands: write and verify the files first, then reference them from the database.
+
+### Region encoding and compression
+
+A region file stores the authoritative layers of [decision 0001](decisions/0001-materialize-authoritative-terrain.md) in the versioned little-endian binary format. Heights are an int16 grid at 2 m cells; each height is predicted as left plus up minus upper-left, and the residual is zig-zag encoded as a variable-length integer. The biome/material index is a byte grid run-length coded per row. Site anchors, the traversal graph, hazard volumes, and artifact placements are variable-length-integer records. Each layer is then compressed with Brotli from `System.IO.Compression`, which ships with .NET on both platforms; the quality level is fixed at M0b from measured size and time, since region data is written once and read many times. The content hash covers the decoded canonical payload, never the compressed bytes, so compressor differences across versions or platforms cannot change a region's identity. A maximal 2,048 m region is 3 MiB raw and must compress to at most 1 MiB ([decision 0017](decisions/0017-region-extent-cap-and-storage-derivation.md)). Meshes and textures are never stored authoritatively.
+
+### Save integrity
+
+Nothing stored locally can prove that the owner has not edited it; the measures below deter casual editing with a database browser or hex editor and no more ([decision 0018](decisions/0018-data-root-region-encoding-and-save-integrity.md)). Credits and artifact custody are derived from the append-only transaction ledger and cached, never stored as the only copy; an artifact's value is recomputed from its stored inputs under the versioned tables at load and at sale. Every ledger row, world manifest, and artifact record carries an HMAC-SHA256 tag over its canonical bytes, keyed by HMAC-SHA256 of the campaign branch ID under an application constant, and every ledger row includes the tag of the previous row so the chain cannot be rewritten piecemeal. At load the campaign verifies the chain, the tags, and the invariants: every artifact exists at a placement in its world, the value total of each world respects its tier bounds, and credits equal the ledger. Any failure sets the campaign's modified flag, which is itself tagged; the flag is shown to the host and to every guest at join and never locks the owner out. Extracting the key from the binary defeats the scheme, which is accepted; a public market remains a server-side problem.
 
 ## Artifact valuation and transactions
 
@@ -151,7 +175,7 @@ Disconnecting never undoes hazards already applied: committed emergency recovery
 
 The core defines the network contract: a byte transport with send, receive, peer-connected, and peer-disconnected, carrying commands, state deltas, and the join handshake serialized with the same versioned binary encoding as saves. The Godot adapter implements it over an ENet peer using raw packets; an in-memory implementation serves tests. Godot's scene replication nodes carry only cosmetic presence such as avatar transforms, never authoritative state. The intended topology is a loosely coupled network of hosts coordinated by a simple cloud-based server that provides directory, invitation, presence, and relay or NAT-traversal assistance; it never holds campaign state or computes worlds. ENet itself does not supply a relay or solve all NAT restrictions, and a LAN demonstration is insufficient. The connectivity approach, account requirements, costs, and service-unavailable behavior are decided at M1 start, once a generated system can be explored locally from a stored save; a self-hosted relay and coordination server is evaluated first. The first mixed-OS host/guest connection runs at the start of M2 on the chosen path, in both host directions. Solo play remains usable offline, and direct connection by address remains available when the coordination server is unreachable. See [decision 0003](decisions/0003-network-topology-and-transport.md).
 
-Bound message and package sizes, entity counts, nesting, decompressed data, and content types. Guests and imported worlds cannot execute supplied scripts. Checksums detect corruption but do not prove that an offline owner has not edited a save. Private host trust is sufficient here. A future public market requires a separate server-controlled ownership model and cannot trust arbitrary offline inventories.
+Bound message and package sizes, entity counts, nesting, decompressed data, and content types. Guests and imported worlds cannot execute supplied scripts. Checksums detect corruption, and the tagged records and chained ledger under [save integrity](#save-integrity) deter casual editing, but neither proves that an offline owner has not edited a save; a modified campaign is disclosed to guests at join ([decision 0018](decisions/0018-data-root-region-encoding-and-save-integrity.md)). Private host trust is sufficient here. A future public market requires a separate server-controlled ownership model and cannot trust arbitrary offline inventories.
 
 ## Verification
 
