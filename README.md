@@ -4,7 +4,7 @@ A PC game concept about wormhole expeditions, generated planetary systems, artif
 
 Development is Linux-first with native Linux and Windows releases; the full platform policy is in [docs/requirements.md](docs/requirements.md). The stack is Godot 4.7.2 .NET with C# on .NET 10, an engine-independent generator, and SQLite persistence, confirmed and pinned in [decision 0016](docs/decisions/0016-platform-confirmed-and-toolchain-pinned.md). The engine is free to use; performance and execution on Windows remain to be validated.
 
-The solution scaffold, pinned toolchain, structural tests, and an exported-build smoke test are in place, and the core's deterministic random foundation is implemented and frozen under generator version 1 ([decision 0019](docs/decisions/0019-generator-version-1-frozen.md)); build commands are in [src/README.md](src/README.md). No world generation, persistence schema, or playable build exists yet.
+The scaffold and the core's deterministic random foundation are in place; there is no world generation, persistence schema, or playable build yet. Implementation status is tracked in [docs/progress.md](docs/progress.md), and build commands are in [src/README.md](src/README.md).
 
 ## Documents
 
@@ -12,6 +12,7 @@ The solution scaffold, pinned toolchain, structural tests, and an exported-build
 - [Requirements](docs/requirements.md): owner-stated platform policy and design constraints, with provenance.
 - [Assessment and similar projects](docs/assessment.md): relevance, twelve comparable projects with primary sources, gaps addressed, and remaining uncertainties.
 - [Development plan](docs/development-plan.md): proposed release scope, milestones, usability requirements, verification targets, and production decisions.
+- [Implementation progress](docs/progress.md): what is built, what is verified and how, what is not, and the open items.
 - [Technical design](docs/technical-design.md): generation, primitive versions, persistence, artifact valuation, and multiplayer ownership.
 - [Technology decision](docs/technology-stack.md): selected platform/libraries, alternatives, native-platform validation, and numbered decisions for confirmation.
 - [Design review](docs/review.md): foundational decisions that would be costly to reverse, gaps, inconsistencies, proposed solutions, and their status.

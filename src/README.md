@@ -1,6 +1,6 @@
 # Source layout and build
 
-The tree is laid out by assembly as fixed in [decision 0009](../docs/decisions/0009-solution-layout.md); the platform confirmation and toolchain pins are in [decision 0016](../docs/decisions/0016-platform-confirmed-and-toolchain-pinned.md). The [technical design](../docs/technical-design.md) and [technology decision](../docs/technology-stack.md) define what each assembly owns. The platform policy is in [requirements.md](../docs/requirements.md). The core's deterministic random foundation is implemented and frozen under generator version 1 ([decision 0019](../docs/decisions/0019-generator-version-1-frozen.md)); no world generation, persistence schema, or gameplay code exists yet.
+The tree is laid out by assembly as fixed in [decision 0009](../docs/decisions/0009-solution-layout.md); the platform confirmation and toolchain pins are in [decision 0016](../docs/decisions/0016-platform-confirmed-and-toolchain-pinned.md). The [technical design](../docs/technical-design.md) and [technology decision](../docs/technology-stack.md) define what each assembly owns. The platform policy is in [requirements.md](../docs/requirements.md), and implementation status is tracked in [progress.md](../docs/progress.md).
 
 | Path | Assembly | Contents |
 | --- | --- | --- |

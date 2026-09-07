@@ -1,6 +1,6 @@
 # Space Explorer: proposed development plan
 
-Reviewed 2026-09-07. The project contains documentation, a solution scaffold with structural tests, and the core's frozen deterministic random foundation ([decision 0019](decisions/0019-generator-version-1-frozen.md)); it has no world generation, persistence schema, or gameplay code. This plan translates the [concept](concept.md) into a proposed prototype and release scope. Added defaults are recommendations, not implemented features or confirmed production commitments. The [assessment](assessment.md) explains the reasoning; the [technical design](technical-design.md) specifies data and behavior contracts; the [technology decision](technology-stack.md) selects the working implementation stack.
+Reviewed 2026-09-07. This plan defines the milestones and their exit criteria; where the work stands against them is tracked in [progress.md](progress.md). This plan translates the [concept](concept.md) into a proposed prototype and release scope. Added defaults are recommendations, not implemented features or confirmed production commitments. The [assessment](assessment.md) explains the reasoning; the [technical design](technical-design.md) specifies data and behavior contracts; the [technology decision](technology-stack.md) selects the working implementation stack.
 
 ## Scope and working assumptions
 
