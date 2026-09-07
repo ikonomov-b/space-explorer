@@ -49,4 +49,5 @@ File name: `NNNN-short-title.md`. Use [0000-template.md](0000-template.md). A re
 | [0038](0038-derived-instances.md) | Derived instances: recipe-produced, path-addressed, overlay-targetable, counted apart from nodes | Accepted |
 | [0039](0039-one-manifest-per-pack-identifier.md) | One set manifest per pack identifier; a differing second manifest is a reproduction failure | Accepted |
 | [0040](0040-reference-index-and-deletion-sweep.md) | A data-root reference index for shared content; deletion is an explicit confirmed sweep | Accepted |
+| [0041](0041-planet-fields-tangent-regions-minimum-radius-and-far-field.md) | Cube-sphere planet fields, tangent-plane regions, a minimum landable radius, and a derived far field | Accepted |
 <!-- generated:end decisions -->
