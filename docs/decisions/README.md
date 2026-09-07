@@ -14,7 +14,7 @@ File name: `NNNN-short-title.md`. Use [0000-template.md](0000-template.md). A re
 | [0003](0003-network-topology-and-transport.md) | Core-owned replication, loosely coupled hosts, and connectivity timing | Accepted |
 | [0004](0004-preparation-is-real-generation-time.md) | Preparation time is real generation time; effort score is tier base plus recipe complexity | Accepted |
 | [0005](0005-discoverer-hosts-every-visit.md) | A discovered system is reachable only through its discoverer | Accepted |
-| [0006](0006-pack-identity-and-allocation.md) | 128-bit pack identifiers, one pack per generation run, normative terminology | Accepted |
+| [0006](0006-pack-identity-and-allocation.md) | 128-bit pack identifiers, one pack per generation run, normative terminology | Accepted; expected-scale clause superseded by [0038](0038-derived-instances.md) |
 | [0007](0007-artifact-collision-substitution-and-campaign-salt.md) | Campaign branch in the world specification; per-artifact substitution on appearance collision | Accepted |
 | [0008](0008-random-stream-derivation.md) | Random stream derivation, rejection sampling, and build-time enforcement | Accepted; mixer clause superseded by [0021](0021-sha256-stream-derivation.md) |
 | [0009](0009-solution-layout.md) | Solution layout by assembly; authored content outside the Godot project | Accepted; Benchmarks project superseded by [0024](0024-tests-comments-index-and-scaffolding-trimmed.md) |
@@ -46,4 +46,5 @@ File name: `NNNN-short-title.md`. Use [0000-template.md](0000-template.md). A re
 | [0035](0035-category-registry-record-and-generator-revision-identifiers.md) | The category registry is a versioned canonical record that definition labels carry; generator revisions are identifiers it lists | Accepted |
 | [0036](0036-frames-and-transforms-typed-by-connector-kind.md) | Four frames; the connector kind decides the transform type; a units row per frame | Accepted |
 | [0037](0037-derivation-rules-integer-periods-and-orbit-hierarchy.md) | Derivation-rule primitives, integer periods with phase at epoch, and the two-body hierarchy | Accepted |
+| [0038](0038-derived-instances.md) | Derived instances: recipe-produced, path-addressed, overlay-targetable, counted apart from nodes | Accepted |
 <!-- generated:end decisions -->

@@ -48,7 +48,7 @@ The nineteen findings of the documentation stage were cleared on 2026-09-07; the
 | 38 | [Planet-level fields have no spherical form and the flat region bounds the explorable body radius](#38-planet-level-fields-have-no-spherical-form-and-the-flat-region-bounds-the-explorable-body-radius) | Foundational | Open |
 | 39 | [Nothing is defined beyond the region edge](#39-nothing-is-defined-beyond-the-region-edge) | Gap | Open |
 | 40 | [Physical derivation rules are missing](#40-physical-derivation-rules-are-missing) | Gap | Cleared, [decision 0037](decisions/0037-derivation-rules-integer-periods-and-orbit-hierarchy.md) |
-| 41 | [The node budget assumes no derived instances](#41-the-node-budget-assumes-no-derived-instances) | Foundational | Open |
+| 41 | [The node budget assumes no derived instances](#41-the-node-budget-assumes-no-derived-instances) | Foundational | Cleared, [decision 0038](decisions/0038-derived-instances.md) |
 
 ## Foundational findings
 
@@ -544,4 +544,4 @@ Affects: the scale clause of [decision 0006](decisions/0006-pack-identity-and-al
 
 **Proposed solution.** Define derived instances: a node whose policy is `regenerate` or `hybrid` may produce instances addressed by extending its path, such as `.../scatter/41/item/1234`, that are not stored as nodes, draw from the parent's stream only, and count against a per-node derived budget rather than the graph's node limit. Overlays may target a derived path, and the load-time check resolves it by regenerating the parent under its pinned revision. Restate the expected scale as explicit nodes plus derived instances, measured separately at M0b.
 
-**Status:** Open.
+**Status:** Cleared 2026-09-07 by [decision 0038](decisions/0038-derived-instances.md). Applied to the technical design, development plan, and glossary.
