@@ -2,9 +2,9 @@
 
 A PC game concept about wormhole expeditions, generated planetary systems, artifact collecting, and locally saved worlds that friends can explore together.
 
-Development is Linux-first with native Linux and Windows releases; the full platform policy is in [docs/requirements.md](docs/requirements.md). The selected working stack is Godot 4 .NET with C#, using an engine-independent generator and SQLite persistence. The engine is free to use; platform packaging and performance remain to be validated.
+Development is Linux-first with native Linux and Windows releases; the full platform policy is in [docs/requirements.md](docs/requirements.md). The stack is Godot 4.7.2 .NET with C# on .NET 10, an engine-independent generator, and SQLite persistence, confirmed and pinned in [decision 0016](docs/decisions/0016-platform-confirmed-and-toolchain-pinned.md). The engine is free to use; performance and execution on Windows remain to be validated.
 
-The project is currently at the documentation stage. No playable build or application code is present.
+The solution scaffold, pinned toolchain, structural tests, and an exported-build smoke test are in place; build commands are in [src/README.md](src/README.md). No playable build or gameplay code exists yet.
 
 ## Documents
 

@@ -23,3 +23,4 @@ File name: `NNNN-short-title.md`. Use [0000-template.md](0000-template.md).
 | [0013](0013-host-simulates-hazards.md) | The host simulates hazards for every avatar | Accepted |
 | [0014](0014-tooling-and-licence.md) | Repository tooling aligned with the stack; licence deferred with notice | Accepted |
 | [0015](0015-greybox-prototype.md) | Disposable greybox expedition prototype in parallel with M0a | Accepted |
+| [0016](0016-platform-confirmed-and-toolchain-pinned.md) | Platform confirmed: Godot 4.7.2 .NET on .NET 10; toolchain pinned; solution scaffolded | Accepted |

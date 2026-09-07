@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../SpaceExplorer.Core/SpaceExplorer.Core.csproj" />
+    <ProjectReference Include="../SpaceExplorer.Persistence/SpaceExplorer.Persistence.csproj" />
+  </ItemGroup>
+
+</Project>

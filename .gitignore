@@ -34,3 +34,6 @@ TestResults/
 *.db
 *.db-journal
 *.db-wal
+
+# Backups the Godot editor writes when it migrates a C# project file
+*.csproj.old

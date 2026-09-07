@@ -1,0 +1,10 @@
+# Normalise line endings so Linux and Windows checkouts produce identical text files.
+* text=auto eol=lf
+
+# Binary assets
+*.png binary
+*.jpg binary
+*.glb binary
+*.wav binary
+*.ogg binary
+*.ttf binary

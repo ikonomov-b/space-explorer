@@ -1,0 +1,6 @@
+# Build-time enforcement of the never-use list for authoritative code (decision 0008).
+T:System.Random;Authoritative randomness comes from the core's seeded PCG32 streams (decision 0008)
+M:System.Guid.NewGuid;Identities are derived from canonical content, never drawn at random (decision 0008)
+P:System.DateTime.Now;Wall-clock time is never an input to generation or valuation (decision 0008)
+P:System.Environment.TickCount;Timing is never an input to generation or valuation (decision 0008)
+M:System.String.GetHashCode;String hashes are randomized per process; use the canonical content hash (decision 0008)

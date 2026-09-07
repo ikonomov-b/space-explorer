@@ -1,0 +1,19 @@
+<Project Sdk="Godot.NET.Sdk/4.7.2">
+
+  <!--
+    Godot adapter: scenes, rendering, input, and the ENet transport.
+    TargetFramework is repeated here on purpose: the Godot editor inserts its minimum (net8.0)
+    into any csproj that does not state one, because it does not evaluate Directory.Build.props.
+  -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <EnableDynamicLoading>true</EnableDynamicLoading>
+    <RootNamespace>SpaceExplorer.Game</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../SpaceExplorer.Core/SpaceExplorer.Core.csproj" />
+    <ProjectReference Include="../SpaceExplorer.Persistence/SpaceExplorer.Persistence.csproj" />
+  </ItemGroup>
+
+</Project>

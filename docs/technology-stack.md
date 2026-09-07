@@ -1,6 +1,6 @@
 # Technology decision: native Linux and Windows
 
-Reviewed 2026-09-07. Selected working stack: **Godot 4 .NET with C#**, an engine-independent generation core, and SQLite persistence. This is a documentation decision, not an implemented or benchmarked system. Exact tool versions and shipping hardware requirements must pass the prototype checks below. The [decision register](#gap-filling-decisions-for-confirmation) distinguishes user requirements from recommended implementation defaults.
+Reviewed 2026-09-07. Selected stack: **Godot 4 .NET with C#**, an engine-independent generation core, and SQLite persistence, confirmed and pinned to Godot 4.7.2 on .NET 10 in [decision 0016](decisions/0016-platform-confirmed-and-toolchain-pinned.md). It is not yet a benchmarked system; shipping hardware requirements must pass the prototype checks below. The [decision register](#gap-filling-decisions-for-confirmation) distinguishes user requirements from recommended implementation defaults.
 
 ## Requirements and rationale
 
@@ -54,7 +54,7 @@ SpaceExplorer.Persistence (SQLite/binary)  --> core-defined data contracts
 ENet transport adapter inside Game         --> core-owned commands and replication
 ```
 
-The source tree is laid out by assembly as described in [src/README.md](../src/README.md); the solution file and pinned SDK and package versions are created at M0a start ([decision 0009](decisions/0009-solution-layout.md)). Keep Godot types out of stored/core contracts. Worker tasks produce plain data; the game adapter applies results to the active scene on the appropriate thread. Godot's active scene tree is not generally thread-safe. [Thread-safety guidance](https://docs.godotengine.org/en/stable/tutorials/performance/thread_safe_apis.html).
+The source tree is laid out by assembly as described in [src/README.md](../src/README.md) ([decision 0009](decisions/0009-solution-layout.md)); the solution file and the pinned SDK and package versions exist since [decision 0016](decisions/0016-platform-confirmed-and-toolchain-pinned.md). Keep Godot types out of stored/core contracts. Worker tasks produce plain data; the game adapter applies results to the active scene on the appropriate thread. Godot's active scene tree is not generally thread-safe. [Thread-safety guidance](https://docs.godotengine.org/en/stable/tutorials/performance/thread_safe_apis.html).
 
 M0a first generates a random, constraint-valid primitive set from a small authored template vocabulary, assigns permanent IDs, and stores its accepted definitions and manifest. Reload it without rerolling; compare canonical hashes across Linux and Windows; exercise lookup and membership; then display a fixed sample in a minimal Godot viewer for the content gate defined in [decision 0002](decisions/0002-primitive-set-content-gate.md). A set is a reusable stored construction unit, not just a transient list sampled while making a planet. M0b composes worlds and artifacts from these saved sets. The exact identity/storage contract belongs in the [technical design](technical-design.md#primitive-registry-and-composition).
 
@@ -70,7 +70,7 @@ Start validation on Linux x86_64 and Windows x86_64. This architecture choice is
 
 Start the small 3D viewer with Godot's Compatibility renderer to evaluate broad hardware support. It uses OpenGL and has fewer advanced rendering features than Forward+. Before M1, test a representative landing region and decide whether this baseline meets the art and performance needs. Moving to Forward+ requires an explicit graphics requirement update; renderer switching is not a promise of identical visuals. [Renderer comparison](https://docs.godotengine.org/en/stable/tutorials/rendering/renderers.html).
 
-At M0a implementation start, record an exact stable Godot .NET release, matching export templates, a supported compatible SDK/target framework, and locked package versions. Do not float dependencies or blindly choose the newest SDK. Document installation/build commands for both OSes once tested. The development SDK is a developer requirement, not a player requirement: package the game and CLI with their required redistributable runtime/native dependencies and test without an installed SDK or editor.
+The exact stable Godot .NET release, matching export templates, SDK and target framework, and package versions were pinned on 2026-09-07 ([decision 0016](decisions/0016-platform-confirmed-and-toolchain-pinned.md)); installation and build commands are in [src/README.md](../src/README.md). Do not float dependencies or blindly choose the newest SDK. The Windows commands are recorded as tested once the first Windows gate runs. The development SDK is a developer requirement, not a player requirement: package the game and CLI with their required redistributable runtime/native dependencies and test without an installed SDK or editor.
 
 Build and run tests natively on both platforms. Verify case-sensitive asset paths, writable user-data locations, SQLite native-library loading, save exchange, interrupted writes, and identical canonical primitive/world data. Compare canonical payloads, not entire SQLite files whose physical layouts may differ. Test Linux-host/Windows-guest and Windows-host/Linux-guest combinations. Exporting successfully on one OS does not establish compatibility on the other.
 
@@ -83,15 +83,15 @@ Requirements supplied by the user are recorded as such; the other entries are th
 | # | Decision | Status |
 | --- | --- | --- |
 | 1 | Linux-primary daily development, native Linux and Windows releases, free approachable 3D tooling, and no Python requirement. | User requirements R1 to R5 in [requirements.md](requirements.md). |
-| 2 | Godot 4 .NET + C# as the main platform and language. | Selected recommendation; validate through M0. |
-| 3 | Share engine-independent C# code between the game, generator CLI, and tests. | Recommended default. |
+| 2 | Godot 4 .NET + C# as the main platform and language. | Confirmed in [decision 0016](decisions/0016-platform-confirmed-and-toolchain-pinned.md): Godot 4.7.2 .NET on .NET 10; performance and packaging still measured through M0. |
+| 3 | Share engine-independent C# code between the game, generator CLI, and tests. | Confirmed in [decision 0016](decisions/0016-platform-confirmed-and-toolchain-pinned.md); enforced by the architecture tests. |
 | 4 | M0a generates and stores random primitive sets before M0b generates worlds. | User requirement R6 in [requirements.md](requirements.md). |
 | 5 | 128-bit pack identifiers; pack-local unsigned 32-bit primitive IDs, zero reserved, never recycled; one new pack per generation run; cross-pack references through pinned tables. | Unsigned identity requested; namespace and allocation policy confirmed in [decision 0006](decisions/0006-pack-identity-and-allocation.md). |
-| 6 | SQLite with `Microsoft.Data.Sqlite` for state/metadata; versioned packed binary for compact vectors and recipes. | Recommended default; exact schema defined in M0a. |
+| 6 | SQLite with `Microsoft.Data.Sqlite` for state/metadata; versioned packed binary for compact vectors and recipes. | Confirmed in [decision 0016](decisions/0016-platform-confirmed-and-toolchain-pinned.md) with Microsoft.Data.Sqlite 10.0.11; exact schema defined in M0a. |
 | 7 | Pin PCG32 with mixed state/stream derivation, rejection sampling, a banned-API analyzer, and a two-process determinism test; verify identical canonical data across both OSes. | Confirmed in [decision 0008](decisions/0008-random-stream-derivation.md); not a determinism claim. |
-| 8 | Begin with x86_64 and the Compatibility renderer; decide final OS/GPU support from prototype measurements. | Recommended validation baseline. |
+| 8 | Begin with x86_64 and the Compatibility renderer; decide final OS/GPU support from prototype measurements. | Baseline applied in [decision 0016](decisions/0016-platform-confirmed-and-toolchain-pinned.md); final OS/GPU support decided from prototype measurements. |
 | 9 | ENet peer behind a core-owned transport with a host-authoritative campaign; settle invitation/relay needs at M1 start, self-hosted coordination server first. | Confirmed in [decision 0003](decisions/0003-network-topology-and-transport.md); service and costs unresolved. |
-| 10 | Use xUnit.net, BenchmarkDotNet, exported-build smoke tests, and mixed-OS co-op checks. | Recommended verification baseline. |
+| 10 | Use xUnit.net, BenchmarkDotNet, exported-build smoke tests, and mixed-OS co-op checks. | Confirmed in [decision 0016](decisions/0016-platform-confirmed-and-toolchain-pinned.md): CI matrix and smoke scripts in place; mixed-OS co-op checks at M2. |
 | 11 | Keep Python, C++ extensions, FlatBuffers, and terrain-noise dependencies optional until justified. | Recommended dependency scope. |
 
-No compiler, engine, package, service, or application code was installed or created by this documentation decision. The [development plan](development-plan.md) defines the implementation and validation gates; [concept.md](concept.md) remains a concept document.
+The solution scaffold, pinned toolchain, and structural tests were created when the platform was confirmed ([decision 0016](decisions/0016-platform-confirmed-and-toolchain-pinned.md)); no gameplay or generation code exists yet. The [development plan](development-plan.md) defines the implementation and validation gates; [concept.md](concept.md) remains a concept document.

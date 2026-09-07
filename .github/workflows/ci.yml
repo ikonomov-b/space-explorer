@@ -1,0 +1,24 @@
+# Linux and Windows test matrix (decision 0014). Exported-build smoke tests join at the M0a gate,
+# once Godot and its export templates are provisioned on the runners.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  build-and-test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+      - run: dotnet restore
+      - run: dotnet build --no-restore
+      - run: dotnet test --no-build

@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- SQLite adapter and package I/O: no Godot reference is allowed here (decision 0009). -->
+  <ItemGroup>
+    <ProjectReference Include="../SpaceExplorer.Core/SpaceExplorer.Core.csproj" />
+    <PackageReference Include="Microsoft.Data.Sqlite" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="SpaceExplorer.Persistence.Tests" />
+  </ItemGroup>
+
+</Project>
