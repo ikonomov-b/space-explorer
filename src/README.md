@@ -48,6 +48,7 @@ dotnet test                                           # architecture and native-
 dotnet run --project src/SpaceExplorer.Cli -- diagnostics
 godot --path src/SpaceExplorer.Game --editor          # open the game project in the editor
 tests/SpaceExplorer.Game.Smoke/smoke.sh               # export the Linux build and run its smoke check
+dotnet run tools/docs.cs -- --check                   # verify links, anchors, decision numbering, generated indexes
 dotnet run --project tests/SpaceExplorer.Benchmarks -c Release -- --filter '*'
 ```
 

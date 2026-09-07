@@ -22,3 +22,5 @@ jobs:
       - run: dotnet restore
       - run: dotnet build --no-restore
       - run: dotnet test --no-build
+      - run: dotnet run tools/docs.cs -- --check
+        if: matrix.os == 'ubuntu-latest'
