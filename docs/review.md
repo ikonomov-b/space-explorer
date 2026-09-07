@@ -39,7 +39,7 @@ The nineteen findings of the documentation stage were cleared on 2026-09-07; the
 | 29 | [The in-memory transport, commands, and handshake are untimed for M0a](#29-the-in-memory-transport-commands-and-handshake-are-untimed-for-m0a) | Gap | Cleared, [decision 0027](decisions/0027-in-memory-transport-commands-and-handshake-at-m0a.md) |
 | 30 | [Surface sky is decorative rather than astronomically derived](#30-surface-sky-is-decorative-rather-than-astronomically-derived) | Gap | Cleared, [decision 0032](decisions/0032-astronomically-consistent-surface-sky.md) |
 | 31 | [A generated definition can never receive a second revision](#31-a-generated-definition-can-never-receive-a-second-revision) | Inconsistency | Cleared, [decision 0033](decisions/0033-generated-definitions-have-one-revision.md) |
-| 32 | [The storage policy sits inside the hashed definition that M0b's measurement will change](#32-the-storage-policy-sits-inside-the-hashed-definition-that-m0bs-measurement-will-change) | Foundational | Open |
+| 32 | [The storage policy sits inside the hashed definition that M0b's measurement will change](#32-the-storage-policy-sits-inside-the-hashed-definition-that-m0bs-measurement-will-change) | Foundational | Cleared, [decision 0034](decisions/0034-storage-policy-pinned-by-manifests.md) |
 | 33 | [The generator implementation a regenerate primitive pins has no identity](#33-the-generator-implementation-a-regenerate-primitive-pins-has-no-identity) | Gap | Open |
 | 34 | [The category registry has no home, no revision identity, and no stated role in decoding](#34-the-category-registry-has-no-home-no-revision-identity-and-no-stated-role-in-decoding) | Gap | Open |
 | 35 | [Two set manifests can install under one pack identifier](#35-two-set-manifests-can-install-under-one-pack-identifier) | Gap | Open |
@@ -441,7 +441,7 @@ Affects: [decision 0031](decisions/0031-primitive-complete-composition-and-stora
 
 **Proposed solution.** The category registry lists the permitted policies, as the glossary already says; the world manifest pins the policy chosen per category at generation time from the versioned measured configuration, and the set manifest does the same for any set-owned payload; the definition record carries no policy field. Measurement then changes no definition hash, and an old world keeps the policy under which it was accepted. This supersedes the "each definition pins" clause of decision 0031 and needs a record.
 
-**Status:** Open.
+**Status:** Cleared 2026-09-07 by [decision 0034](decisions/0034-storage-policy-pinned-by-manifests.md). Applied to the technical design, development plan, and glossary.
 
 ### 33. The generator implementation a regenerate primitive pins has no identity
 
