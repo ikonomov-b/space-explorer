@@ -1,14 +1,20 @@
-[gd_scene load_steps=7 format=3]
+[gd_scene load_steps=9 format=3]
 
 [ext_resource type="Script" path="res://Main.cs" id="1_main"]
 [ext_resource type="Environment" path="res://assets/environment/airless_environment.tres" id="2_env"]
 [ext_resource type="StandardMaterial3D" path="res://assets/materials/rocky_regolith.tres" id="3_rocky"]
 [ext_resource type="StandardMaterial3D" path="res://assets/materials/icy_crust.tres" id="4_icy"]
 [ext_resource type="StandardMaterial3D" path="res://assets/materials/vegetated_biosphere.tres" id="5_veg"]
+[ext_resource type="ShaderMaterial" path="res://assets/terrain/rocky_field_material.tres" id="6_rockyfield"]
 
 [sub_resource type="SphereMesh" id="SphereMesh_preview"]
 radius = 0.6
 height = 1.2
+
+[sub_resource type="PlaneMesh" id="PlaneMesh_rockyfield"]
+size = Vector2(2, 2)
+subdivide_width = 24
+subdivide_depth = 24
 
 [node name="Main" type="Node"]
 script = ExtResource("1_main")
@@ -28,6 +34,11 @@ current = true
 position = Vector3(-2, 0, 0)
 mesh = SubResource("SphereMesh_preview")
 material_override = ExtResource("3_rocky")
+
+[node name="RockyField" type="MeshInstance3D" parent="."]
+position = Vector3(-2, -0.6, 0)
+mesh = SubResource("PlaneMesh_rockyfield")
+material_override = ExtResource("6_rockyfield")
 
 [node name="IcyCrust" type="MeshInstance3D" parent="."]
 position = Vector3(0, 0, 0)
