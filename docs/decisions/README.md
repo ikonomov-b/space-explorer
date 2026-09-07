@@ -37,4 +37,5 @@ File name: `NNNN-short-title.md`. Use [0000-template.md](0000-template.md). A re
 | [0026](0026-biome-rule-sets-and-recovery-challenges-are-template-vocabularies.md) | Biome rule sets and recovery challenges are scoped template vocabularies | Accepted |
 | [0027](0027-in-memory-transport-commands-and-handshake-at-m0a.md) | The in-memory transport, commands, and join handshake are M0a scope | Accepted |
 | [0028](0028-in-memory-transport-command-and-handshake-contract.md) | The in-memory transport, command journal, and join handshake contract | Accepted |
+| [0029](0029-primitive-identity-handle-and-cross-package-set-operations-contract.md) | Primitive identity, handle, and cross-package set operations contract | Accepted |
 <!-- generated:end decisions -->
