@@ -1,6 +1,6 @@
 # Concept assessment and similar projects
 
-Assessment date: 2026-09-07. Scope: the original nine-point concept, the local workspace, and public primary sources. The workspace contained no application code or other project documentation to compare against. Research used official developer pages, developer documentation, and publisher-controlled store descriptions. No games were installed or playtested.
+Assessment date: 2026-09-07. Scope: the nine-section [concept](concept.md), which is the concept of record, the local workspace, and public primary sources. The workspace contained no application code or other project documentation to compare against. Research used official developer pages, developer documentation, and publisher-controlled store descriptions. No games were installed or playtested.
 
 ## Relevance and recommendation
 
@@ -8,11 +8,11 @@ The concept is relevant as a focused exploration-and-collecting game, but proced
 
 The strongest proposition to test is: **program an expedition, discover a distinctive collection of artifacts, and keep a dependable local archive of worlds to revisit with friends**. This is a proposed focus, not evidence of exclusive novelty or unmet commercial demand. Immutable saves have a useful player benefit: confidence that places, discoveries, and collections persist.
 
-Recommend a small playable prototype that demonstrates the expedition-and-trade loop and save compatibility. Test whether destination choices and artifact investigation produce meaningful decisions before committing to whole planets or days of computation. Audience demand, commercial viability, team capacity, budget, and delivery dates remain unproven.
+Recommend a small playable prototype that demonstrates the expedition-and-trade loop and save compatibility; the [development plan](development-plan.md#milestones) schedules a disposable greybox version as P0 alongside M0a ([decision 0015](decisions/0015-greybox-prototype.md)). Test whether destination choices and artifact investigation produce meaningful decisions before committing to whole planets or days of computation. Audience demand, commercial viability, team capacity, budget, and delivery dates remain unproven.
 
 The [concept](concept.md) contains only the game idea. Scope, milestones, measurements, and production decisions belong in the separate [development plan](development-plan.md); implementation contracts belong in the [technical design](technical-design.md).
 
-Following the platform discussion, Linux-primary development, native Linux/Windows releases, and free 3D tooling are explicit requirements; Python is optional. The separate [technology decision](technology-stack.md) selects Godot .NET/C# and SQLite as working defaults and records the alternatives and validation gates. This does not change the gameplay/market assessment.
+Platform requirements are recorded in [requirements.md](requirements.md). The separate [technology decision](technology-stack.md) selects Godot .NET/C# and SQLite as working defaults and records the alternatives and validation gates. This does not change the gameplay/market assessment.
 
 ## Similar projects
 
@@ -28,14 +28,18 @@ The overlap column reports supported features. Implications are analysis for Spa
 | **SpaceEngine** — scientific/visual reference | Combines astronomical catalogues with procedural stars, planets, and landscapes for unknown objects. [Celestial objects](https://spaceengine.org/universe/real-celestial-object), [project site](https://spaceengine.org/). | Useful reference for coherent systems and scale. A simulator does not by itself validate an artifact economy or progression design. |
 | **Pioneer** — open-source technical reference | Open-ended space travel, planetary landing, exploration, trading, and missions. It publishes source and developer documentation; its FAQ describes reproducible procedural worlds. [Repository](https://github.com/pioneerspacesim/pioneer), [FAQ](https://wiki.pioneerspacesim.net/wiki/FAQ), [developer docs](https://dev.pioneerspacesim.net/). | A candidate reference for generation, simulation, and content authoring. This review has not audited its code or established component suitability or reuse terms. |
 | **Wormhole Adventurer** — smaller wormhole comparison | Procedural wormhole network, mining, ship customization, crafting, and turn-based combat to rebuild a station. [Developer's description](https://store.steampowered.com/app/1959940/Wormhole_Adventurer/). | Wormholes already structure generated exploration. Its station-rebuilding goal offers a comparison for giving exploration a concrete progression objective. |
+| **Starfield** — recent large-budget comparison | Over a thousand explorable planets combining procedurally generated surfaces with hand-crafted locations, artifacts as the central story objective, outpost and ship building, single-player. [Bethesda's description](https://bethesda.net/en-US/game/starfield), [Steam page](https://store.steampowered.com/app/1716740/Starfield/). | The closest recent precedent for artifact hunting across generated planets. Its reception documents how players react to many similar generated surfaces and why hand-crafted anchors were used; Space Explorer's distinctness gates and bounded regions respond to the same risk. |
+| **The Long Journey Home** — small-team procedural trading comparison | Procedurally generated universe, run-based journey home, alien species, artifact trading, and small-team scope. [Daedalic's description](https://store.steampowered.com/app/366910/The_Long_Journey_Home/). | Shows procedural systems with artifact trading at a scope a small team delivered. Its run-based structure contrasts with Space Explorer's persistent archive, making the value of dependable revisits a testable difference. |
+| **Journey to the Savage Planet** — bounded-planet cataloguing comparison | Exploration of one hand-crafted planet, cataloguing flora and fauna, equipment upgrades, environmental hazards, and two-player online cooperation. [Publisher's description](https://store.steampowered.com/app/973810/Journey_To_The_Savage_Planet/). | A precedent for exploration motivated by cataloguing rather than combat, and for two-player cooperation at small scale. Its bounded scope matches the proposed landing regions. |
+| **Subnautica** — hazard-driven preparation comparison | Survival exploration of a single hand-crafted ocean planet with oxygen, depth, and temperature limits, crafting, and base building. [Unknown Worlds' description](https://store.steampowered.com/app/264710/Subnautica/). | Its depth and oxygen envelope is the closest analogue to the proposed suit profile: preparation and equipment decide where a player can go. Hand-crafted content makes it a contrast case for generated environments. |
 
 The sources reviewed did not establish an exact equivalent of making artifact value directly proportional to destination-generation time plus exploration time. That does not prove this rule is novel, enjoyable, or commercially useful. Its pacing and fairness problems require explicit treatment.
 
 ## Gaps addressed in the documents
 
-These resolutions preserve the expedition-and-artifact objective while making ambiguity explicit. New defaults are proposals; timing, pricing, and release choices are not presented as pre-existing requirements.
+These resolutions preserve the expedition-and-artifact objective while making ambiguity explicit. New defaults are proposals; timing, pricing, and release choices are not presented as pre-existing requirements. Quoted phrases in the gap column come from the concept's first draft, which the current [concept](concept.md) superseded ([decision 0011](decisions/0011-requirements-single-source.md)).
 
-| Original area or missing requirement | Gap or risk | Documented resolution |
+| Concept section or missing requirement | Gap or risk | Documented resolution |
 | --- | --- | --- |
 | 1. General idea | No target player, central activity, or distinctive benefit. | [Concept 1](concept.md#1-the-general-idea) defines the audience hypothesis and expedition/collection experience; this assessment tests its relevance against precedents. |
 | 2. Destination programming | "Plant randomness" did not explain player agency or return visits. | [Concept 2](concept.md#2-destination-programming) describes intentions, uncertainty, and known destinations. Controls, pricing previews, and distance tiers are specified in the [plan](development-plan.md#scope-and-working-assumptions). |
@@ -48,7 +52,7 @@ These resolutions preserve the expedition-and-artifact objective while making am
 | 9. Core release | "Basic structures" gave no usable completion boundary. | [Concept 9](concept.md#9-the-core-experience) stays conceptual. The separate [development plan](development-plan.md#milestones) defines the solo slice and connected core release. |
 | Cross-cutting scope/usability | No surface scale, control baseline, performance criteria, or validation plan. | The [plan](development-plan.md) proposes bounded regions, accessibility requirements, benchmark targets, and experiments, without claiming measured results. |
 | Cross-cutting trust | Local editable saves cannot establish globally trusted item ownership. | The [technical design](technical-design.md#multiplayer-and-trust-boundary) scopes the economy to private campaigns and separates future public trade from offline inventories. |
-| Platform and implementation stack | Native development/distribution, language choice, and library boundaries were unspecified. | The [technology decision](technology-stack.md) selects Godot .NET/C# and SQLite, compares Python/GDScript alternatives, and requires Linux/Windows packaging, canonical-data, and mixed-OS co-op tests. |
+| Platform and implementation stack | Native development/distribution, language choice, and library boundaries were unspecified. | [Requirements](requirements.md) records the platform policy; the [technology decision](technology-stack.md) selects Godot .NET/C# and SQLite, compares Python/GDScript alternatives, and requires Linux/Windows packaging, canonical-data, and mixed-OS co-op tests. |
 
 ## Evidence behind the highest-risk changes
 
@@ -64,6 +68,6 @@ The timing and pricing recommendations are design deductions: identical content 
 
 Documentation cannot supply absent player feedback, production capacity, or benchmarks. The [decision register](development-plan.md#decisions-before-production-commitments) identifies the next evidence needed for travel pacing, valuation, stack validation and minimum hardware, numeric budgets, presentation, internet connectivity, schedule, and costs. Platform/library defaults are separately listed [for confirmation](technology-stack.md#gap-filling-decisions-for-confirmation).
 
-The recommended prototype focuses on short expeditions, private cooperation, and fixed effort-based prices. Mandatory days-long waiting or literal elapsed-time pricing would be material alternative designs. They remain visible in the concept rather than being silently discarded.
+The adopted design keeps preparation as real generation time with short tiers first, private cooperation, and fixed effort-based prices ([decision 0004](decisions/0004-preparation-is-real-generation-time.md)). Literal elapsed-time pricing is a rejected alternative that remains visible in the concept; days-long tiers with very large budgets are an M3 experiment.
 
 Recheck similar projects before public positioning or expansion. This comparison supports informed scope and prototype choices; it cannot establish exclusive novelty or commercial demand.

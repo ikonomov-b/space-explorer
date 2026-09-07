@@ -1,6 +1,6 @@
 # Space Explorer: game concept
 
-A PC game for native Linux and Windows about travelling through wormholes, exploring unfamiliar planetary systems, and collecting distinctive artifacts.
+A PC game about travelling through wormholes, exploring unfamiliar planetary systems, and collecting distinctive artifacts. Platform requirements are recorded separately in [requirements.md](requirements.md).
 
 This document describes the game concept. The [assessment](assessment.md) discusses its relevance and similar projects. The [development plan](development-plan.md) and [technical design](technical-design.md) cover proposed implementation and validation.
 
@@ -8,7 +8,7 @@ This document describes the game concept. The [assessment](assessment.md) discus
 
 The player commands an imaginary spacecraft capable of travelling between stars through wormholes. Each journey leads to a generated planetary system that can be explored, remembered, and visited again.
 
-The intended experience combines anticipation before a journey, discovery in unfamiliar environments, and the satisfaction of assembling a personal collection. It is aimed at players who enjoy exploration, collecting, and planning expeditions. Friends can join the player to explore previously discovered destinations.
+The intended experience combines anticipation before a journey, discovery in unfamiliar environments, and the satisfaction of assembling a personal collection. It is aimed at players who enjoy exploration, collecting, and planning expeditions. A friend can join the player to explore previously discovered destinations; larger groups are a later expansion.
 
 The central identity is a sequence of purposeful artifact expeditions. The player chooses where to go, investigates what makes a place interesting, and decides which discoveries to bring home.
 
@@ -36,13 +36,13 @@ Travel represents the creation and gradual revelation of a destination. The orig
 
 Greater distance should mean richer places to investigate: more varied environments, relationships between sites, and more intricate artifacts. Distance acts as a progression choice within the fiction rather than a scientific explanation for planetary complexity.
 
-A proposed refinement is to offer short expeditions alongside optional long journeys. Long preparation can build anticipation while the player reviews a collection or returns to earlier discoveries. Whether long waits should be central to progression remains a design question discussed in the assessment.
+The adopted refinement keeps preparation as the real time the host's machine needs to generate the destination, never an artificial timer. Short tiers come first and compute in seconds to minutes; more distant tiers carry larger content budgets and therefore take longer. Days-long journeys with very large budgets are an expansion experiment. Long preparation can build anticipation while the player reviews a collection or returns to earlier discoveries ([decision 0004](decisions/0004-preparation-is-real-generation-time.md)).
 
-The experience must justify the wait through discoveries the player can recognize. Once a place is discovered, further preparation must not change its identity or erase the player's knowledge of it.
+The experience must justify the wait through discoveries the player can recognize. A slower computer waits longer for the same destination and the same values. Once a place is discovered, further preparation must not change its identity or erase the player's knowledge of it.
 
 ## 5. Remembering destinations and exploring together
 
-Generated systems are kept on the player's local computer as a lasting archive of discoveries. A saved destination supports multiple expeditions and can be shared with an invited player over the internet.
+Generated systems are kept on the player's local computer as a lasting archive of discoveries. A discovered system is reachable only through the person who discovered it: that player hosts every visit and can invite a guest to travel there together and explore side by side. A saved destination supports multiple expeditions, but it never moves into another player's archive ([decision 0005](decisions/0005-discoverer-hosts-every-visit.md)).
 
 The identity of the world endures while its history develops. Landscapes and artifact origins remain recognizable; collected items stay collected, and discoveries remain recorded. Returning with better equipment or a friend creates another opportunity to investigate the same place.
 

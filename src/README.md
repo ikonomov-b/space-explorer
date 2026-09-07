@@ -1,15 +1,16 @@
 # Source layout
 
-This repository is still at the documentation-first stage, with no application code. The source tree is laid out to match the [technical design](../docs/technical-design.md). The [technology decision](../docs/technology-stack.md) selects Godot 4 .NET/C# with SQLite as the working stack.
+This repository is at the documentation-first stage, with no application code. The tree is laid out by assembly as fixed in [decision 0009](../docs/decisions/0009-solution-layout.md); the [technical design](../docs/technical-design.md) and [technology decision](../docs/technology-stack.md) define what each assembly owns.
 
-Linux is the primary development environment. Keep the edit/test/generate/profile/build loop Linux-native; validate distributed builds on both Linux and Windows. Routine development must not depend on Windows-only tools.
+| Path | Assembly | Contents |
+| --- | --- | --- |
+| `src/SpaceExplorer.Core/` | class library, no Godot reference | Generation, registry, campaign rules, valuation, random streams, binary formats, and the network contract. Former `generation`, `registry`, `campaign`, and `shared` folders are namespaces here. |
+| `src/SpaceExplorer.Persistence/` | class library, no Godot reference | SQLite adapter through `Microsoft.Data.Sqlite` and set/world package I/O. |
+| `src/SpaceExplorer.Cli/` | console application | Primitive-set generator, validator, and inspector. |
+| `src/SpaceExplorer.Game/` | Godot 4 .NET project | `project.godot`, scenes, the rendering adapter, the ENet transport adapter, and runtime assets under `assets/`. |
+| `content/` | data | Authored templates, allocation ledgers, and numeric tables consumed without Godot. |
+| `tests/SpaceExplorer.Core.Tests/`, `tests/SpaceExplorer.Persistence.Tests/` | xUnit.net | Correctness suites, including the two-process determinism test and the architecture test that Core never references Godot. |
+| `tests/SpaceExplorer.Benchmarks/` | BenchmarkDotNet | Core measurements. |
+| `tests/SpaceExplorer.Game.Smoke/` | scripts | Exported-build smoke tests on Linux and Windows. |
 
-- `src/generation/` for deterministic primitive-set generation first, then world and artifact generation.
-- `src/registry/` for primitive and content registry data.
-- `src/persistence/` for save, world, and transaction storage.
-- `src/campaign/` for campaign state and ownership rules.
-- `src/multiplayer/` for host, guest, and trust-boundary logic.
-- `src/rendering/` for presentation and cache layers.
-- `src/shared/` for common types and utilities.
-
-Keep domain types, registry rules, and generators independent of Godot. The command-line primitive tool, tests, and Godot game will share those C# libraries; persistence, rendering, and transport provide adapters. The existing folders are responsibility boundaries, not yet .NET projects. Project files, the CLI entry point, and the Godot project will be added during implementation; no executable build commands exist yet.
+The platform policy is in [requirements.md](../docs/requirements.md). The solution file, `global.json`, `Directory.Build.props`, and `Directory.Packages.props` are created at M0a start, when the Godot release, SDK, and package versions are pinned. No executable build commands exist yet.
