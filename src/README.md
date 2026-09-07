@@ -39,15 +39,4 @@ The game and the command-line tool write player data to the data root of [decisi
 
 ## Commands
 
-From the repository root:
-
-```sh
-dotnet build                                          # all six projects; warnings are errors
-dotnet test                                           # architecture and native-library tests
-dotnet run --project src/SpaceExplorer.Cli -- diagnostics
-godot --path src/SpaceExplorer.Game --editor          # open the game project in the editor
-tests/SpaceExplorer.Game.Smoke/smoke.sh               # export the Linux build and run its smoke check
-dotnet run tools/docs.cs -- --check                   # verify links, anchors, decision numbering, the generated decision table
-```
-
-On Windows, `powershell -ExecutionPolicy Bypass -File tests\SpaceExplorer.Game.Smoke\smoke.ps1` replaces the shell script. Continuous integration (`.github/workflows/ci.yml`) runs restore, build, and test on Ubuntu and Windows for every push to `main` and every pull request.
+Every command this project runs — build, test, the command-line tool, the Godot editor, the exported-build smoke scripts on both platforms, the documentation tool, and continuous integration — is in [docs/tools.md](../docs/tools.md), with the directory it runs from, what it needs on `PATH`, and what success looks like.

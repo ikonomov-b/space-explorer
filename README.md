@@ -4,7 +4,7 @@ A PC game concept about wormhole expeditions, generated planetary systems, artif
 
 Development is Linux-first with native Linux and Windows releases; the full platform policy is in [docs/requirements.md](docs/requirements.md). The stack is Godot 4.7.2 .NET with C# on .NET 10, an engine-independent generator, and SQLite persistence, confirmed and pinned in [decision 0016](docs/decisions/0016-platform-confirmed-and-toolchain-pinned.md). The engine is free to use; performance and execution on Windows remain to be validated.
 
-The scaffold and the core's deterministic random foundation are in place; there is no world generation, persistence schema, or playable build yet. Implementation status is tracked in [docs/progress.md](docs/progress.md), and build commands are in [src/README.md](src/README.md).
+The scaffold and the core's deterministic random foundation are in place; there is no world generation, persistence schema, or playable build yet. Implementation status is tracked in [docs/progress.md](docs/progress.md), the source layout and toolchain setup are in [src/README.md](src/README.md), and every command is in [docs/tools.md](docs/tools.md).
 
 ## Documents
 
@@ -13,6 +13,7 @@ The scaffold and the core's deterministic random foundation are in place; there 
 - [Assessment and similar projects](docs/assessment.md): relevance, twelve comparable projects with primary sources, gaps addressed, and remaining uncertainties.
 - [Development plan](docs/development-plan.md): proposed release scope, milestones, usability requirements, verification targets, and production decisions.
 - [Implementation progress](docs/progress.md): what is built, what is verified and how, what is not, and the open items.
+- [External tools](docs/tools.md): the exact call for every external program the project drives, where it runs from, and what success looks like.
 - [Technical design](docs/technical-design.md): generation, primitive versions, persistence, artifact valuation, and multiplayer ownership.
 - [Technology decision](docs/technology-stack.md): selected platform/libraries, alternatives, native-platform validation, and numbered decisions for confirmation.
 - [Design review](docs/review.md): foundational decisions that would be costly to reverse, gaps, inconsistencies, proposed solutions, and their status.
