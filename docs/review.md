@@ -42,7 +42,7 @@ The nineteen findings of the documentation stage were cleared on 2026-09-07; the
 | 32 | [The storage policy sits inside the hashed definition that M0b's measurement will change](#32-the-storage-policy-sits-inside-the-hashed-definition-that-m0bs-measurement-will-change) | Foundational | Cleared, [decision 0034](decisions/0034-storage-policy-pinned-by-manifests.md) |
 | 33 | [The generator implementation a regenerate primitive pins has no identity](#33-the-generator-implementation-a-regenerate-primitive-pins-has-no-identity) | Gap | Cleared, [decision 0035](decisions/0035-category-registry-record-and-generator-revision-identifiers.md) |
 | 34 | [The category registry has no home, no revision identity, and no stated role in decoding](#34-the-category-registry-has-no-home-no-revision-identity-and-no-stated-role-in-decoding) | Gap | Cleared, [decision 0035](decisions/0035-category-registry-record-and-generator-revision-identifiers.md) |
-| 35 | [Two set manifests can install under one pack identifier](#35-two-set-manifests-can-install-under-one-pack-identifier) | Gap | Open |
+| 35 | [Two set manifests can install under one pack identifier](#35-two-set-manifests-can-install-under-one-pack-identifier) | Gap | Cleared, [decision 0039](decisions/0039-one-manifest-per-pack-identifier.md) |
 | 36 | [The shared content-addressed stores have no reference index and no deletion rule](#36-the-shared-content-addressed-stores-have-no-reference-index-and-no-deletion-rule) | Gap | Open |
 | 37 | [One transform type cannot span the frame hierarchy](#37-one-transform-type-cannot-span-the-frame-hierarchy) | Foundational | Cleared, [decision 0036](decisions/0036-frames-and-transforms-typed-by-connector-kind.md) |
 | 38 | [Planet-level fields have no spherical form and the flat region bounds the explorable body radius](#38-planet-level-fields-have-no-spherical-form-and-the-flat-region-bounds-the-explorable-body-radius) | Foundational | Open |
@@ -471,7 +471,7 @@ Affects: [decision 0006](decisions/0006-pack-identity-and-allocation.md), the pa
 
 **Proposed solution.** Publishing a manifest whose `pack_id` directory already holds a manifest with a different hash is a reproduction failure: reject it, report both hashes, and enforce one manifest per `pack_id` in the SQLite index. Add the case to the Primitive-set foundation check under "ID and revision boundaries/collisions" and to the Durability check.
 
-**Status:** Open.
+**Status:** Cleared 2026-09-07 by [decision 0039](decisions/0039-one-manifest-per-pack-identifier.md). Applied to the technical design, development plan, and glossary.
 
 ### 36. The shared content-addressed stores have no reference index and no deletion rule
 

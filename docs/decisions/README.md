@@ -47,4 +47,5 @@ File name: `NNNN-short-title.md`. Use [0000-template.md](0000-template.md). A re
 | [0036](0036-frames-and-transforms-typed-by-connector-kind.md) | Four frames; the connector kind decides the transform type; a units row per frame | Accepted |
 | [0037](0037-derivation-rules-integer-periods-and-orbit-hierarchy.md) | Derivation-rule primitives, integer periods with phase at epoch, and the two-body hierarchy | Accepted |
 | [0038](0038-derived-instances.md) | Derived instances: recipe-produced, path-addressed, overlay-targetable, counted apart from nodes | Accepted |
+| [0039](0039-one-manifest-per-pack-identifier.md) | One set manifest per pack identifier; a differing second manifest is a reproduction failure | Accepted |
 <!-- generated:end decisions -->
