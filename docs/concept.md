@@ -30,6 +30,8 @@ Habitable means capable of supporting life; inhabited means life is actually pre
 
 Wormholes and alien life belong to the fiction. The navigator selects destinations suitable for expeditions, explaining why the player consistently encounters explorable systems. This guarantee is a gameplay premise, not a claim about how common such systems are in reality.
 
+Standing on a planet must reveal the generated system coherently. The star's position and illumination, the motion of the sky as the planet rotates, and the position, phase, apparent size, horizon visibility, eclipses, and occultations of other generated celestial bodies follow the observer's surface location and the saved astronomical time. An atmosphere changes scattering, twilight, extinction, and the horizon treatment; an airless world does not invent them. The core release uses bounded deterministic analytic propagation rather than full n-body simulation, but fixed decorative planets or an unrelated light direction are not an acceptable substitute ([decision 0032](decisions/0032-astronomically-consistent-surface-sky.md)).
+
 ## 4. Travel and the randomness of the destination
 
 Travel represents the creation and gradual revelation of a destination. The original idea allows more distant journeys to produce more complex, detailed worlds, with preparation potentially lasting days and no universal ceiling on journey duration.

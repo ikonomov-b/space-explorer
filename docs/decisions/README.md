@@ -40,4 +40,5 @@ File name: `NNNN-short-title.md`. Use [0000-template.md](0000-template.md). A re
 | [0029](0029-primitive-identity-handle-and-cross-package-set-operations-contract.md) | Primitive identity, handle, and cross-package set operations contract | Accepted; revision-blind exact-reference contract superseded by [0031](0031-primitive-complete-composition-and-storage.md) |
 | [0030](0030-m0a-criterion-1-proceeds-before-the-p0-exit-record.md) | M0a criterion 1 proceeds before the P0 exit record | Accepted |
 | [0031](0031-primitive-complete-composition-and-storage.md) | Primitive-complete composition and adaptive storage | Accepted |
+| [0032](0032-astronomically-consistent-surface-sky.md) | Astronomically consistent surface sky | Accepted |
 <!-- generated:end decisions -->
