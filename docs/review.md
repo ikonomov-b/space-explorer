@@ -47,7 +47,7 @@ The nineteen findings of the documentation stage were cleared on 2026-09-07; the
 | 37 | [One transform type cannot span the frame hierarchy](#37-one-transform-type-cannot-span-the-frame-hierarchy) | Foundational | Cleared, [decision 0036](decisions/0036-frames-and-transforms-typed-by-connector-kind.md) |
 | 38 | [Planet-level fields have no spherical form and the flat region bounds the explorable body radius](#38-planet-level-fields-have-no-spherical-form-and-the-flat-region-bounds-the-explorable-body-radius) | Foundational | Open |
 | 39 | [Nothing is defined beyond the region edge](#39-nothing-is-defined-beyond-the-region-edge) | Gap | Open |
-| 40 | [Physical derivation rules are missing](#40-physical-derivation-rules-are-missing) | Gap | Open |
+| 40 | [Physical derivation rules are missing](#40-physical-derivation-rules-are-missing) | Gap | Cleared, [decision 0037](decisions/0037-derivation-rules-integer-periods-and-orbit-hierarchy.md) |
 | 41 | [The node budget assumes no derived instances](#41-the-node-budget-assumes-no-derived-instances) | Foundational | Open |
 
 ## Foundational findings
@@ -534,7 +534,7 @@ Affects: the aggregation-rule clause of [decision 0031](decisions/0031-primitive
 
 **Proposed solution.** A class of versioned derivation-rule primitives beside the aggregation rules, each an integer or fixed-point implementation with a named revision in the category registry, so finding 33's identifiers cover them. Decide per rule whether the derived value is stored and validated against the rule at load or computed on demand. Periodic motion is stored as an integer period and a phase at the epoch and evaluated by integer modulo, never by integrating a rate. Binary stars and moons use the same hierarchy: an orbit connector's parent is a body or an explicit non-rendered barycentre node, which the explicit-absence rule already permits.
 
-**Status:** Open.
+**Status:** Cleared 2026-09-07 by [decision 0037](decisions/0037-derivation-rules-integer-periods-and-orbit-hierarchy.md). Applied to the technical design, development plan, and glossary.
 
 ### 41. The node budget assumes no derived instances
 

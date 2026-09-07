@@ -45,4 +45,5 @@ File name: `NNNN-short-title.md`. Use [0000-template.md](0000-template.md). A re
 | [0034](0034-storage-policy-pinned-by-manifests.md) | Storage policy is pinned per category by the world and set manifests, not by the definition | Accepted |
 | [0035](0035-category-registry-record-and-generator-revision-identifiers.md) | The category registry is a versioned canonical record that definition labels carry; generator revisions are identifiers it lists | Accepted |
 | [0036](0036-frames-and-transforms-typed-by-connector-kind.md) | Four frames; the connector kind decides the transform type; a units row per frame | Accepted |
+| [0037](0037-derivation-rules-integer-periods-and-orbit-hierarchy.md) | Derivation-rule primitives, integer periods with phase at epoch, and the two-body hierarchy | Accepted |
 <!-- generated:end decisions -->
