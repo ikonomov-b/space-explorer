@@ -33,4 +33,5 @@ File name: `NNNN-short-title.md`. Use [0000-template.md](0000-template.md). A re
 | [0022](0022-p0-gates-the-first-frozen-content-format.md) | The P0 exit record precedes the first frozen content format | Accepted |
 | [0023](0023-pcg32-is-a-sealed-class.md) | Pcg32 is a sealed class | Accepted |
 | [0024](0024-tests-comments-index-and-scaffolding-trimmed.md) | One test per frozen rule; comments point to decisions; generated index, Benchmarks project, and code-style flag removed | Accepted |
+| [0025](0025-p0-assessment-location-scope-and-players.md) | P0 assessment: location, scope, and players | Accepted |
 <!-- generated:end decisions -->
