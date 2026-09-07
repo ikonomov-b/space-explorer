@@ -18,6 +18,8 @@ This section is the single source for the platform policy. Other documents state
 - **R7. Primitive identities are unsigned numeric values.** Width, namespace, and allocation policy are defaults confirmed in [decision 0006](decisions/0006-pack-identity-and-allocation.md).
 - **R8. A discovered system is reachable only through its discoverer,** who hosts every visit and may invite guests. Recorded in [decision 0005](decisions/0005-discoverer-hosts-every-visit.md).
 - **R9. Multiplayer topology is a loosely coupled network of hosts** coordinated by a simple cloud server, with all compute on the host. Recorded in [decision 0003](decisions/0003-network-topology-and-transport.md).
+- **R10. Primitive composition represents the complete generated environment.** Every authoritative property of a solar system, its planets and surfaces, life, sites, and artifacts originates in exact primitive revisions, generated instance parameters, or primitive-based mutable state; there is no parallel environment-data model. Solar systems, planets, surfaces, caves, life forms, sites, and artifacts are nested composition graphs of primitive IDs rather than monolithic types. Recorded in [decision 0031](decisions/0031-primitive-complete-composition-and-storage.md).
+- **R11. Existing generated systems reproduce exactly while derived exploration data remains cacheable.** Primitive revisions, generator/grammar versions, and parameters are pinned. Per-category storage may regenerate, materialize, or combine both according to measured determinism and performance, while memory and disk caches are fully evictable. Recorded in [decision 0031](decisions/0031-primitive-complete-composition-and-storage.md).
 
 ## Provenance
 
@@ -27,3 +29,4 @@ This section is the single source for the platform policy. Other documents state
 | R6 | Platform discussion with the project owner | 2026-09-07 |
 | R7 | Owner request recorded in the technology decision register | 2026-09-07 |
 | R8, R9 | Owner statements during the design review | 2026-09-07 |
+| R10, R11 | Primitive composition and storage clarification from the project owner | 2026-09-07 |

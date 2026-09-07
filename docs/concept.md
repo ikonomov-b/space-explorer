@@ -74,11 +74,13 @@ Environmental challenges and limited carrying capacity give expeditions stakes. 
 
 ## 8. Randomness from expandable primitives
 
-Planetary systems, explorable environments, and artifacts are composed from primitives that can combine into larger structures. A small predefined vocabulary supplies the templates and constraints for generating random primitive sets. These sets are saved as reusable basic construction units before they are used to compose destinations and discoveries. Compatible combinations create variety while retaining coherence.
+Planetary systems, explorable environments, life, and artifacts are represented completely by primitives that combine into larger structures. A small predefined vocabulary supplies versioned templates and constraints for generating random primitive sets. These sets are saved as reusable construction catalogues before they are used to compose destinations and discoveries. Compatible combinations create variety while retaining coherence; there is no separate environment description that bypasses the primitive composition.
 
-Each primitive has a permanent numeric identity. The library can expand with new primitives, while existing worlds keep the content and composition that defined them. New possibilities enrich future destinations without rewriting old discoveries.
+Each primitive definition has a permanent numeric identity and an exact content revision. Its instances carry bounded generated parameters and stable paths. Materials, textures, geometry, collision, physical properties, and behaviour are themselves reusable primitive concerns rather than engine-owned facts. The library can expand with new primitives, while existing worlds pin the definitions, rules, and parameters that preserve them exactly. New possibilities enrich future destinations without rewriting old discoveries.
 
-The same broad principle of constrained composition applies at different scales, from a system's arrangement to a planet's environments and an artifact's shape. Each scale has its own compatibility rules.
+The same broad principle of constrained composition applies at different scales, from a system's star, planets, and orbits to planetary layers, surfaces, rivers, caves, vegetation and life, and an artifact's shape. A generated object is an ordered, bounded graph of primitive instances, not merely a deduplicated set of IDs. Each scale has composition domains, typed connectors, and explicit compatibility rules.
+
+Exact primitive data is authoritative. Expensive derived meshes, textures, collision products, and spatial chunks may be cached during exploration and discarded at any time. Whether a primitive's accepted output is regenerated, stored, or partly materialized is decided per category from cross-platform determinism and performance measurements ([decision 0031](decisions/0031-primitive-complete-composition-and-storage.md)).
 
 Randomness serves variety and surprise. Successful combinations should produce places and objects the player can understand, distinguish, and remember.
 

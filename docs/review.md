@@ -8,7 +8,7 @@ The nineteen findings of the documentation stage were cleared on 2026-09-07; the
 
 | # | Finding | Class | Status |
 | --- | --- | --- | --- |
-| 1 | [Terrain authority is left as an "or"](#1-terrain-authority-is-left-as-an-or) | Foundational | Cleared, [decision 0001](decisions/0001-materialize-authoritative-terrain.md) |
+| 1 | [Terrain authority is left as an "or"](#1-terrain-authority-is-left-as-an-or) | Foundational | Cleared by [decision 0001](decisions/0001-materialize-authoritative-terrain.md); its blanket materialization was later replaced by the explicit per-primitive policy of [decision 0031](decisions/0031-primitive-complete-composition-and-storage.md) |
 | 2 | [Random primitive sets are untested as content](#2-random-primitive-sets-are-untested-as-content) | Foundational | Cleared, [decision 0002](decisions/0002-primitive-set-content-gate.md) |
 | 3 | [Transport selected before connectivity; replication coupling](#3-transport-selected-before-connectivity-replication-coupling) | Foundational | Cleared, [decision 0003](decisions/0003-network-topology-and-transport.md) |
 | 4 | [Long journeys lost their rationale](#4-long-journeys-lost-their-rationale) | Foundational | Cleared, [decision 0004](decisions/0004-preparation-is-real-generation-time.md) |
@@ -25,12 +25,12 @@ The nineteen findings of the documentation stage were cleared on 2026-09-07; the
 | 15 | [Infrastructure-first plan versus fun-first assessment](#15-infrastructure-first-plan-versus-fun-first-assessment) | Process | Cleared, [decision 0015](decisions/0015-greybox-prototype.md) |
 | 16 | [Missing comparables](#16-missing-comparables) | Relevance | Cleared, applied to the [assessment](assessment.md#similar-projects) |
 | 17 | [Alternatives table omits the mainstream engines](#17-alternatives-table-omits-the-mainstream-engines) | Relevance | Cleared, applied to the [technology decision](technology-stack.md#alternatives-considered) |
-| 18 | [Region storage constants are over-determined](#18-region-storage-constants-are-over-determined) | Inconsistency | Cleared, [decision 0017](decisions/0017-region-extent-cap-and-storage-derivation.md) |
-| 19 | [Data location, encoding, and save integrity unspecified](#19-data-location-encoding-and-save-integrity-unspecified) | Gap | Cleared, [decision 0018](decisions/0018-data-root-region-encoding-and-save-integrity.md) |
+| 18 | [Region storage constants are over-determined](#18-region-storage-constants-are-over-determined) | Inconsistency | Cleared, [decision 0017](decisions/0017-region-extent-cap-and-storage-derivation.md); its height/biome representation is now a measured materialized/hybrid candidate under [decision 0031](decisions/0031-primitive-complete-composition-and-storage.md) |
+| 19 | [Data location, encoding, and save integrity unspecified](#19-data-location-encoding-and-save-integrity-unspecified) | Gap | Cleared by [decision 0018](decisions/0018-data-root-region-encoding-and-save-integrity.md); fixed region encoding and world-package layout later superseded by [decision 0031](decisions/0031-primitive-complete-composition-and-storage.md) |
 | 20 | [Two hashing primitives where one would do](#20-two-hashing-primitives-where-one-would-do) | Foundational | Cleared, [decision 0021](decisions/0021-sha256-stream-derivation.md) |
 | 21 | [Pcg32 is a mutable struct](#21-pcg32-is-a-mutable-struct) | Foundational | Cleared, [decision 0023](decisions/0023-pcg32-is-a-sealed-class.md) |
 | 22 | [The canonical format has no reader and its reader model was unstated](#22-the-canonical-format-has-no-reader-and-its-reader-model-was-unstated) | Gap | Cleared, applied to the [technical design](technical-design.md#primitive-sets-and-compact-references) |
-| 23 | [P0 has not started while M0a proceeds](#23-p0-has-not-started-while-m0a-proceeds) | Process | Cleared, [decision 0022](decisions/0022-p0-gates-the-first-frozen-content-format.md) |
+| 23 | [P0 has not started while M0a proceeds](#23-p0-has-not-started-while-m0a-proceeds) | Process | Cleared by [decision 0022](decisions/0022-p0-gates-the-first-frozen-content-format.md); its criterion-1 wait later superseded by the owner's [decision 0030](decisions/0030-m0a-criterion-1-proceeds-before-the-p0-exit-record.md) |
 | 24 | [Tests that pin nothing the recorded vectors do not](#24-tests-that-pin-nothing-the-recorded-vectors-do-not) | Process | Cleared, [decision 0024](decisions/0024-tests-comments-index-and-scaffolding-trimmed.md) |
 | 25 | [Documentation restates itself and the generated index is unreadable](#25-documentation-restates-itself-and-the-generated-index-is-unreadable) | Process | Cleared, [decision 0024](decisions/0024-tests-comments-index-and-scaffolding-trimmed.md) |
 | 26 | [The Benchmarks project is empty](#26-the-benchmarks-project-is-empty) | Process | Cleared, [decision 0024](decisions/0024-tests-comments-index-and-scaffolding-trimmed.md) |
@@ -56,7 +56,7 @@ Affects: [technical design](technical-design.md#destination-identity-and-determi
 
 Apply by extending the Region record's minimum contents and making "bytes per region" the gate that confirms the cost.
 
-**Status:** Cleared 2026-09-07 by [decision 0001](decisions/0001-materialize-authoritative-terrain.md). Materialize at acceptance; cross-OS terrain match is a measured target at M0b. Applied to the technical design and development plan. The size table above counts heights only and never the adopted 4 km at 2 m combination; the corrected derivation is in [finding 18](#18-region-storage-constants-are-over-determined).
+**Status:** Cleared 2026-09-07 by [decision 0001](decisions/0001-materialize-authoritative-terrain.md), then refined by the owner's [decision 0031](decisions/0031-primitive-complete-composition-and-storage.md). Terrain remains exact, but its primitive category now pins `regenerate`, `materialize`, or `hybrid` from cross-platform determinism and performance evidence; inability to prove exact regeneration selects materialization. Applied to the technical design and development plan. The size table above counts heights only and never the adopted 4 km at 2 m combination; the corrected derivation is in [finding 18](#18-region-storage-constants-are-over-determined).
 
 ### 2. Random primitive sets are untested as content
 
@@ -284,7 +284,7 @@ Affects: [architecture](technical-design.md#architecture-and-ownership), [persis
 
 **Proposed solution.** One data root owned by Persistence in the local application data folder with an environment override, caches in a separate deletable root, packages named by content hash, a fixed region encoding of delta-predicted heights and run-length-coded biome rows under Brotli from the .NET base library, and a deterrent against casual editing: derive credits and custody from a tag-chained ledger, tag every record with a keyed hash, verify invariants at load, and disclose a modified campaign to guests instead of locking the owner out.
 
-**Status:** Cleared 2026-09-07 by [decision 0018](decisions/0018-data-root-region-encoding-and-save-integrity.md). Applied to the technical design, development plan, technology decision, and glossary.
+**Status:** Cleared 2026-09-07 by [decision 0018](decisions/0018-data-root-region-encoding-and-save-integrity.md). Its data root and save-integrity decisions stand; [decision 0031](decisions/0031-primitive-complete-composition-and-storage.md) later replaced the fixed region codec and world layout with authoritative primitive graphs, content-addressed blobs, adaptive primitive-owned payloads, and evictable caches. Applied to the technical design, development plan, technology decision, and glossary.
 ## Findings raised by the implementation review
 
 Raised 2026-09-07 after the first two M0a steps landed ([decision 0019](decisions/0019-generator-version-1-frozen.md) and [decision 0020](decisions/0020-canonical-encoding-and-content-hash.md)), from a read of every tracked file and the checks named in each finding. Measurements are from the Debian 13 x86_64 workstation in release configuration. Findings are ordered by class, as above, not by importance; 23 is the one that decides whether the rest matter.
@@ -327,7 +327,7 @@ Affects: [decision 0015](decisions/0015-greybox-prototype.md), [milestones](deve
 
 **Proposed solution.** Start P0 now, in the Godot project as open item 2 of [decision 0016](decisions/0016-platform-confirmed-and-toolchain-pinned.md) suggests, so movement, physics, the Compatibility renderer, and the Windows export are exercised at the same time. Treat the P0 exit record as due before the next M0a step that freezes a new format.
 
-**Status:** Cleared 2026-09-07 by [decision 0022](decisions/0022-p0-gates-the-first-frozen-content-format.md). The P0 exit record precedes the set specification record; M0a work that freezes no content format continues. P0's location, scope, and players are the subject of the owner's P0 assessment.
+**Status:** Cleared 2026-09-07 by [decision 0022](decisions/0022-p0-gates-the-first-frozen-content-format.md). The owner's later [decision 0030](decisions/0030-m0a-criterion-1-proceeds-before-the-p0-exit-record.md) accepts the compatibility cost and lets the set specification proceed before the still-required P0 exit record. P0's location, scope, and players are fixed by decision 0025.
 
 ### 24. Tests that pin nothing the recorded vectors do not
 

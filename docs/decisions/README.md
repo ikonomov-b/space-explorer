@@ -9,7 +9,7 @@ File name: `NNNN-short-title.md`. Use [0000-template.md](0000-template.md). A re
 <!-- generated:begin decisions -->
 | # | Decision | Status |
 | --- | --- | --- |
-| [0001](0001-materialize-authoritative-terrain.md) | Materialize authoritative terrain at world acceptance | Accepted |
+| [0001](0001-materialize-authoritative-terrain.md) | Materialize authoritative terrain at world acceptance | Accepted; blanket terrain materialization superseded by [0031](0031-primitive-complete-composition-and-storage.md) |
 | [0002](0002-primitive-set-content-gate.md) | Content gate for generated primitive sets; generated-only sets; deferred set algebra | Accepted |
 | [0003](0003-network-topology-and-transport.md) | Core-owned replication, loosely coupled hosts, and connectivity timing | Accepted |
 | [0004](0004-preparation-is-real-generation-time.md) | Preparation time is real generation time; effort score is tier base plus recipe complexity | Accepted |
@@ -26,16 +26,18 @@ File name: `NNNN-short-title.md`. Use [0000-template.md](0000-template.md). A re
 | [0015](0015-greybox-prototype.md) | Disposable greybox expedition prototype in parallel with M0a | Accepted; no-gate clause superseded by [0022](0022-p0-gates-the-first-frozen-content-format.md) |
 | [0016](0016-platform-confirmed-and-toolchain-pinned.md) | Platform confirmed: Godot 4.7.2 .NET with C# on .NET 10; toolchain pinned; solution scaffolded | Accepted; code-style enforcement superseded by [0024](0024-tests-comments-index-and-scaffolding-trimmed.md) |
 | [0017](0017-region-extent-cap-and-storage-derivation.md) | Region extent cap reduced to 2,048 m; per-region storage derived from the constants | Accepted |
-| [0018](0018-data-root-region-encoding-and-save-integrity.md) | Data root, package layout, region encoding, and save integrity | Accepted |
+| [0018](0018-data-root-region-encoding-and-save-integrity.md) | Data root, package layout, region encoding, and save integrity | Accepted; fixed region encoding and world-package layout superseded by [0031](0031-primitive-complete-composition-and-storage.md) |
 | [0019](0019-generator-version-1-frozen.md) | Generator version 1: mix construction, path grammar, and bounded sampling frozen | Accepted; mix construction superseded by [0021](0021-sha256-stream-derivation.md) |
 | [0020](0020-canonical-encoding-and-content-hash.md) | Canonical encoding format 1 and the SHA-256 content hash | Accepted |
 | [0021](0021-sha256-stream-derivation.md) | Generator version 2: SHA-256 stream derivation | Accepted |
-| [0022](0022-p0-gates-the-first-frozen-content-format.md) | The P0 exit record precedes the first frozen content format | Accepted |
+| [0022](0022-p0-gates-the-first-frozen-content-format.md) | The P0 exit record precedes the first frozen content format | Accepted; criterion 1 wait superseded by [0030](0030-m0a-criterion-1-proceeds-before-the-p0-exit-record.md) |
 | [0023](0023-pcg32-is-a-sealed-class.md) | Pcg32 is a sealed class | Accepted |
 | [0024](0024-tests-comments-index-and-scaffolding-trimmed.md) | One test per frozen rule; comments point to decisions; generated index, Benchmarks project, and code-style flag removed | Accepted |
 | [0025](0025-p0-assessment-location-scope-and-players.md) | P0 assessment: location, scope, and players | Accepted |
 | [0026](0026-biome-rule-sets-and-recovery-challenges-are-template-vocabularies.md) | Biome rule sets and recovery challenges are scoped template vocabularies | Accepted |
 | [0027](0027-in-memory-transport-commands-and-handshake-at-m0a.md) | The in-memory transport, commands, and join handshake are M0a scope | Accepted |
 | [0028](0028-in-memory-transport-command-and-handshake-contract.md) | The in-memory transport, command journal, and join handshake contract | Accepted |
-| [0029](0029-primitive-identity-handle-and-cross-package-set-operations-contract.md) | Primitive identity, handle, and cross-package set operations contract | Accepted |
+| [0029](0029-primitive-identity-handle-and-cross-package-set-operations-contract.md) | Primitive identity, handle, and cross-package set operations contract | Accepted; revision-blind exact-reference contract superseded by [0031](0031-primitive-complete-composition-and-storage.md) |
+| [0030](0030-m0a-criterion-1-proceeds-before-the-p0-exit-record.md) | M0a criterion 1 proceeds before the P0 exit record | Accepted |
+| [0031](0031-primitive-complete-composition-and-storage.md) | Primitive-complete composition and adaptive storage | Accepted |
 <!-- generated:end decisions -->
