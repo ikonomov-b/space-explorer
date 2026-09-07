@@ -6,15 +6,16 @@
 [ext_resource type="StandardMaterial3D" path="res://assets/materials/icy_crust.tres" id="4_icy"]
 [ext_resource type="StandardMaterial3D" path="res://assets/materials/vegetated_biosphere.tres" id="5_veg"]
 [ext_resource type="ShaderMaterial" path="res://assets/terrain/rocky_field_material.tres" id="6_rockyfield"]
+[ext_resource type="Script" path="res://WalkPreviewCamera.cs" id="7_walkpreview"]
 
 [sub_resource type="SphereMesh" id="SphereMesh_preview"]
 radius = 0.6
 height = 1.2
 
 [sub_resource type="PlaneMesh" id="PlaneMesh_rockyfield"]
-size = Vector2(2, 2)
+size = Vector2(2, 4)
 subdivide_width = 24
-subdivide_depth = 24
+subdivide_depth = 48
 
 [node name="Main" type="Node"]
 script = ExtResource("1_main")
@@ -26,9 +27,14 @@ environment = ExtResource("2_env")
 position = Vector3(0, 3, 3)
 rotation_degrees = Vector3(-45, -30, 0)
 
-[node name="Camera" type="Camera3D" parent="."]
+[node name="OverviewCamera" type="Camera3D" parent="."]
 position = Vector3(0, 1, 5)
+
+[node name="SurfaceCamera" type="Camera3D" parent="."]
+position = Vector3(-1.15, -0.15, -0.85)
+rotation_degrees = Vector3(-6, 90, 0)
 current = true
+script = ExtResource("7_walkpreview")
 
 [node name="RockyRegolith" type="MeshInstance3D" parent="."]
 position = Vector3(-2, 0, 0)
