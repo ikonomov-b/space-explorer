@@ -28,4 +28,5 @@ File name: `NNNN-short-title.md`. Use [0000-template.md](0000-template.md). A re
 | [0017](0017-region-extent-cap-and-storage-derivation.md) | Region extent cap reduced to 2,048 m; per-region storage derived from the constants | Accepted |
 | [0018](0018-data-root-region-encoding-and-save-integrity.md) | Data root, package layout, region encoding, and save integrity | Accepted |
 | [0019](0019-generator-version-1-frozen.md) | Generator version 1: mix construction, path grammar, and bounded sampling frozen | Accepted |
+| [0020](0020-canonical-encoding-and-content-hash.md) | Canonical encoding format 1 and the SHA-256 content hash | Accepted |
 <!-- generated:end decisions -->
