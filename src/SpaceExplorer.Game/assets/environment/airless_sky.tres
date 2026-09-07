@@ -1,0 +1,6 @@
+[gd_resource type="Sky" load_steps=2 format=3]
+
+[ext_resource type="ShaderMaterial" path="res://assets/environment/airless_sky_material.tres" id="1"]
+
+[resource]
+sky_material = ExtResource("1")
