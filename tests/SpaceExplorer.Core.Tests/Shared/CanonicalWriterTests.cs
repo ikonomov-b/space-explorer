@@ -83,7 +83,8 @@ public class CanonicalWriterTests
     public void Length_prefixes_keep_adjacent_fields_from_running_together()
     {
         // Without the prefix both records would be the two bytes 'a' 'b', so two different sets of
-        // inputs would share an identity. This is the framing counterpart of the length step in Mix64.
+        // inputs would share an identity, and it is what keeps a stream path from trading bytes with
+        // the seed beside it in a derivation record.
         string twoFields = Encode(writer =>
         {
             writer.WriteText("a");
@@ -150,11 +151,13 @@ public class CanonicalWriterTests
     public void The_recorded_vector_holds()
     {
         // Frozen under CanonicalWriter.FormatVersion. Every byte below follows from the rules and can be
-        // read off by hand: 01 format version; 13 and the 19 bytes of the domain; the generator version
-        // as four little-endian bytes; the seed as eight; 08 and the eight bytes of "tier-two"; 05, the
+        // read off by hand: 01 format version; 13 and the 19 bytes of the domain; a version field as
+        // four little-endian bytes; the seed as eight; 08 and the eight bytes of "tier-two"; 05, the
         // zig-zag encoding of -3; 02 elements; then 01 and ac 02, the LEB128 forms of 1 and 300.
+        // The version field is a literal: this vector freezes the encoding, so it must not move when
+        // GeneratorVersion does.
         var writer = new CanonicalWriter("set-specification/1");
-        writer.WriteUInt32(GeneratorVersion.Current);
+        writer.WriteUInt32(1U);
         writer.WriteUInt64(0x0123456789ABCDEFUL);
         writer.WriteText("tier-two");
         writer.WriteVarInt(-3);

@@ -1,3 +1,4 @@
+using System.Buffers.Binary;
 using SpaceExplorer.Core.Shared;
 using Xunit;
 
@@ -6,16 +7,28 @@ namespace SpaceExplorer.Core.Tests.Shared;
 public class RandomStreamTests
 {
     [Fact]
-    public void Derivation_follows_the_state_and_increment_assignment_of_decision_0008()
+    public void The_halves_are_the_first_sixteen_bytes_of_the_digest_in_order()
     {
-        // state0 = h.low64 and increment = (h.high64 << 1) | 1. Asserted through the first draws,
-        // because the state and increment are private: an implementation that swapped the halves, or
-        // that ran the reference seeding routine on top of them, would produce a different sequence.
+        // The assignment of decision 0008, now over a SHA-256 digest (decision 0021): the first eight
+        // bytes seed the state and the next eight, shifted odd, select the stream. Rebuilding the
+        // hashed record here also documents its preimage: domain, seed, then the path as a
+        // length-prefixed byte string.
         const ulong seed = 42UL;
         const string path = "system/planet/0";
 
-        Mix128 mixed = Mix64.Derive(seed, StreamPath.ToCanonicalBytes(path));
-        var expected = Pcg32.FromState(mixed.Low, (mixed.High << 1) | 1UL);
+        var record = new CanonicalWriter("random-stream/2");
+        record.WriteUInt64(seed);
+        record.WriteBytes(StreamPath.ToCanonicalBytes(path));
+        ReadOnlySpan<byte> digest = record.ToContentHash().Bytes;
+
+        (ulong state, ulong increment) = RandomStream.DeriveParts(seed, path);
+
+        Assert.Equal(BinaryPrimitives.ReadUInt64LittleEndian(digest[..8]), state);
+        Assert.Equal((BinaryPrimitives.ReadUInt64LittleEndian(digest[8..16]) << 1) | 1UL, increment);
+
+        // And the stream really is initialised from those two, rather than run through the reference
+        // seeding routine on top of them, which would change every draw.
+        var expected = Pcg32.FromState(state, increment);
         var actual = RandomStream.Derive(seed, path);
 
         for (int draw = 0; draw < 8; draw++)
@@ -24,33 +37,55 @@ public class RandomStreamTests
         }
     }
 
-    // Recorded derivation vectors, as decision 0008 requires under the generator version. Unlike the
-    // PCG32 and SplitMix64 anchors, these pin *our* construction rather than a published one: a change
-    // to the mixer, the domain constants, the length step, the path canonicalisation, or the half
-    // assignment will break them. That is their purpose. Changing them is a
-    // GeneratorVersion increment, never an edit to fit new output.
+    // Recorded derivation vectors, as decision 0008 requires under the generator version. The digests
+    // were computed outside this repository from the byte string the preimage test documents, so these
+    // check the implementation rather than merely record it. A change to the domain label, the seed
+    // encoding, the path canonicalisation, the framing, or the half assignment breaks them. That is
+    // their purpose. Changing them is a GeneratorVersion increment, never an edit to fit new output.
     [Theory]
-    [InlineData(0UL, "system", 0x1CDB09BECB2165EFUL, 0xE7AF3F1AD6751A13UL, 0x336c3a20u, 0x4849616bu)]
+    [InlineData(
+        0UL,
+        "system",
+        "f1e2f37f6c987c1f5717dd691d90ee6a1a67438519d85100b30d232de4af90b0",
+        0x1F7C986C7FF3E2F1UL,
+        0xD5DD203AD3BA2EAFUL,
+        0x7df27ecdu,
+        0x0dc53df9u)]
     [InlineData(
         42UL,
         "system/planet/0/region/3/site/1/artifact/2",
-        0xEF1992AEB197D3DCUL,
-        0xC2CAD5ACCB908942UL,
-        0x19a968d7u,
-        0x7797fc6eu)]
-    [InlineData(ulong.MaxValue, "a", 0x8A864F8505690FD1UL, 0xD23F138B96789EBDUL, 0xd2492866u, 0x6b2a0327u)]
+        "1c4db2454834f46e1f8da4683744238d39c99cfe43c9aa02e37340eee74aaabd",
+        0x6EF4344845B24D1CUL,
+        0x1A46886ED1491A3FUL,
+        0xf54ef42fu,
+        0x5d9ea18eu)]
+    [InlineData(
+        ulong.MaxValue,
+        "a",
+        "aee118053ad9298b5323aeb2ac80ef5b10c7060b81bea45fdf8d71ca22e96ad1",
+        0x8B29D93A0518E1AEUL,
+        0xB7DF0159655C46A7UL,
+        0xbf07329fu,
+        0x57d5cdccu)]
     public void Recorded_vectors_freeze_the_derivation(
         ulong seed,
         string path,
-        ulong expectedLow,
-        ulong expectedHigh,
+        string expectedDigest,
+        ulong expectedState,
+        ulong expectedIncrement,
         uint expectedFirstDraw,
         uint expectedSecondDraw)
     {
-        Mix128 mixed = Mix64.Derive(seed, StreamPath.ToCanonicalBytes(path));
+        var record = new CanonicalWriter("random-stream/2");
+        record.WriteUInt64(seed);
+        record.WriteBytes(StreamPath.ToCanonicalBytes(path));
 
-        Assert.Equal(expectedLow, mixed.Low);
-        Assert.Equal(expectedHigh, mixed.High);
+        Assert.Equal(expectedDigest, record.ToContentHash().ToString());
+
+        (ulong state, ulong increment) = RandomStream.DeriveParts(seed, path);
+
+        Assert.Equal(expectedState, state);
+        Assert.Equal(expectedIncrement, increment);
 
         var stream = RandomStream.Derive(seed, path);
 
@@ -79,11 +114,22 @@ public class RandomStreamTests
         // The specific failure decision 0008 warns about: hashing the path into the stream selector
         // alone leaves siblings sharing a state, and PCG32 streams over a shared state are not
         // independent. Both halves must move when the path changes by one character.
-        Mix128 first = Mix64.Derive(5UL, StreamPath.ToCanonicalBytes("system/planet/0/artifact/0"));
-        Mix128 second = Mix64.Derive(5UL, StreamPath.ToCanonicalBytes("system/planet/0/artifact/1"));
+        (ulong firstState, ulong firstIncrement) = RandomStream.DeriveParts(5UL, "system/planet/0/artifact/0");
+        (ulong secondState, ulong secondIncrement) = RandomStream.DeriveParts(5UL, "system/planet/0/artifact/1");
 
-        Assert.NotEqual(first.Low, second.Low);
-        Assert.NotEqual(first.High, second.High);
+        Assert.NotEqual(firstState, secondState);
+        Assert.NotEqual(firstIncrement, secondIncrement);
+    }
+
+    [Fact]
+    public void A_seed_and_a_path_cannot_trade_bytes_with_each_other()
+    {
+        // The framing the canonical record supplies: the path is length-prefixed, so no seed and path
+        // pair can hash the same bytes as a different pair. Without the prefix these two would differ
+        // only in where the reader believed the seed ended.
+        Assert.NotEqual(
+            RandomStream.DeriveParts(0UL, "ab"),
+            RandomStream.DeriveParts(0UL, "a"));
     }
 
     [Fact]
@@ -119,13 +165,12 @@ public class RandomStreamTests
         {
             for (int index = 0; index < 64; index++)
             {
-                Mix128 mixed = Mix64.Derive(seed, StreamPath.ToCanonicalBytes($"system/planet/{index}"));
-                ulong increment = (mixed.High << 1) | 1UL;
+                (ulong state, ulong increment) = RandomStream.DeriveParts(seed, $"system/planet/{index}");
 
                 Assert.Equal(1UL, increment & 1UL);
 
                 // Constructing the stream is itself the assertion: FromState rejects an even increment.
-                Pcg32.FromState(mixed.Low, increment);
+                Pcg32.FromState(state, increment);
             }
         }
     }

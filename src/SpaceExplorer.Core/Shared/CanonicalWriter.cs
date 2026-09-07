@@ -20,7 +20,7 @@ namespace SpaceExplorer.Core.Shared;
 ///   as length-prefixed bytes. The domain separates roles, so the same field values encoded as two
 ///   different kinds of record can never produce the same hash.</item>
 ///   <item>Fixed-width integers are little-endian two's complement, assembled bytewise. Host byte order
-///   is unreachable from this code, as it is from <see cref="Mix64"/>.</item>
+///   is unreachable from this code.</item>
 ///   <item>Variable-width integers are LEB128, and signed ones are zig-zag encoded first, so the
 ///   encoding of a small negative number is short.</item>
 ///   <item>Byte strings and text carry a variable-width length prefix, so concatenated fields cannot be

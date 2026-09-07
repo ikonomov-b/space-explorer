@@ -5,7 +5,7 @@ namespace SpaceExplorer.Core.Shared;
 /// <summary>
 /// The canonical form of a random-stream path, such as
 /// <c>system/planet/0/region/3/site/1/artifact/2</c>. Pinned under
-/// <see cref="GeneratorVersion"/>, since the derived bytes feed <see cref="Mix64.Derive"/>
+/// <see cref="GeneratorVersion"/>, since the derived bytes feed <see cref="RandomStream.Derive"/>
 /// (decision 0008: "path canonicalisation, separators, and encoding are pinned with the generator
 /// version").
 /// </summary>
