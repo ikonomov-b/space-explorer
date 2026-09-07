@@ -1,0 +1,23 @@
+# OS files
+.DS_Store
+Thumbs.db
+
+# Editor settings
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Build and cache output
+dist/
+build/
+out/
+coverage/
+tmp/
+temp/
+
+# Game/runtime state
+*.log
+*.tmp
+*.bak
+
