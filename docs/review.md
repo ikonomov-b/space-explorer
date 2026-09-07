@@ -2,7 +2,7 @@
 
 Reviewed 2026-09-07. This review inspects the documentation-stage repository for foundational decisions that would be costly to reverse once implementation starts, plus smaller gaps and inconsistencies. Each finding states the failure mechanism, a proposed solution, and a status. Clearing a finding means recording the decision in [decisions/](decisions/README.md) and applying the change to the affected documents; the status row then links to both.
 
-The nineteen findings of the documentation stage were cleared on 2026-09-07; the status table links each to its decision record or to the document it changed. An implementation review the same day, after the first two M0a steps landed, raised [findings 20 to 27](#findings-raised-by-the-implementation-review), of which all eight are cleared. A scan of the [development plan](development-plan.md) for gaps and misorders, also 2026-09-07, raised [findings 28 and 29](#findings-raised-by-the-development-plan-scan), both cleared. A review of surface-view realism raised [finding 30](#30-surface-sky-is-decorative-rather-than-astronomically-derived), cleared by decision 0032. An inspection of the primitive storage and handling plan against the design, also 2026-09-07, raised [findings 31 to 36](#findings-raised-by-the-primitive-storage-inspection), all open with proposed solutions. Checks performed for this review, repeatable with `dotnet run tools/docs.cs -- --check` (links, anchors, decision numbering, the generated decision table; run in continuous integration) and `-- --external` (cited URLs): every internal link and anchor in the documents resolves; all 54 cited external URLs respond, except Epic's Unreal Engine licence page, which answers automated requests with HTTP 403 and must be opened in a browser; the worked valuation and byte-size examples are arithmetically correct. The scaffold of [decision 0016](decisions/0016-platform-confirmed-and-toolchain-pinned.md) builds and its tests pass on both operating systems; only the random foundation and the canonical encoding are tested against code, and the remaining design statements are not. Terms used below are defined in the [glossary](glossary.md).
+The nineteen findings of the documentation stage were cleared on 2026-09-07; the status table links each to its decision record or to the document it changed. An implementation review the same day, after the first two M0a steps landed, raised [findings 20 to 27](#findings-raised-by-the-implementation-review), of which all eight are cleared. A scan of the [development plan](development-plan.md) for gaps and misorders, also 2026-09-07, raised [findings 28 and 29](#findings-raised-by-the-development-plan-scan), both cleared. A review of surface-view realism raised [finding 30](#30-surface-sky-is-decorative-rather-than-astronomically-derived), cleared by decision 0032. An inspection of the primitive storage and handling plan against the design, also 2026-09-07, raised [findings 31 to 36](#findings-raised-by-the-primitive-storage-inspection), all open with proposed solutions. A check of the same structures against the realistic planetary model of decision 0032 raised [findings 37 to 41](#findings-raised-by-the-planetary-model-sufficiency-check), all open with proposed solutions. Checks performed for this review, repeatable with `dotnet run tools/docs.cs -- --check` (links, anchors, decision numbering, the generated decision table; run in continuous integration) and `-- --external` (cited URLs): every internal link and anchor in the documents resolves; all 54 cited external URLs respond, except Epic's Unreal Engine licence page, which answers automated requests with HTTP 403 and must be opened in a browser; the worked valuation and byte-size examples are arithmetically correct. The scaffold of [decision 0016](decisions/0016-platform-confirmed-and-toolchain-pinned.md) builds and its tests pass on both operating systems; only the random foundation and the canonical encoding are tested against code, and the remaining design statements are not. Terms used below are defined in the [glossary](glossary.md).
 
 ## Status
 
@@ -44,6 +44,11 @@ The nineteen findings of the documentation stage were cleared on 2026-09-07; the
 | 34 | [The category registry has no home, no revision identity, and no stated role in decoding](#34-the-category-registry-has-no-home-no-revision-identity-and-no-stated-role-in-decoding) | Gap | Open |
 | 35 | [Two set manifests can install under one pack identifier](#35-two-set-manifests-can-install-under-one-pack-identifier) | Gap | Open |
 | 36 | [The shared content-addressed stores have no reference index and no deletion rule](#36-the-shared-content-addressed-stores-have-no-reference-index-and-no-deletion-rule) | Gap | Open |
+| 37 | [One transform type cannot span the frame hierarchy](#37-one-transform-type-cannot-span-the-frame-hierarchy) | Foundational | Open |
+| 38 | [Planet-level fields have no spherical form and the flat region bounds the explorable body radius](#38-planet-level-fields-have-no-spherical-form-and-the-flat-region-bounds-the-explorable-body-radius) | Foundational | Open |
+| 39 | [Nothing is defined beyond the region edge](#39-nothing-is-defined-beyond-the-region-edge) | Gap | Open |
+| 40 | [Physical derivation rules are missing](#40-physical-derivation-rules-are-missing) | Gap | Open |
+| 41 | [The node budget assumes no derived instances](#41-the-node-budget-assumes-no-derived-instances) | Foundational | Open |
 
 ## Foundational findings
 
@@ -475,5 +480,68 @@ Affects: the `packs/` and `blobs/` entries under [storage location and layout](t
 **Why it can go wrong.** Decision 0031 moved materialized payloads and assets into `blobs/`, shared by every campaign alongside `packs/`, and allows deletion "only when no campaign, world, export, or retained backup depends on it". Nothing records the dependants: the persistence table has no reference index, `campaign.db` is per campaign so no single database sees every campaign, and `backups/<branch-id>/` copies are dependants too. Either nothing is ever deleted, so an abandoned campaign's world payloads persist and low-disk recovery can evict only caches, or removing a campaign deletes blobs another campaign still references. Neither check exercises the case.
 
 **Proposed solution.** A data-root-level reference index, maintained inside the publish-last step of the same protocol that installs a package, recording every campaign, world, export, and backup that depends on each package or blob. Deletion is an explicit user-confirmed sweep of zero-reference content and never runs implicitly. Durability gains "remove a campaign that shares packs with another; the survivor still loads", and Resource-use gains "unreferenced content is reported, not deleted, until confirmed".
+
+**Status:** Open.
+
+## Findings raised by the planetary-model sufficiency check
+
+Raised 2026-09-07 by asking whether the structures of [decision 0031](decisions/0031-primitive-complete-composition-and-storage.md), which must carry the solar system, every planet surface, and every artifact as one composition graph, are sufficient for the realistic planetary model that [decision 0032](decisions/0032-astronomically-consistent-surface-sky.md) and requirement R12 demand. Identity, exact revisions, instance paths, typed connectors, grammar, aggregation rules, the closed parameter schema, storage policies, chunks, overlays, and the material, texture, collision, and behaviour split were found sufficient for artifacts, sites, life, caves, and atmosphere selection, subject to findings 31 to 36. The five findings below are about the shape of the graph, not its storage. Every number derives from constants fixed in [decision 0010](decisions/0010-units-coordinates-and-region-bounds.md), [decision 0017](decisions/0017-region-extent-cap-and-storage-derivation.md), and [decision 0032](decisions/0032-astronomically-consistent-surface-sky.md), plus a 2 m eye height, which is an assumption named where it is used.
+
+### 37. One transform type cannot span the frame hierarchy
+
+Affects: the transform and attachment-transform clauses of [decision 0031](decisions/0031-primitive-complete-composition-and-storage.md), the `connectors` and `parameters` rows of the [registry](technical-design.md#primitive-registry-and-composition), the [units table](technical-design.md#units-coordinates-and-bounds), and [astronomical state](technical-design.md#astronomical-state-and-surface-sky).
+
+**Why it can go wrong.** Every node carries a "transform" and every connector an "attachment transform or spatial area", and the only position type fixed so far is int32 fixed-point at 1/256 m, whose range is ±8,388,608 m. That covers a region and, barely, an Earth-sized planet-fixed frame; it cannot place a planet in the system frame, where 1 AU is 1.496 × 10^11 m, nor a point on the surface of a body larger than 8,389 km in radius, which excludes every gas giant. The units table's "Planetary values: integers in documented units defined with the numeric tables" defers the question rather than answering it. If the first `PrimitiveDefinition` record freezes one transform type, the system and planet domains inherit a type that cannot hold their values.
+
+**Proposed solution.** The connector kind decides the transform type: orbital elements plus epoch for an orbit connector, latitude, longitude, height, and heading for a surface anchor, and a rigid fixed-point transform only inside a region or an artifact. The units table gains a row per frame, system, planet-fixed, region-local, and artifact-local, each with its integer width, unit, and scale, so that no frame reuses another's position type by default. The category registry record of the M0a immediate step is where this lands.
+
+**Status:** Open.
+
+### 38. Planet-level fields have no spherical form and the flat region bounds the explorable body radius
+
+Affects: the `parameters` row of the [registry](technical-design.md#primitive-registry-and-composition) (bounded grids), [astronomical state](technical-design.md#astronomical-state-and-surface-sky) (region-to-planet mapping), [region encoding](technical-design.md#region-encoding-and-compression), the Region entry of the [glossary](glossary.md#worlds-and-destinations), and the Worlds row of the [core-release contents](development-plan.md#core-release-contents).
+
+**Why it can go wrong.** Bounded grids are rectangular. Global relief, climate, insolation by latitude, and the ocean datum that every region of one planet must agree on need a spherical parameterization, and none is named. Decision 0032 requires "a region's stable mapping to the planet-fixed frame" without fixing its form. A region is a flat patch of at most 2,048 m per axis, and that flatness bounds which bodies it can sit on:
+
+| Body radius | Horizon at 2 m eye height | Curvature drop over the 1,024 m half-region | Gravity tilt over the half-region |
+| --- | --- | --- | --- |
+| 6,371 km | 5.0 km | 8 cm | 0.009° |
+| 1,737 km | 2.6 km | 30 cm | 0.034° |
+| 262 km | 1.02 km | 2.0 m | 0.22° |
+| 100 km | 0.63 km | 5.2 m | 0.59° |
+
+Horizon distance is `sqrt(2 R h)`, curvature drop is `x² / 2R`, and gravity tilt is `x / R` with `x` the half-extent. Below about 262 km the true horizon lies inside a maximal region, so a flat tangent plane contradicts requirement R12's horizon visibility, and the gravity direction the host simulates ([decision 0013](decisions/0013-host-simulates-hazards.md)) is visibly wrong at the region edge. Nothing states a minimum explorable radius or a curvature rule.
+
+**Proposed solution.** Name one spherical parameterization for planet-level bounded grids, such as a cube-sphere or equirectangular grid with a declared resolution, as a parameter type of the planet domain. Fix the region-to-planet mapping as a tangent plane at a latitude, longitude, height, and heading. Derive the minimum explorable body radius from the region cap and the horizon rule and put it in the stellar grammar's constraints, so the generator never lands a region on a body the flat model cannot represent; curved regions stay outside the core release.
+
+**Status:** Open.
+
+### 39. Nothing is defined beyond the region edge
+
+Affects: requirement R12 in [requirements](requirements.md#design-constraints-stated-by-the-owner), [astronomical state](technical-design.md#astronomical-state-and-surface-sky), the Region entry of the [glossary](glossary.md#worlds-and-destinations), the Exploration row of the [core-release contents](development-plan.md#core-release-contents), and the Surface-sky consistency check in the [development plan](development-plan.md#verification-and-performance-targets).
+
+**Why it can go wrong.** On an Earth-sized body the horizon at 2 m eye height is 5.0 km away and a maximal region ends 1,024 m from its centre. Requirement R12 asks that "standing on a planet must reveal the generated system coherently", yet no structure supplies terrain between the region edge and the horizon, and no rule says what bounds traversal there: a wall, a fog, a cliff, or distant ground. The sky is derived from pinned data precisely so that it cannot be decorative; the ground beyond the region has no such source and would be authored ad hoc.
+
+**Proposed solution.** The planet-level relief field of finding 38 is the non-authoritative source of far-field terrain, sampled by the Godot adapter as a cache the same way the sky is derived from the celestial solution, so the far field agrees with the region's placement, the planet's radius, and its horizon. The region boundary is a defined rule of the region primitive's traversal primitive, not of the renderer. The Surface-sky consistency check gains a case that the far-field horizon and the celestial horizon agree.
+
+**Status:** Open.
+
+### 40. Physical derivation rules are missing
+
+Affects: the aggregation-rule clause of [decision 0031](decisions/0031-primitive-complete-composition-and-storage.md), [sets and compact references](technical-design.md#primitive-sets-and-compact-references), [astronomical state](technical-design.md#astronomical-state-and-surface-sky), the Generation lifecycle's step 2 under [technical design](technical-design.md#generation-lifecycle), and [finding 33](#33-the-generator-implementation-a-regenerate-primitive-pins-has-no-identity).
+
+**Why it can go wrong.** Aggregation rules are sum, weighted average, minimum, maximum, bounded composition, and override. A realistic system needs surface gravity from mass and radius, orbital period from semi-major axis and central mass, equilibrium temperature from luminosity, distance, and albedo, pressure against altitude, atmosphere retention against escape velocity, tidal locking, and orbit-spacing stability. These are neither parameters nor aggregation rules nor named generator revisions, so a generator would either store independent values that can disagree, gravity that does not follow from mass and radius, or compute them in code that finding 33 shows has no identity. Authoritative floating point is forbidden, so each rule needs an integer or fixed-point form with roots and powers, and periodic motion expressed as an angular rate accumulates drift over years of simulation time at any fixed-point resolution.
+
+**Proposed solution.** A class of versioned derivation-rule primitives beside the aggregation rules, each an integer or fixed-point implementation with a named revision in the category registry, so finding 33's identifiers cover them. Decide per rule whether the derived value is stored and validated against the rule at load or computed on demand. Periodic motion is stored as an integer period and a phase at the epoch and evaluated by integer modulo, never by integrating a rate. Binary stars and moons use the same hierarchy: an orbit connector's parent is a body or an explicit non-rendered barycentre node, which the explicit-absence rule already permits.
+
+**Status:** Open.
+
+### 41. The node budget assumes no derived instances
+
+Affects: the scale clause of [decision 0006](decisions/0006-pack-identity-and-allocation.md), the "expected scale" sentence under [sets and compact references](technical-design.md#primitive-sets-and-compact-references), the Composition graph/chunk and Mutable state rows under [persistence](technical-design.md#persistence-and-compatibility), the Primitive instance and Primitive state overlay entries of the [glossary](glossary.md#content-identity), and the overlay-target invariant under [save integrity](technical-design.md#save-integrity).
+
+**Why it can go wrong.** Decision 0006 expects "thousands of composition nodes per world". A maximal region is 2,048 m × 2,048 m, 4,194,304 m². One rock or plant per 100 m² is 41,943 items in one region; one per 10 m² is 419,430. Either the budget is off by two or three orders of magnitude, or a scatter recipe must yield instances that are addressable by path but not stored as nodes, and the documents say neither. Overlays are keyed by instance path and load-time verification requires that "each overlay targets a compatible primitive instance"; collecting one rock from a scatter needs a path no explicit node carries, so today that pickup either cannot be recorded or fails verification.
+
+**Proposed solution.** Define derived instances: a node whose policy is `regenerate` or `hybrid` may produce instances addressed by extending its path, such as `.../scatter/41/item/1234`, that are not stored as nodes, draw from the parent's stream only, and count against a per-node derived budget rather than the graph's node limit. Overlays may target a derived path, and the load-time check resolves it by regenerating the parent under its pinned revision. Restate the expected scale as explicit nodes plus derived instances, measured separately at M0b.
 
 **Status:** Open.
