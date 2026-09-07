@@ -23,7 +23,9 @@ internal sealed class PackageIndex : IDisposable
     public static PackageIndex Open(DataRoot root)
     {
         Directory.CreateDirectory(root.Path);
-        var connection = new SqliteConnection(new SqliteConnectionStringBuilder { DataSource = root.IndexDatabasePath }.ToString());
+        // Pooling off: a pooled connection keeps the file handle open after Dispose, which on Windows blocks
+        // deleting or moving the data root. The index is opened briefly per operation, so pooling buys nothing.
+        var connection = new SqliteConnection(new SqliteConnectionStringBuilder { DataSource = root.IndexDatabasePath, Pooling = false }.ToString());
         connection.Open();
         var index = new PackageIndex(connection);
         index.Execute("PRAGMA foreign_keys = ON;");
