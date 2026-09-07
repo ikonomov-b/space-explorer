@@ -58,7 +58,7 @@ The plan's M0a row, decomposed in its own order.
 | 8 | Bounded failures | Not started. |
 | 9 | Interrupted publication | Not started. |
 | 10 | Expansion compatibility | Not started. |
-| 11 | Minimal Godot viewer | Not started. `Main.tscn` holds the exported-build smoke entry point only. |
+| 11 | Minimal Godot viewer | Not started. `Main.tscn` holds the exported-build smoke entry point plus a materials/environment preview: a `WorldEnvironment` on the airless starfield sky, a directional light, a camera, and one sphere per surface material (rocky, icy, vegetated). This previews hand-authored placeholder assets for visual review, not the [decision 0002](decisions/0002-primitive-set-content-gate.md) content-gate viewer, which renders generated primitives from a pipeline that does not exist yet. |
 | 12 | Native packaged smoke tests | **Partial.** `smoke.sh` and `smoke.ps1` exist. The Linux export printed `SMOKE OK` when run manually on 2026-09-07 with Godot 4.7.2, .NET 10.0.11, and SQLite 3.53.3. The Windows export was produced from Linux and never executed, and neither script runs in continuous integration. |
 | 13 | Tool versions pinned | **Done.** .NET SDK 10.0.400 in `global.json`, `net10.0` throughout, Godot.NET.Sdk 4.7.2, central package versions ([decision 0016](decisions/0016-platform-confirmed-and-toolchain-pinned.md)). |
 | 14 | Reference machines recorded | **Partial.** The Linux workstation is recorded in decision 0016; no Windows reference machine is identified. |
