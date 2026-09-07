@@ -2,7 +2,7 @@
 
 Reviewed 2026-09-07. This review inspects the documentation-stage repository for foundational decisions that would be costly to reverse once implementation starts, plus smaller gaps and inconsistencies. Each finding states the failure mechanism, a proposed solution, and a status. Clearing a finding means recording the decision in [decisions/](decisions/README.md) and applying the change to the affected documents; the status row then links to both.
 
-All nineteen findings were cleared on 2026-09-07; the status table links each to its decision record or to the document it changed. Checks performed for this review, repeatable with `dotnet run tools/docs.cs -- --check` (links, anchors, decision numbering, generated indexes; run in continuous integration) and `-- --external` (cited URLs): every internal link and anchor in the documents resolves; all 54 cited external URLs respond, except Epic's Unreal Engine licence page, which answers automated requests with HTTP 403 and must be opened in a browser; the worked valuation and byte-size examples are arithmetically correct. The scaffold of [decision 0016](decisions/0016-platform-confirmed-and-toolchain-pinned.md) builds and its tests pass; the design statements themselves are not yet tested against generator code. Terms used below are defined in the [glossary](glossary.md).
+The nineteen findings of the documentation stage were cleared on 2026-09-07; the status table links each to its decision record or to the document it changed. An implementation review the same day, after the first two M0a steps landed, raised [findings 20 to 27](#findings-raised-by-the-implementation-review), of which one is cleared and seven are open. Checks performed for this review, repeatable with `dotnet run tools/docs.cs -- --check` (links, anchors, decision numbering, generated indexes; run in continuous integration) and `-- --external` (cited URLs): every internal link and anchor in the documents resolves; all 54 cited external URLs respond, except Epic's Unreal Engine licence page, which answers automated requests with HTTP 403 and must be opened in a browser; the worked valuation and byte-size examples are arithmetically correct. The scaffold of [decision 0016](decisions/0016-platform-confirmed-and-toolchain-pinned.md) builds and its tests pass on both operating systems; only the random foundation and the canonical encoding are tested against code, and the remaining design statements are not. Terms used below are defined in the [glossary](glossary.md).
 
 ## Status
 
@@ -27,6 +27,14 @@ All nineteen findings were cleared on 2026-09-07; the status table links each to
 | 17 | [Alternatives table omits the mainstream engines](#17-alternatives-table-omits-the-mainstream-engines) | Relevance | Cleared, applied to the [technology decision](technology-stack.md#alternatives-considered) |
 | 18 | [Region storage constants are over-determined](#18-region-storage-constants-are-over-determined) | Inconsistency | Cleared, [decision 0017](decisions/0017-region-extent-cap-and-storage-derivation.md) |
 | 19 | [Data location, encoding, and save integrity unspecified](#19-data-location-encoding-and-save-integrity-unspecified) | Gap | Cleared, [decision 0018](decisions/0018-data-root-region-encoding-and-save-integrity.md) |
+| 20 | [Two hashing primitives where one would do](#20-two-hashing-primitives-where-one-would-do) | Foundational | Implemented as generator version 2 in `acdc063`; cleared when decision 0021 is recorded |
+| 21 | [Pcg32 is a mutable struct](#21-pcg32-is-a-mutable-struct) | Foundational | Open |
+| 22 | [The canonical format has no reader and its reader model was unstated](#22-the-canonical-format-has-no-reader-and-its-reader-model-was-unstated) | Gap | Cleared, applied to the [technical design](technical-design.md#primitive-sets-and-compact-references) |
+| 23 | [P0 has not started while M0a proceeds](#23-p0-has-not-started-while-m0a-proceeds) | Process | Open |
+| 24 | [Tests that pin nothing the recorded vectors do not](#24-tests-that-pin-nothing-the-recorded-vectors-do-not) | Process | Open |
+| 25 | [Documentation restates itself and the generated index is unreadable](#25-documentation-restates-itself-and-the-generated-index-is-unreadable) | Process | Open |
+| 26 | [The Benchmarks project is empty](#26-the-benchmarks-project-is-empty) | Process | Open |
+| 27 | [Code-style enforcement is nominal](#27-code-style-enforcement-is-nominal) | Process | Open |
 
 ## Foundational findings
 
@@ -275,3 +283,86 @@ Affects: [architecture](technical-design.md#architecture-and-ownership), [persis
 **Proposed solution.** One data root owned by Persistence in the local application data folder with an environment override, caches in a separate deletable root, packages named by content hash, a fixed region encoding of delta-predicted heights and run-length-coded biome rows under Brotli from the .NET base library, and a deterrent against casual editing: derive credits and custody from a tag-chained ledger, tag every record with a keyed hash, verify invariants at load, and disclose a modified campaign to guests instead of locking the owner out.
 
 **Status:** Cleared 2026-09-07 by [decision 0018](decisions/0018-data-root-region-encoding-and-save-integrity.md). Applied to the technical design, development plan, technology decision, and glossary.
+## Findings raised by the implementation review
+
+Raised 2026-09-07 after the first two M0a steps landed ([decision 0019](decisions/0019-generator-version-1-frozen.md) and [decision 0020](decisions/0020-canonical-encoding-and-content-hash.md)), from a read of every tracked file and the checks named in each finding. Measurements are from the Debian 13 x86_64 workstation in release configuration. Findings are ordered by class, as above, not by importance; 23 is the one that decides whether the rest matter.
+
+### 20. Two hashing primitives where one would do
+
+Affects: [decision 0008](decisions/0008-random-stream-derivation.md), [decision 0019](decisions/0019-generator-version-1-frozen.md), [determinism](technical-design.md#destination-identity-and-determinism).
+
+**Why it can go wrong.** Stream derivation runs a SplitMix64-based construction that decision 0019 itself describes as "this project's own, not an external standard", with two external anchors and three self-produced vectors as its whole evidence. Decision 0020 then brought SHA-256 into the core for the content hash. The core therefore carries two hashing primitives, and the one without an external specification is the one every artifact identity depends on. Cost does not justify the custom construction: a derivation measures 29 ns with the mixer and 477 ns with SHA-256, so 10,000 paths cost 0.3 ms against 4.8 ms, and derivation happens once per path, never per draw. Replacing it is a generator-version increment, free while no set or world exists and expensive after the first one.
+
+**Proposed solution.** Derive both halves from the SHA-256 content hash of a domain-labelled canonical record holding the seed and the path bytes: the first eight bytes become the state and the next eight, shifted left and forced odd, the increment. Delete the mixer and its tests. This supersedes the mixer clause of decision 0008 and the construction of decision 0019, and increments the generator version to 2 with no stored data to migrate.
+
+**Status:** Taken up 2026-09-07 and implemented as generator version 2 in `acdc063`, which derives both halves from the SHA-256 content hash of a `random-stream/2` record and deletes the mixer and its tests. Cleared when decision 0021 is recorded, together with the documents that still describe a pinned 64-bit mixer.
+
+### 21. Pcg32 is a mutable struct
+
+Affects: `src/SpaceExplorer.Core/Shared/Pcg32.cs` and every future generation call site.
+
+**Why it can go wrong.** Drawing a value mutates the struct. Held in a readonly field, read through a list indexer, or bound by a foreach, the struct is copied, the copy advances, and the original does not, with no compiler diagnostic. Demonstrated: a readonly field and a list element both returned `67f3cd9b` on two successive draws, while a local variable returned `67f3cd9b` then `553d86dc`. The type's remark warns about this, but a comment does not reach the hundreds of call sites generation code will have, and a silently repeated sequence in authoritative generation is a determinism bug that reproduces perfectly and therefore looks like intended output.
+
+**Proposed solution.** Make it a sealed class. One allocation per derived stream is negligible beside the derivation itself, and the copy hazard disappears. Decide before generation code uses the type widely; afterwards the change touches every call site.
+
+**Status:** Open.
+
+### 22. The canonical format has no reader and its reader model was unstated
+
+Affects: [decision 0020](decisions/0020-canonical-encoding-and-content-hash.md), [primitive sets and compact references](technical-design.md#primitive-sets-and-compact-references).
+
+**Why it can go wrong.** The format is written and hashed but never parsed back, which [progress.md](progress.md#m0a-exit-criteria) records. What no document said is that the bytes carry no field tags or types, so a reader cannot be generic: it must dispatch on the domain label and know that record's field order for the declared format version. Left unstated, the first package reader could be attempted as a self-describing parser, or the format could drift toward tagged fields, which changes every hash.
+
+**Proposed solution.** State in the technical design that the format is schema-driven, not self-describing, and build the reader per record kind alongside the first stored record.
+
+**Status:** Cleared 2026-09-07, applied to the [technical design](technical-design.md#primitive-sets-and-compact-references). The reader itself arrives with M0a criterion 3.
+
+### 23. P0 has not started while M0a proceeds
+
+Affects: [decision 0015](decisions/0015-greybox-prototype.md), [milestones](development-plan.md#milestones), [progress](progress.md#milestones).
+
+**Why it can go wrong.** Decision 0015 scheduled the greybox prototype in parallel with M0a for one to two weeks, because [finding 15](#15-infrastructure-first-plan-versus-fun-first-assessment) warned that infrastructure would otherwise be built for a game whose loop is untested. M0a is two steps in, twenty decision records and about 2,100 lines of documentation and tooling exist, and `prototypes/` holds only its README. Nothing built so far shows whether choosing two artifacts out of four under a cargo limit is a decision a player can explain. Each further M0a step raises the cost of learning that it is not.
+
+**Proposed solution.** Start P0 now, in the Godot project as open item 2 of [decision 0016](decisions/0016-platform-confirmed-and-toolchain-pinned.md) suggests, so movement, physics, the Compatibility renderer, and the Windows export are exercised at the same time. Treat the P0 exit record as due before the next M0a step that freezes a new format.
+
+**Status:** Open.
+
+### 24. Tests that pin nothing the recorded vectors do not
+
+Affects: `tests/SpaceExplorer.Core.Tests/Shared/`, [decision 0019](decisions/0019-generator-version-1-frozen.md).
+
+**Why it can go wrong.** At `cc21bbb`, `Shared/` had 79 tests for 332 executable lines, 41 of them on the random foundation; after the mixer removal in `acdc063` it has 47 tests for 307 lines. Eleven source mutations were run against the suite: bare modulo, a zero threshold, an off-by-one in the rejection rule, an unshifted increment, swapped domain constants, a dropped length step, a dropped trailing chunk, a perturbed LCG multiplier, an accepted even increment, big-endian fixed-width fields, and a dropped zig-zag step. Ten tests caught none of them: the bound-of-one, in-range, and distribution checks on bounded draws; the zero-maps-to-zero, distinct-halves, seed-response, and chunk-boundary checks on the mixer; and the repeatability, early-repeat, and increment-oddness checks on derivation. The chunk-boundary test does not test what its comment claims, because the length step separates its two inputs even when the ninth byte is dropped; the recorded vectors caught that mutation instead. The increment-oddness test asserts that a value with its low bit forced to one is odd. The suite runs in under 50 ms, so the cost is maintenance and false confidence, not time. The one surviving mutant, the off-by-one, differs from the reference rule on one draw in 2^32 and is not worth a test. A related coupling surfaced when the generator version moved to 2: the recorded encoding vector wrote `GeneratorVersion.Current` as a field, so a generator-version increment broke a vector that freezes the format of decision 0020. It now writes a literal; a recorded vector must contain only literals.
+
+**Proposed solution.** Keep the recorded vectors, the two external anchors, the rejection-replay test, the assignment test, the even-increment and empty-range guards, the trailing-zero test, and the sibling-difference test; delete the ten. The four mixer tests went with finding 20 in `acdc063`; the six others remain: the three bounded-draw checks and the repeatability, early-repeat, and increment-oddness checks. Going forward, one test per frozen rule, with a mutation run rather than a test count as the evidence that the suite is load-bearing.
+
+**Status:** Open.
+
+### 25. Documentation restates itself and the generated index is unreadable
+
+Affects: all documents, `tools/docs.cs`, [document index](index.md).
+
+**Why it can go wrong.** A fact lives in the technical design, a decision record, the glossary, the XML comment of the code that implements it, and the progress document: PCG32 is named in 14 files, the 2,048 m cap in 8, the 20 Hz tick in 6, the PCG32 reference vector in 5. In `Shared/`, 343 of 779 lines are comments, more than the 332 lines of code. Every change to a frozen rule therefore touches four or five files, and the 366-line docs tool exists largely to catch the copies that were missed. The generated index repeats the README's curated list and adds a "referenced from" column that reaches 26 links in one row. About 2,100 lines of documentation and tooling govern about 450 lines of executable code.
+
+**Proposed solution.** Keep the link, anchor, numbering, and generated-table checks. Drop the generated document index, or reduce it to the decision table without the "referenced from" column. In code, replace restated rules with a one-line pointer to the decision that fixes them, so the record is the single copy and the comment cannot go stale. Leave the progress document as the single status source it was designed to be.
+
+**Status:** Open.
+
+### 26. The Benchmarks project is empty
+
+Affects: `tests/SpaceExplorer.Benchmarks/`, [decision 0009](decisions/0009-solution-layout.md).
+
+**Why it can go wrong.** The project restores BenchmarkDotNet and builds in continuous integration on both operating systems, and contains no benchmark. It is a placeholder for the M0a generator measurement. Small, but it is the pattern of finding 25 in code: structure ahead of the thing that needs it.
+
+**Proposed solution.** Delete the project until the first benchmark exists; recreating it is fifteen lines and a solution entry. Or keep it and accept the cost knowingly. The point is to decide rather than carry it by default.
+
+**Status:** Open.
+
+### 27. Code-style enforcement is nominal
+
+Affects: `Directory.Build.props`, `.editorconfig`, [decision 0014](decisions/0014-tooling-and-licence.md).
+
+**Why it can go wrong.** `EnforceCodeStyleInBuild` is on and warnings are errors, which reads as "style is enforced". The editorconfig sets indentation only, so every IDE rule keeps its default severity of suggestion or silent and none reaches the build. Verified: a file with a non-readonly field assigned only in its constructor, a public field in the wrong case, and an unnecessary assignment builds with zero warnings; setting `dotnet_diagnostic.IDE0044.severity = warning` and the same for IDE0059 turns both into build errors. The flag gives assurance it does not deliver.
+
+**Proposed solution.** Either set the handful of rules the project wants to warning in the editorconfig, so the flag does work, or remove the flag and rely on the compiler warnings that are already errors. A `dotnet format --verify-no-changes` step in continuous integration is the cheaper alternative for whitespace and usings.
+
+**Status:** Open.

@@ -112,4 +112,4 @@ Carried from [decision 0016](decisions/0016-platform-confirmed-and-toolchain-pin
 
 ## Design documentation
 
-Complete and self-consistent as of 2026-09-07: all nineteen [review](review.md) findings cleared, twenty [decision records](decisions/README.md) accepted, every internal link and anchor resolving. Apart from the random foundation and the canonical encoding, the design statements are untested against code.
+Complete and self-consistent as of 2026-09-07: the nineteen documentation-stage [review](review.md) findings are cleared, twenty [decision records](decisions/README.md) are accepted, and every internal link and anchor resolves. The implementation review of the same day raised [findings 20 to 27](review.md#findings-raised-by-the-implementation-review): one is cleared; one, the stream-derivation hash, is implemented as generator version 2 and awaits decision 0021; six are open, one of them foundational, the mutable random-stream struct. Apart from the random foundation and the canonical encoding, the design statements are untested against code.
