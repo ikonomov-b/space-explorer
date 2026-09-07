@@ -2,7 +2,7 @@
 
 Reviewed 2026-09-07. This review inspects the documentation-stage repository for foundational decisions that would be costly to reverse once implementation starts, plus smaller gaps and inconsistencies. Each finding states the failure mechanism, a proposed solution, and a status. Clearing a finding means recording the decision in [decisions/](decisions/README.md) and applying the change to the affected documents; the status row then links to both.
 
-All sixteen findings were cleared on 2026-09-07; the status table links each to its decision record. Checks performed for this review: every internal link and anchor in the documents resolves; all 34 cited external URLs respond; the worked valuation and byte-size examples are arithmetically correct. No statement in the documents has yet been tested against code. Terms used below are defined in the [glossary](glossary.md).
+All seventeen findings were cleared on 2026-09-07; the status table links each to its decision record or to the document it changed. Checks performed for this review: every internal link and anchor in the documents resolves; all 54 cited external URLs respond, except Epic's Unreal Engine licence page, which answers automated requests with HTTP 403 and must be opened in a browser; the worked valuation and byte-size examples are arithmetically correct. The scaffold of [decision 0016](decisions/0016-platform-confirmed-and-toolchain-pinned.md) builds and its tests pass; the design statements themselves are not yet tested against generator code. Terms used below are defined in the [glossary](glossary.md).
 
 ## Status
 
@@ -24,6 +24,7 @@ All sixteen findings were cleared on 2026-09-07; the status table links each to 
 | 14 | [Tooling predates the stack decision](#14-tooling-predates-the-stack-decision) | Gap | Cleared, [decision 0014](decisions/0014-tooling-and-licence.md) |
 | 15 | [Infrastructure-first plan versus fun-first assessment](#15-infrastructure-first-plan-versus-fun-first-assessment) | Process | Cleared, [decision 0015](decisions/0015-greybox-prototype.md) |
 | 16 | [Missing comparables](#16-missing-comparables) | Relevance | Cleared, applied to the [assessment](assessment.md#similar-projects) |
+| 17 | [Alternatives table omits the mainstream engines](#17-alternatives-table-omits-the-mainstream-engines) | Relevance | Cleared, applied to the [technology decision](technology-stack.md#alternatives-considered) |
 
 ## Foundational findings
 
@@ -240,3 +241,13 @@ Affects: [similar projects](assessment.md#similar-projects).
 **Proposed solution.** Add four rows with primary sources and a specific lesson each: Starfield, for procedural planets with artifacts as the central objective and the reception of many similar generated surfaces; The Long Journey Home, for procedural systems with alien artifact trading at small-team scope; Journey to the Savage Planet, for bounded-planet exploration with cataloguing as the core motivation; Subnautica, for hazard-driven preparation and survival envelopes on a single world.
 
 **Status:** Cleared 2026-09-07, applied to the [assessment](assessment.md#similar-projects). Four rows added with verified sources: Starfield, The Long Journey Home, Journey to the Savage Planet, Subnautica.
+
+### 17. Alternatives table omits the mainstream engines
+
+Affects: [alternatives considered](technology-stack.md#alternatives-considered), open item 4 of [decision 0016](decisions/0016-platform-confirmed-and-toolchain-pinned.md).
+
+**Why it can go wrong.** The table compared Godot .NET only with GDScript and two Python engines. A reader could not see whether Unity, Unreal, Stride, Flax, or MonoGame satisfy R1 to R5 as well or better, so the platform confirmation in decision 0016 rested on a comparison that was never written down and could not be challenged.
+
+**Proposed solution.** Add one row per engine stating licence terms, Linux editor status, and language fit, each taken from the vendor's own pages on the day of the check, and give the rejection reason in terms of R1 to R5. Name the runner-up so a failed M0 validation has a documented fallback.
+
+**Status:** Cleared 2026-09-07, applied to the [technology decision](technology-stack.md#alternatives-considered). Five rows added with official sources; Flax is recorded as the runner-up. Epic's licence page is not machine-verifiable (HTTP 403) and its royalty figures need a browser check.
