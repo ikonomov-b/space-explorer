@@ -3,30 +3,11 @@ using System.Buffers.Binary;
 namespace SpaceExplorer.Core.Shared;
 
 /// <summary>
-/// The 128-bit identity of a pack, stored as a 16-byte BLOB (decision 0006). A generated pack derives
-/// it from the content hash of its canonical set specification, so independent reproduction of the
-/// same specification on either operating system yields the same identifier.
+/// The 128-bit identity of a pack, stored as a 16-byte BLOB (decision 0006). A generated pack's
+/// identifier is the leading 16 bytes of its set specification's <see cref="ContentHash"/> (decision
+/// 0020); an authored pack's is drawn once outside the core and accepted through <see cref="FromBytes"/>.
+/// The default value is unset rather than an identifier of zero.
 /// </summary>
-/// <remarks>
-/// <para>
-/// Derivation takes the leading 16 bytes of the specification's <see cref="ContentHash"/>. The pack
-/// directory name is therefore a prefix of the specification hash, which makes the relationship
-/// checkable by eye. Truncating to 128 bits is what decision 0006 specifies; at the expected scale of
-/// packs a collision is not a practical concern, and the full definition identity remains
-/// <c>(pack_id, primitive_id)</c> with the exact content given by the revision hash.
-/// </para>
-/// <para>
-/// An authored pack instead receives a random identifier once at creation. That identifier cannot
-/// originate here: <see cref="System.Guid.NewGuid"/> and <see cref="System.Random"/> are rejected at
-/// build time in this assembly (decision 0008), and drawing an identity from a seeded generation
-/// stream would not be random across authors. The command-line tool supplies the 16 bytes and
-/// <see cref="FromBytes"/> accepts them, so the core keeps no source of non-deterministic randomness.
-/// </para>
-/// <para>
-/// The default value is unset, as with <see cref="ContentHash"/>. A human-readable pack name is
-/// metadata and is never an identity (decision 0006).
-/// </para>
-/// </remarks>
 public readonly struct PackId : IEquatable<PackId>
 {
     /// <summary>The width of a pack identifier.</summary>

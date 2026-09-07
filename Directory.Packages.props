@@ -6,7 +6,6 @@
 
   <!-- Pinned on 2026-09-07 (decision 0016). Godot packages are pinned by the Sdk version in SpaceExplorer.Game.csproj. -->
   <ItemGroup>
-    <PackageVersion Include="BenchmarkDotNet" Version="0.15.8" />
     <PackageVersion Include="Microsoft.CodeAnalysis.BannedApiAnalyzers" Version="5.6.0" />
     <PackageVersion Include="Microsoft.Data.Sqlite" Version="10.0.11" />
     <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.9.0" />

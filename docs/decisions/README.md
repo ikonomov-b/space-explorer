@@ -17,17 +17,20 @@ File name: `NNNN-short-title.md`. Use [0000-template.md](0000-template.md). A re
 | [0006](0006-pack-identity-and-allocation.md) | 128-bit pack identifiers, one pack per generation run, normative terminology | Accepted |
 | [0007](0007-artifact-collision-substitution-and-campaign-salt.md) | Campaign branch in the world specification; per-artifact substitution on appearance collision | Accepted |
 | [0008](0008-random-stream-derivation.md) | Random stream derivation, rejection sampling, and build-time enforcement | Accepted; mixer clause superseded by [0021](0021-sha256-stream-derivation.md) |
-| [0009](0009-solution-layout.md) | Solution layout by assembly; authored content outside the Godot project | Accepted |
+| [0009](0009-solution-layout.md) | Solution layout by assembly; authored content outside the Godot project | Accepted; Benchmarks project superseded by [0024](0024-tests-comments-index-and-scaffolding-trimmed.md) |
 | [0010](0010-units-coordinates-and-region-bounds.md) | Units, coordinates, region bounds, and simulation tick | Accepted; region extent cap superseded by [0017](0017-region-extent-cap-and-storage-derivation.md) |
 | [0011](0011-requirements-single-source.md) | Requirements document as the single source for platform policy and provenance | Accepted |
 | [0012](0012-core-travel-model.md) | Core travel model: hub and spoke, two tiers with a snapping distance control, one guest | Accepted |
 | [0013](0013-host-simulates-hazards.md) | The host simulates hazards for every avatar | Accepted |
 | [0014](0014-tooling-and-licence.md) | Repository tooling aligned with the stack; licence deferred with an explicit notice | Accepted |
-| [0015](0015-greybox-prototype.md) | Disposable greybox expedition prototype in parallel with M0a | Accepted |
-| [0016](0016-platform-confirmed-and-toolchain-pinned.md) | Platform confirmed: Godot 4.7.2 .NET with C# on .NET 10; toolchain pinned; solution scaffolded | Accepted |
+| [0015](0015-greybox-prototype.md) | Disposable greybox expedition prototype in parallel with M0a | Accepted; no-gate clause superseded by [0022](0022-p0-gates-the-first-frozen-content-format.md) |
+| [0016](0016-platform-confirmed-and-toolchain-pinned.md) | Platform confirmed: Godot 4.7.2 .NET with C# on .NET 10; toolchain pinned; solution scaffolded | Accepted; code-style enforcement superseded by [0024](0024-tests-comments-index-and-scaffolding-trimmed.md) |
 | [0017](0017-region-extent-cap-and-storage-derivation.md) | Region extent cap reduced to 2,048 m; per-region storage derived from the constants | Accepted |
 | [0018](0018-data-root-region-encoding-and-save-integrity.md) | Data root, package layout, region encoding, and save integrity | Accepted |
 | [0019](0019-generator-version-1-frozen.md) | Generator version 1: mix construction, path grammar, and bounded sampling frozen | Accepted; mix construction superseded by [0021](0021-sha256-stream-derivation.md) |
 | [0020](0020-canonical-encoding-and-content-hash.md) | Canonical encoding format 1 and the SHA-256 content hash | Accepted |
 | [0021](0021-sha256-stream-derivation.md) | Generator version 2: SHA-256 stream derivation | Accepted |
+| [0022](0022-p0-gates-the-first-frozen-content-format.md) | The P0 exit record precedes the first frozen content format | Accepted |
+| [0023](0023-pcg32-is-a-sealed-class.md) | Pcg32 is a sealed class | Accepted |
+| [0024](0024-tests-comments-index-and-scaffolding-trimmed.md) | One test per frozen rule; comments point to decisions; generated index, Benchmarks project, and code-style flag removed | Accepted |
 <!-- generated:end decisions -->

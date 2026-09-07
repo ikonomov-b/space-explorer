@@ -4,26 +4,10 @@ using System.Security.Cryptography;
 namespace SpaceExplorer.Core.Shared;
 
 /// <summary>
-/// The SHA-256 hash of a record's canonical bytes, which is how this project identifies exact content:
-/// specifications, definitions, packages, and world manifests. Named as the content hash by the
-/// technical design (destination identity and determinism; primitive registry and composition).
+/// The SHA-256 hash of a record's canonical bytes, which is how this project identifies exact content
+/// (decision 0020). Rendered as lower-case hexadecimal, which is its file name under the data root
+/// (decision 0018). The default value is unset rather than the hash of anything.
 /// </summary>
-/// <remarks>
-/// <para>
-/// The hash covers the canonical byte string built by <see cref="CanonicalWriter"/> and nothing else.
-/// It never covers compressed bytes, so a compressor version or platform difference cannot change an
-/// identity (decision 0018), and never a runtime object hash, which varies per process.
-/// </para>
-/// <para>
-/// The rendered form is lower-case hexadecimal, which is the package file name
-/// <c>packs/&lt;pack-id&gt;/&lt;content-hash&gt;.bin</c> under the data root (decision 0018).
-/// </para>
-/// <para>
-/// The default value is unset rather than a hash of anything, since a struct cannot forbid its own
-/// default. <see cref="IsUnset"/> reports it, the writers reject it, and no stored or transmitted hash
-/// is ever unset.
-/// </para>
-/// </remarks>
 public readonly struct ContentHash : IEquatable<ContentHash>
 {
     /// <summary>The width of a SHA-256 hash.</summary>

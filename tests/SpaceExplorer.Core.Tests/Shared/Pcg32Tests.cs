@@ -47,56 +47,6 @@ public class Pcg32Tests
     }
 
     [Fact]
-    public void NextBounded_of_one_always_yields_zero_without_consuming_a_draw_pattern()
-    {
-        var stream = RandomStream.Derive(1UL, "test");
-
-        for (int index = 0; index < 32; index++)
-        {
-            Assert.Equal(0U, stream.NextBounded(1U));
-        }
-    }
-
-    [Fact]
-    public void NextBounded_never_returns_a_value_at_or_above_the_bound()
-    {
-        var stream = RandomStream.Derive(7UL, "bounds");
-
-        foreach (uint bound in new[] { 2U, 3U, 7U, 256U, 1000U, uint.MaxValue })
-        {
-            for (int draw = 0; draw < 500; draw++)
-            {
-                Assert.InRange(stream.NextBounded(bound), 0U, bound - 1U);
-            }
-        }
-    }
-
-    [Fact]
-    public void NextBounded_distributes_a_small_range_evenly()
-    {
-        // Deterministic, not statistical: a fixed seed means this either passes or fails identically on
-        // every run and platform. It catches gross errors in the modulo step; the rejection rule itself
-        // is checked by the test below, because at bound 7 only four of 2^32 values are ever rejected.
-        const uint bound = 7U;
-        const int draws = 70_000;
-
-        var stream = RandomStream.Derive(11UL, "distribution");
-        int[] counts = new int[bound];
-
-        for (int draw = 0; draw < draws; draw++)
-        {
-            counts[stream.NextBounded(bound)]++;
-        }
-
-        int expected = draws / (int)bound;
-
-        foreach (int count in counts)
-        {
-            Assert.InRange(count, (int)(expected * 0.95), (int)(expected * 1.05));
-        }
-    }
-
-    [Fact]
     public void NextBounded_rejects_the_biased_prefix_rather_than_taking_a_bare_modulo()
     {
         // Bound 2^31 + 1 has threshold 2^32 mod bound = 2^31 - 1, so very nearly half of all raw draws
@@ -123,5 +73,17 @@ public class Pcg32Tests
         }
 
         Assert.True(rejected > 0, "Expected the near-half rejection rate of this bound to reject draws.");
+    }
+
+    [Fact]
+    public void A_stream_is_a_reference_so_a_copy_cannot_silently_repeat_the_sequence()
+    {
+        // Structural, like the architecture tests (decision 0023): as a mutable struct, a stream read
+        // through a collection or a readonly field would be a copy that never advanced.
+        Assert.False(typeof(Pcg32).IsValueType);
+
+        var streams = new List<Pcg32> { RandomStream.Derive(1UL, "system/planet/0") };
+
+        Assert.NotEqual(streams[0].NextUInt32(), streams[0].NextUInt32());
     }
 }

@@ -1,15 +1,9 @@
 namespace SpaceExplorer.Core.Shared;
 
 /// <summary>
-/// The one lower-case hexadecimal rendering used by <see cref="ContentHash"/> and <see cref="PackId"/>,
-/// which reach the file system as directory and file names under the data root (decision 0018).
+/// The one lower-case hexadecimal rendering, with strict parsing, for <see cref="ContentHash"/> and
+/// <see cref="PackId"/>, which reach the file system as directory and file names (decision 0020).
 /// </summary>
-/// <remarks>
-/// Rendering is lower case and parsing rejects upper case, so one identity has exactly one name. A
-/// case-insensitive file system would otherwise treat two spellings of the same identity as one file
-/// and a case-sensitive one as two, which is the cross-platform path hazard the technical design
-/// requires be tested for (architecture and ownership).
-/// </remarks>
 internal static class Hex
 {
     /// <summary>Renders <paramref name="bytes"/> as lower-case hexadecimal.</summary>

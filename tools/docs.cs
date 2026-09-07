@@ -1,10 +1,12 @@
-// Documentation index generator and checker. Needs only the pinned .NET SDK (a file-based program).
+// Documentation checker and decision-table generator. Needs only the pinned .NET SDK (a file-based program).
 //
-//   dotnet run tools/docs.cs                 regenerate docs/index.md and the table in docs/decisions/README.md
-//   dotnet run tools/docs.cs -- --check      exit 1 when a generated block is stale or a link, anchor, or record rule is broken
+//   dotnet run tools/docs.cs                 regenerate the decision table in docs/decisions/README.md
+//   dotnet run tools/docs.cs -- --check      exit 1 when the table is stale or a link, anchor, or record rule is broken
 //   dotnet run tools/docs.cs -- --external   also verify that every cited external URL responds (network; not run in CI)
 //
-// Only Markdown files tracked by git are indexed, so a new document appears once it is committed.
+// Only Markdown files tracked by git are checked, so a new document counts once it is committed. A record that
+// supersedes several earlier clauses writes one "Supersedes ... of [decision NNNN]" sentence per clause, because
+// the pattern below captures the first target per sentence.
 
 using System.Diagnostics;
 using System.Text;
@@ -47,7 +49,7 @@ foreach (Doc doc in docs)
     }
 }
 
-// 2. Decision records: contiguous numbering, heading format, status, and at least one reference outside the indexes.
+// 2. Decision records: contiguous numbering, heading format, status, and at least one reference outside the decisions index.
 List<Doc> records = docs.Where(d => d.RecordNumber > 0).OrderBy(d => d.RecordNumber).ToList();
 for (int i = 0; i < records.Count; i++)
 {
@@ -69,7 +71,7 @@ foreach (Doc record in records)
     }
     if (!record.ReferencedFrom.Any(d => !IsIndex(d)))
     {
-        problems.Add($"{record.RelativePath}: not referenced from any document besides the indexes");
+        problems.Add($"{record.RelativePath}: not referenced from any document besides the decisions index");
     }
 }
 
@@ -105,12 +107,6 @@ foreach (Doc record in records)
     decisionsTable.AppendLine($"| [{record.RecordNumber:0000}]({record.FileName}) | {title} | {status} |");
 }
 
-StringBuilder index = new();
-AppendIndexTable(index, "Documents", docs.Where(d => d.RelativePath.StartsWith("docs/", StringComparison.Ordinal) && d.RecordNumber == 0 && d.RelativePath != "docs/index.md" && !d.FileName.StartsWith("0000-", StringComparison.Ordinal)));
-AppendIndexTable(index, "Decision records", records);
-AppendIndexTable(index, "Repository guides", docs.Where(d => !d.RelativePath.StartsWith("docs/", StringComparison.Ordinal)));
-
-UpdateBlock("docs/index.md", "docs-index", index.ToString());
 UpdateBlock("docs/decisions/README.md", "decisions", decisionsTable.ToString());
 
 // 4. External URLs, on request only.
@@ -181,34 +177,7 @@ void UpdateBlock(string relativePath, string name, string body)
     Console.WriteLine($"updated {relativePath}");
 }
 
-void AppendIndexTable(StringBuilder builder, string heading, IEnumerable<Doc> rows)
-{
-    builder.AppendLine($"### {heading}").AppendLine();
-    builder.AppendLine("| Document | Dated | Purpose | Referenced from |").AppendLine("| --- | --- | --- | --- |");
-    foreach (Doc doc in rows)
-    {
-        string references = string.Join(", ", doc.ReferencedFrom
-            .Where(r => !IsIndex(r))
-            .OrderBy(Label, StringComparer.Ordinal)
-            .Select(r => $"[{Label(r)}]({FromDocs(r)})"));
-        builder.AppendLine($"| [{doc.Title}]({FromDocs(doc)}) | {doc.Date} | {doc.Purpose} | {(references.Length == 0 ? "none" : references)} |");
-    }
-    builder.AppendLine();
-}
-
-static bool IsIndex(Doc doc) => doc.RelativePath is "docs/index.md" or "docs/decisions/README.md";
-
-static string Label(Doc doc)
-{
-    if (doc.RecordNumber > 0)
-    {
-        return doc.RecordNumber.ToString("0000");
-    }
-    string label = doc.RelativePath[..^3];
-    return label.StartsWith("docs/", StringComparison.Ordinal) ? label[5..] : label;
-}
-
-static string FromDocs(Doc doc) => Path.GetRelativePath("docs", doc.RelativePath).Replace('\\', '/');
+static bool IsIndex(Doc doc) => doc.RelativePath is "docs/decisions/README.md";
 
 static string Normalize(string root, string relativePath) =>
     Path.GetRelativePath(root, Path.GetFullPath(Path.Combine(root, relativePath))).Replace('\\', '/');
@@ -240,15 +209,13 @@ sealed record Link(string Raw, string Target, string Anchor, bool IsExternal);
 
 sealed class Doc
 {
-    private Doc(string relativePath, string title, int recordNumber, string headerLine, string status, string date, string purpose, HashSet<string> anchors, List<Link> links)
+    private Doc(string relativePath, string title, int recordNumber, string headerLine, string status, HashSet<string> anchors, List<Link> links)
     {
         RelativePath = relativePath;
         Title = title;
         RecordNumber = recordNumber;
         HeaderLine = headerLine;
         Status = status;
-        Date = date;
-        Purpose = purpose;
         Anchors = anchors;
         Links = links;
     }
@@ -259,8 +226,6 @@ sealed class Doc
     public int RecordNumber { get; }
     public string HeaderLine { get; }
     public string Status { get; }
-    public string Date { get; }
-    public string Purpose { get; }
     public IReadOnlySet<string> Anchors { get; }
     public IReadOnlyList<Link> Links { get; }
     public HashSet<Doc> ReferencedFrom { get; } = new();
@@ -311,49 +276,7 @@ sealed class Doc
         }
 
         Match status = Regex.Match(headerLine, @"Status:\s*(Proposed|Accepted|Superseded by \d{4})");
-        Match date = Regex.Match(text, @"(?:Reviewed|Updated|Assessment date:|Date:)\s+(\d{4}-\d{2}-\d{2})");
-        return new Doc(relativePath, title, recordNumber, headerLine, status.Success ? status.Groups[1].Value : "",
-            date.Success ? date.Groups[1].Value : "undated", ExtractPurpose(lines, recordNumber > 0), anchors, links);
-    }
-
-    private static string ExtractPurpose(string[] lines, bool isRecord)
-    {
-        int start = isRecord
-            ? Array.FindIndex(lines, l => l.StartsWith("## Context", StringComparison.Ordinal))
-            : Array.FindIndex(lines, l => l.StartsWith("# ", StringComparison.Ordinal));
-        List<string> paragraph = new();
-        for (int i = start + 1; i < lines.Length && start >= 0; i++)
-        {
-            string line = lines[i].Trim();
-            if (line.Length == 0)
-            {
-                if (paragraph.Count > 0)
-                {
-                    break;
-                }
-                continue;
-            }
-            if (line.StartsWith('#') || line.StartsWith('|') || line.StartsWith("<!--", StringComparison.Ordinal) || line.StartsWith("```", StringComparison.Ordinal))
-            {
-                if (paragraph.Count > 0)
-                {
-                    break;
-                }
-                continue;
-            }
-            paragraph.Add(line);
-        }
-        string prose = string.Join(" ", paragraph);
-        prose = Regex.Replace(prose, @"\[([^\]]*)\]\([^)]*\)", "$1").Replace("**", "").Replace("`", "");
-        prose = Regex.Replace(prose, @"^(?:Reviewed|Updated|Assessment date:|Date:)[^.]*\.\s*", "");
-        prose = Regex.Replace(prose, @"^Status:[^.]*\.\s*", "");
-        Match sentence = Regex.Match(prose, @"^(.+?\.)(?=\s+[A-Z0-9(]|$)");
-        string purpose = sentence.Success ? sentence.Groups[1].Value : prose;
-        if (purpose.Length > 220)
-        {
-            purpose = purpose[..217].TrimEnd() + "...";
-        }
-        return purpose.Replace("|", "\\|");
+        return new Doc(relativePath, title, recordNumber, headerLine, status.Success ? status.Groups[1].Value : "", anchors, links);
     }
 
     private static string Slug(string heading)

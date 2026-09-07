@@ -10,7 +10,6 @@ The tree is laid out by assembly as fixed in [decision 0009](../docs/decisions/0
 | `src/SpaceExplorer.Game/` | Godot 4.7.2 .NET project | `project.godot`, the `Main` scene with the exported-build smoke entry point, export presets for Linux and Windows Desktop, the rendering and ENet adapters, and runtime assets under `assets/`. |
 | `content/` | data | Authored templates, allocation ledgers, and numeric tables consumed without Godot. |
 | `tests/SpaceExplorer.Core.Tests/`, `tests/SpaceExplorer.Persistence.Tests/` | xUnit.net | Architecture tests that Core and Persistence never reference Godot, the native SQLite load test, the `Shared/` suite pinning the frozen random foundation and the canonical encoding against their published reference vectors, and later the two-process determinism test. |
-| `tests/SpaceExplorer.Benchmarks/` | BenchmarkDotNet | Core measurements; none yet. |
 | `tests/SpaceExplorer.Game.Smoke/` | scripts | `smoke.sh` and `smoke.ps1` export the game and run the exported build's smoke check on Linux and Windows. |
 
 ## Toolchain
@@ -43,13 +42,12 @@ The game and the command-line tool write player data to the data root of [decisi
 From the repository root:
 
 ```sh
-dotnet build                                          # all seven projects; warnings are errors
+dotnet build                                          # all six projects; warnings are errors
 dotnet test                                           # architecture and native-library tests
 dotnet run --project src/SpaceExplorer.Cli -- diagnostics
 godot --path src/SpaceExplorer.Game --editor          # open the game project in the editor
 tests/SpaceExplorer.Game.Smoke/smoke.sh               # export the Linux build and run its smoke check
-dotnet run tools/docs.cs -- --check                   # verify links, anchors, decision numbering, generated indexes
-dotnet run --project tests/SpaceExplorer.Benchmarks -c Release -- --filter '*'
+dotnet run tools/docs.cs -- --check                   # verify links, anchors, decision numbering, the generated decision table
 ```
 
 On Windows, `powershell -ExecutionPolicy Bypass -File tests\SpaceExplorer.Game.Smoke\smoke.ps1` replaces the shell script. Continuous integration (`.github/workflows/ci.yml`) runs restore, build, and test on Ubuntu and Windows for every push to `main` and every pull request.

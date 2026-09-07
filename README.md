@@ -18,6 +18,5 @@ The scaffold and the core's deterministic random foundation are in place; there 
 - [Design review](docs/review.md): foundational decisions that would be costly to reverse, gaps, inconsistencies, proposed solutions, and their status.
 - [Glossary](docs/glossary.md): terms used across the documents.
 - [Decision records](docs/decisions/README.md): accepted decisions, one record each.
-- [Document index](docs/index.md): generated map of every tracked document with its date, purpose, and the documents that reference it; regenerated with `dotnet run tools/docs.cs`.
 
 Assessment date: 2026-09-07. Added design defaults are proposals for a prototype, not implemented features or validated market demand. Licence: all rights reserved until decided; see [LICENSE](LICENSE).

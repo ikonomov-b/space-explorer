@@ -3,43 +3,14 @@ using System.Buffers.Binary;
 namespace SpaceExplorer.Core.Shared;
 
 /// <summary>
-/// Derives an independent <see cref="Pcg32"/> stream for a stable path within a world, which is how
-/// every authoritative random draw in the core obtains its generator (decision 0008).
+/// Derives an independent <see cref="Pcg32"/> stream for a stable path within a world: SHA-256 over a
+/// canonical <c>random-stream/2</c> record of the seed and the path, the first eight digest bytes as the
+/// state and the next eight, shifted and forced odd, as the increment (decision 0021). Every
+/// authoritative draw in the core obtains its generator this way (decision 0008).
 /// </summary>
-/// <remarks>
-/// <para>The derivation, frozen under <see cref="GeneratorVersion"/> (decision 0021):</para>
-/// <code>
-/// bytes     = canonical(domain "random-stream/2", world_seed as u64, utf8(path) as a byte string)
-/// h         = sha256(bytes)
-/// state0    = little-endian u64 of h[0..8]
-/// increment = (little-endian u64 of h[8..16] &lt;&lt; 1) | 1
-/// </code>
-/// <para>
-/// The mixing function is SHA-256, the same primitive <see cref="ContentHash"/> uses, so the core
-/// freezes one externally published hash rather than a published finalizer wrapped in a construction
-/// of this project's own. The bytes it consumes come from <see cref="CanonicalWriter"/>, so the seed's
-/// byte order and the framing between the seed and the path are the frozen ones and nothing here
-/// re-decides them: the length prefix on the path is what keeps a seed and path pair from colliding
-/// with a different pair whose bytes concatenate the same way.
-/// </para>
-/// <para>
-/// Both halves come from the digest. Deriving only the increment from the path and sharing one state
-/// across siblings would leave those streams correlated, because PCG32 streams over a shared state are
-/// not independent; that failure is the reason this type exists rather than a bare
-/// <see cref="Pcg32.FromState"/> call at each use site.
-/// </para>
-/// <para>
-/// Because a stream is addressed by its path, adding an optional detail to one artifact cannot consume
-/// randomness that another artifact would have drawn: the second artifact's stream is a function of its
-/// own path, not of how much of the first was consumed.
-/// </para>
-/// </remarks>
 public static class RandomStream
 {
-    /// <summary>
-    /// The domain label of the hashed record. It carries the generator version that froze this
-    /// derivation, so a later construction takes its own label and cannot collide with this one.
-    /// </summary>
+    /// <summary>The domain label of the hashed record; it carries the generator version that froze this derivation.</summary>
     private const string Domain = "random-stream/2";
 
     /// <summary>Derives the stream for <paramref name="path"/> within the world identified by <paramref name="worldSeed"/>.</summary>
@@ -51,10 +22,7 @@ public static class RandomStream
         return Pcg32.FromState(state, increment);
     }
 
-    /// <summary>
-    /// The two halves <see cref="Derive"/> assigns, exposed so the frozen vectors can assert them
-    /// directly rather than only through the draws they produce.
-    /// </summary>
+    /// <summary>The two halves <see cref="Derive"/> assigns, exposed so the frozen vectors can assert them directly.</summary>
     internal static (ulong State, ulong Increment) DeriveParts(ulong worldSeed, string path)
     {
         var writer = new CanonicalWriter(Domain);

@@ -1,55 +1,22 @@
 namespace SpaceExplorer.Core.Shared;
 
 /// <summary>
-/// Builds the canonical byte string of a record, which is what <see cref="ContentHash"/> hashes and
-/// what identity-bearing storage holds. The technical design requires "canonical binary encodings and
-/// a specified content hash such as SHA-256, not runtime object hashes" (destination identity and
-/// determinism), and "explicit little-endian fields, lengths, and integrity checks" for packed vectors
-/// (primitive sets and compact references).
+/// Builds the canonical byte string of a record: the format version, the domain label, then the fields in
+/// their declared order. The encoding rules are frozen under <see cref="FormatVersion"/> by decision 0020,
+/// and <see cref="ContentHash"/> hashes exactly these bytes. Field order and collection ordering are the
+/// caller's responsibility; the writer exposes no floating-point operation.
 /// </summary>
-/// <remarks>
-/// <para>
-/// The encoding is frozen under <see cref="FormatVersion"/>, which is a separate axis from
-/// <see cref="GeneratorVersion"/>: save format, generator, and content versions are independent
-/// (technical design, persistence and compatibility). A change to any rule below is a format-version
-/// increment, because it changes the hash of records whose bytes have not changed.
-/// </para>
-/// <para>The frozen rules:</para>
-/// <list type="number">
-///   <item>Every byte string opens with <see cref="FormatVersion"/> as one byte, then the domain label
-///   as length-prefixed bytes. The domain separates roles, so the same field values encoded as two
-///   different kinds of record can never produce the same hash.</item>
-///   <item>Fixed-width integers are little-endian two's complement, assembled bytewise. Host byte order
-///   is unreachable from this code.</item>
-///   <item>Variable-width integers are LEB128, and signed ones are zig-zag encoded first, so the
-///   encoding of a small negative number is short.</item>
-///   <item>Byte strings and text carry a variable-width length prefix, so concatenated fields cannot be
-///   reinterpreted: <c>("a", "b")</c> and <c>("ab", "")</c> encode differently.</item>
-///   <item>Text admits only the <see cref="StreamPath"/> character set. No admitted byte has a second
-///   Unicode normalisation form, a case-folding rule, or a locale-dependent reading, so no hashed text
-///   can vary between machines. Human-readable names are metadata and are never encoded here
-///   (decision 0006).</item>
-///   <item>There is no floating-point method, as on <see cref="Pcg32"/>. Authoritative quantities are
-///   integers or fixed-point (decision 0010), and a float would make a hash depend on rounding.</item>
-/// </list>
-/// <para>
-/// Two rules the caller owns, because no encoder can enforce them: fields are written in a fixed
-/// declared order, and a collection is sorted into a defined order before it is written. Hashing an
-/// unordered iteration would make identity depend on runtime layout, which decision 0008 forbids.
-/// </para>
-/// </remarks>
 public sealed class CanonicalWriter
 {
-    /// <summary>The encoding version this build produces and validates.</summary>
+    /// <summary>The encoding version this build produces and validates (decision 0020).</summary>
     public const byte FormatVersion = 1;
 
     private readonly List<byte> _bytes = [];
 
     /// <summary>Opens a byte string for the record kind named by <paramref name="domain"/>.</summary>
     /// <param name="domain">
-    /// A stable label for the kind of record being encoded, such as <c>set-specification</c>. It is in
-    /// <see cref="StreamPath"/> canonical form, so a versioned label such as <c>set-specification/1</c>
-    /// is admitted.
+    /// A stable label for the kind of record being encoded, in <see cref="StreamPath"/> canonical form, such
+    /// as <c>set-specification/1</c>.
     /// </param>
     /// <exception cref="ArgumentException"><paramref name="domain"/> is not in canonical form.</exception>
     public CanonicalWriter(string domain)
@@ -93,17 +60,10 @@ public sealed class CanonicalWriter
         _bytes.Add((byte)remaining);
     }
 
-    /// <summary>
-    /// Writes a signed value as a zig-zag encoded LEB128 value, mapping 0, -1, 1, -2 to 0, 1, 2, 3, so
-    /// that a small magnitude of either sign costs one byte.
-    /// </summary>
+    /// <summary>Writes a signed value as zig-zag encoded LEB128, mapping 0, -1, 1, -2 to 0, 1, 2, 3.</summary>
     public void WriteVarInt(long value) => WriteVarUInt(unchecked((ulong)((value << 1) ^ (value >> 63))));
 
-    /// <summary>
-    /// Writes the length of a sequence, before its elements. Distinct from
-    /// <see cref="WriteVarUInt(ulong)"/> so that a count is range-checked at the point it is written,
-    /// as the technical design requires of lengths before allocation.
-    /// </summary>
+    /// <summary>Writes the length of a sequence before its elements, rejecting a negative count.</summary>
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="count"/> is negative.</exception>
     public void WriteCount(int count)
     {
@@ -118,10 +78,7 @@ public sealed class CanonicalWriter
         _bytes.AddRange(value);
     }
 
-    /// <summary>
-    /// Writes a length prefix followed by the bytes of <paramref name="value"/>, which admits only the
-    /// <see cref="StreamPath"/> character set and may be empty.
-    /// </summary>
+    /// <summary>Writes a length prefix followed by the bytes of <paramref name="value"/>, which admits only the <see cref="StreamPath"/> character set and may be empty.</summary>
     /// <exception cref="ArgumentNullException"><paramref name="value"/> is null.</exception>
     /// <exception cref="ArgumentException"><paramref name="value"/> holds a character outside the permitted set.</exception>
     public void WriteText(string value)

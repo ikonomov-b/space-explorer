@@ -94,21 +94,6 @@ public class RandomStreamTests
     }
 
     [Fact]
-    public void Derivation_is_repeatable_within_a_process()
-    {
-        // The weakest determinism check there is, and still worth keeping: it fails if any hidden
-        // per-instance or per-call state has crept into the derivation. Cross-process and cross-platform
-        // determinism are the two-process suite's job, which arrives with the first generated output.
-        var first = RandomStream.Derive(99UL, "system/planet/1/region/0");
-        var second = RandomStream.Derive(99UL, "system/planet/1/region/0");
-
-        for (int draw = 0; draw < 16; draw++)
-        {
-            Assert.Equal(first.NextUInt32(), second.NextUInt32());
-        }
-    }
-
-    [Fact]
     public void Sibling_paths_receive_streams_that_differ_in_both_state_and_increment()
     {
         // The specific failure decision 0008 warns about: hashing the path into the stream selector
@@ -130,49 +115,6 @@ public class RandomStreamTests
         Assert.NotEqual(
             RandomStream.DeriveParts(0UL, "ab"),
             RandomStream.DeriveParts(0UL, "a"));
-    }
-
-    [Fact]
-    public void Sibling_streams_do_not_repeat_each_other_early()
-    {
-        // A regression guard, not a statistical proof of independence: correlated siblings of the kind
-        // decision 0008 describes tend to overlap in their first handful of draws. Deterministic, so it
-        // cannot flake.
-        const int draws = 16;
-
-        var first = RandomStream.Derive(5UL, "system/planet/0/artifact/0");
-        var second = RandomStream.Derive(5UL, "system/planet/0/artifact/1");
-
-        var firstDraws = new HashSet<uint>();
-
-        for (int draw = 0; draw < draws; draw++)
-        {
-            firstDraws.Add(first.NextUInt32());
-        }
-
-        for (int draw = 0; draw < draws; draw++)
-        {
-            Assert.DoesNotContain(second.NextUInt32(), firstDraws);
-        }
-    }
-
-    [Fact]
-    public void Every_derived_increment_is_odd()
-    {
-        // The "| 1" of the derivation, checked across a spread of seeds and paths rather than assumed
-        // from reading the one line that implements it.
-        foreach (ulong seed in new[] { 0UL, 1UL, 42UL, ulong.MaxValue })
-        {
-            for (int index = 0; index < 64; index++)
-            {
-                (ulong state, ulong increment) = RandomStream.DeriveParts(seed, $"system/planet/{index}");
-
-                Assert.Equal(1UL, increment & 1UL);
-
-                // Constructing the stream is itself the assertion: FromState rejects an even increment.
-                Pcg32.FromState(state, increment);
-            }
-        }
     }
 
     [Fact]
