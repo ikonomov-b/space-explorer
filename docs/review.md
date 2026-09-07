@@ -43,7 +43,7 @@ The nineteen findings of the documentation stage were cleared on 2026-09-07; the
 | 33 | [The generator implementation a regenerate primitive pins has no identity](#33-the-generator-implementation-a-regenerate-primitive-pins-has-no-identity) | Gap | Cleared, [decision 0035](decisions/0035-category-registry-record-and-generator-revision-identifiers.md) |
 | 34 | [The category registry has no home, no revision identity, and no stated role in decoding](#34-the-category-registry-has-no-home-no-revision-identity-and-no-stated-role-in-decoding) | Gap | Cleared, [decision 0035](decisions/0035-category-registry-record-and-generator-revision-identifiers.md) |
 | 35 | [Two set manifests can install under one pack identifier](#35-two-set-manifests-can-install-under-one-pack-identifier) | Gap | Cleared, [decision 0039](decisions/0039-one-manifest-per-pack-identifier.md) |
-| 36 | [The shared content-addressed stores have no reference index and no deletion rule](#36-the-shared-content-addressed-stores-have-no-reference-index-and-no-deletion-rule) | Gap | Open |
+| 36 | [The shared content-addressed stores have no reference index and no deletion rule](#36-the-shared-content-addressed-stores-have-no-reference-index-and-no-deletion-rule) | Gap | Cleared, [decision 0040](decisions/0040-reference-index-and-deletion-sweep.md) |
 | 37 | [One transform type cannot span the frame hierarchy](#37-one-transform-type-cannot-span-the-frame-hierarchy) | Foundational | Cleared, [decision 0036](decisions/0036-frames-and-transforms-typed-by-connector-kind.md) |
 | 38 | [Planet-level fields have no spherical form and the flat region bounds the explorable body radius](#38-planet-level-fields-have-no-spherical-form-and-the-flat-region-bounds-the-explorable-body-radius) | Foundational | Open |
 | 39 | [Nothing is defined beyond the region edge](#39-nothing-is-defined-beyond-the-region-edge) | Gap | Open |
@@ -481,7 +481,7 @@ Affects: the `packs/` and `blobs/` entries under [storage location and layout](t
 
 **Proposed solution.** A data-root-level reference index, maintained inside the publish-last step of the same protocol that installs a package, recording every campaign, world, export, and backup that depends on each package or blob. Deletion is an explicit user-confirmed sweep of zero-reference content and never runs implicitly. Durability gains "remove a campaign that shares packs with another; the survivor still loads", and Resource-use gains "unreferenced content is reported, not deleted, until confirmed".
 
-**Status:** Open.
+**Status:** Cleared 2026-09-07 by [decision 0040](decisions/0040-reference-index-and-deletion-sweep.md). Applied to the technical design, development plan, and glossary.
 
 ## Findings raised by the planetary-model sufficiency check
 
