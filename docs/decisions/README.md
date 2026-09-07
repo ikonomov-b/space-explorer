@@ -39,6 +39,7 @@ File name: `NNNN-short-title.md`. Use [0000-template.md](0000-template.md). A re
 | [0028](0028-in-memory-transport-command-and-handshake-contract.md) | The in-memory transport, command journal, and join handshake contract | Accepted |
 | [0029](0029-primitive-identity-handle-and-cross-package-set-operations-contract.md) | Primitive identity, handle, and cross-package set operations contract | Accepted; revision-blind exact-reference contract superseded by [0031](0031-primitive-complete-composition-and-storage.md) |
 | [0030](0030-m0a-criterion-1-proceeds-before-the-p0-exit-record.md) | M0a criterion 1 proceeds before the P0 exit record | Accepted |
-| [0031](0031-primitive-complete-composition-and-storage.md) | Primitive-complete composition and adaptive storage | Accepted |
+| [0031](0031-primitive-complete-composition-and-storage.md) | Primitive-complete composition and adaptive storage | Accepted; definition-revision clause superseded by [0033](0033-generated-definitions-have-one-revision.md) |
 | [0032](0032-astronomically-consistent-surface-sky.md) | Astronomically consistent surface sky | Accepted |
+| [0033](0033-generated-definitions-have-one-revision.md) | A generated definition has one revision for life; revisions belong to authored template packs | Accepted |
 <!-- generated:end decisions -->

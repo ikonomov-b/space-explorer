@@ -38,7 +38,7 @@ The nineteen findings of the documentation stage were cleared on 2026-09-07; the
 | 28 | [Biome rule sets and recovery challenges are undefined content](#28-biome-rule-sets-and-recovery-challenges-are-undefined-content) | Gap | Cleared, [decision 0026](decisions/0026-biome-rule-sets-and-recovery-challenges-are-template-vocabularies.md) |
 | 29 | [The in-memory transport, commands, and handshake are untimed for M0a](#29-the-in-memory-transport-commands-and-handshake-are-untimed-for-m0a) | Gap | Cleared, [decision 0027](decisions/0027-in-memory-transport-commands-and-handshake-at-m0a.md) |
 | 30 | [Surface sky is decorative rather than astronomically derived](#30-surface-sky-is-decorative-rather-than-astronomically-derived) | Gap | Cleared, [decision 0032](decisions/0032-astronomically-consistent-surface-sky.md) |
-| 31 | [A generated definition can never receive a second revision](#31-a-generated-definition-can-never-receive-a-second-revision) | Inconsistency | Open |
+| 31 | [A generated definition can never receive a second revision](#31-a-generated-definition-can-never-receive-a-second-revision) | Inconsistency | Cleared, [decision 0033](decisions/0033-generated-definitions-have-one-revision.md) |
 | 32 | [The storage policy sits inside the hashed definition that M0b's measurement will change](#32-the-storage-policy-sits-inside-the-hashed-definition-that-m0bs-measurement-will-change) | Foundational | Open |
 | 33 | [The generator implementation a regenerate primitive pins has no identity](#33-the-generator-implementation-a-regenerate-primitive-pins-has-no-identity) | Gap | Open |
 | 34 | [The category registry has no home, no revision identity, and no stated role in decoding](#34-the-category-registry-has-no-home-no-revision-identity-and-no-stated-role-in-decoding) | Gap | Open |
@@ -431,7 +431,7 @@ Affects: [decision 0031](decisions/0031-primitive-complete-composition-and-stora
 
 **Proposed solution.** Choose one reading and record it. Either revisions are a property of authored template packs only: a generated definition's hash is fixed for life, exact references keep the hash as a cross-machine check that reproduction matched rather than as a disambiguator, a reference table rejects two entries with one `PrimitiveId`, and the Compatibility check becomes "publish a new set from revised templates; the old world keeps its old pack". Or generated packs gain revisions: a re-publication keeps its `pack_id`, records the manifest it supersedes, and needs the ledger-like record decision 0006 says generated packs do not have. The first trims rather than scaffolds ([decision 0024](decisions/0024-tests-comments-index-and-scaffolding-trimmed.md)) and is recommended.
 
-**Status:** Open.
+**Status:** Cleared 2026-09-07 by [decision 0033](decisions/0033-generated-definitions-have-one-revision.md), taking the first reading. Applied to the technical design, development plan, and glossary.
 
 ### 32. The storage policy sits inside the hashed definition that M0b's measurement will change
 
