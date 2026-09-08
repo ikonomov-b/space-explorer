@@ -15,7 +15,7 @@ public sealed class GenerationException(string message) : Exception(message);
 public static class SetGenerator
 {
     /// <summary>The composition grammar version this generator implements; pinned by every specification and manifest.</summary>
-    public const uint GrammarVersion = 1;
+    public const uint GrammarVersion = CompositionGrammar.CurrentVersion;
 
     /// <summary>Generates the set <paramref name="specification"/> describes from <paramref name="vocabulary"/> under <paramref name="registry"/>.</summary>
     /// <exception cref="ArgumentException">The specification does not pin this registry, vocabulary, generator, or grammar.</exception>

@@ -14,10 +14,14 @@ try
         [] or ["--help" or "-h"] => Usage(),
         ["diagnostics"] => Diagnostics(),
         ["registry"] => Registry(),
+        ["grammar"] => Grammar(),
         ["generate-set", .. string[] rest] => GenerateSet(rest),
         ["list", .. string[] rest] => List(rest),
         ["inspect", string pack, .. string[] rest] => Inspect(pack, rest),
         ["validate", string pack, .. string[] rest] => Validate(pack, rest),
+        ["compose", .. string[] rest] => Compose(rest),
+        ["inspect-graph", string pack, .. string[] rest] => InspectGraph(pack, rest),
+        ["validate-graph", string pack, .. string[] rest] => ValidateGraph(pack, rest),
         _ => Unknown(args[0]),
     };
 }
@@ -34,11 +38,16 @@ static int Usage()
     Console.WriteLine("Commands:");
     Console.WriteLine("  diagnostics                         Print runtime, platform, and SQLite library versions.");
     Console.WriteLine("  registry                            Print every supported category registry revision, hash, and categories.");
+    Console.WriteLine("  grammar                             Print the composition grammar version, hash, bounds, and rules.");
     Console.WriteLine("  generate-set --vocabulary <json> --seed <n> [--retries <n>] [--data-root <dir>]");
     Console.WriteLine("                                      Generate a set from an authored vocabulary and publish it.");
     Console.WriteLine("  list [--data-root <dir>]            List published packs.");
     Console.WriteLine("  inspect <pack-id> [--data-root <dir>]   Load a pack without generating and print its definitions.");
     Console.WriteLine("  validate <pack-id> [--data-root <dir>]  Load and verify a pack; exit 0 when it is intact.");
+    Console.WriteLine("  compose --set <pack-id> --domain <name> --seed <n> [--data-root <dir>]");
+    Console.WriteLine("                                      Compose a graph from a published set and publish it.");
+    Console.WriteLine("  inspect-graph <pack-id> [--data-root <dir>]  Load a graph without composing and print its instances.");
+    Console.WriteLine("  validate-graph <pack-id> [--data-root <dir>] Load and verify a graph; exit 0 when it is intact.");
     return 0;
 }
 
@@ -63,6 +72,108 @@ static int Registry()
         }
     }
 
+    return 0;
+}
+
+static int Grammar()
+{
+    CompositionGrammar grammar = CompositionGrammarVersion1.Grammar;
+    CategoryRegistry registry = CategoryRegistries.Supported.Find(grammar.RegistryRevision);
+    Console.WriteLine($"version  {grammar.Version}");
+    Console.WriteLine($"hash     {grammar.Hash}");
+    Console.WriteLine($"domain   {registry.GrammarDomain(grammar.Version)}");
+    Console.WriteLine($"bounds   depth {grammar.MaxDepth}; instances {grammar.MaxNodes}; retries {grammar.RetryBudget}");
+    foreach (RootRule root in grammar.Roots)
+    {
+        Console.WriteLine($"  root {CompositionDomains.Label(root.Domain),-14} {Choices(root.Choices, registry)}");
+    }
+
+    foreach (Production production in grammar.Productions)
+    {
+        CategoryDefinition category = registry.Find(production.Category);
+        Console.WriteLine($"  {category.Label,-18} needs depth {grammar.RequiredDepth(production.Category)}, {grammar.RequiredNodes(production.Category)} instances");
+        for (int index = 0; index < production.ConnectorRules.Count; index++)
+        {
+            ConnectorRule rule = production.ConnectorRules[index];
+            Console.WriteLine($"    {category.Connectors[index].Label,-16} [{rule.MinCount}, {rule.MaxCount}] {rule.Transform.Kind} {Choices(rule.Choices, registry)}");
+        }
+    }
+
+    return 0;
+}
+
+static string Choices(IReadOnlyList<CategoryChoice> choices, CategoryRegistry registry) =>
+    string.Join(", ", choices.Select(choice => $"{registry.Find(choice.Category).Label} x{choice.Weight}"));
+
+static int Compose(string[] options)
+{
+    PackId set = PackId.Parse(Option(options, "--set") ?? throw new ArgumentException("compose needs --set <pack-id>."));
+    string domainText = Option(options, "--domain") ?? throw new ArgumentException($"compose needs --domain <{string.Join("|", CompositionDomains.Labels)}>.");
+    CompositionDomain domain = CompositionDomains.TryParse(domainText) ?? throw new ArgumentException($"'{domainText}' is not a composition domain; one of {string.Join(", ", CompositionDomains.Labels)}.");
+    ulong seed = ulong.Parse(Option(options, "--seed") ?? throw new ArgumentException("compose needs --seed <n>."), System.Globalization.CultureInfo.InvariantCulture);
+
+    DataRoot root = Root(options);
+    CompositionGrammar grammar = CompositionGrammarVersion1.Grammar;
+    PrimitiveSet source = SetLoader.Load(root, set, CategoryRegistries.Supported);
+    CategoryRegistry registry = CategoryRegistries.Supported.Find(source.Manifest.RegistryRevision);
+
+    GraphSpecification specification = GraphSpecification.Create(
+        registry.Revision, registry.Hash, GeneratorVersion.Current, grammar.Version, grammar.Hash, seed, source.Manifest.Pack, source.Manifest.Hash, domain);
+    CompositionGraph graph = CompositionGenerator.Generate(specification, source, grammar, registry);
+    GraphPublishResult result = GraphPublisher.Publish(root, graph);
+
+    Console.WriteLine($"data-root     {root.Path}");
+    Console.WriteLine($"set           {source.Manifest.Pack} {source.Manifest.Hash}");
+    Console.WriteLine($"grammar       {grammar.Version} {grammar.Hash}");
+    Console.WriteLine($"specification {specification.Hash}");
+    Console.WriteLine($"pack          {result.Pack}");
+    Console.WriteLine($"graph         {result.GraphHash}");
+    Console.WriteLine($"instances     {graph.NodeCount} in domain {domainText}, depth {graph.Depth}");
+    Console.WriteLine(result.AlreadyPublished ? "status        already published; nothing written" : $"status        published; {result.RecordsWritten} record written");
+    return 0;
+}
+
+static int InspectGraph(string packText, string[] options)
+{
+    CompositionGraph graph = GraphLoader.Load(Root(options), PackId.Parse(packText), CategoryRegistries.Supported, CompositionGrammarVersion1.Grammar);
+    CategoryRegistry registry = CategoryRegistries.Supported.Find(graph.Specification.RegistryRevision);
+
+    Console.WriteLine($"pack          {graph.Pack}");
+    Console.WriteLine($"graph         {graph.Hash}");
+    Console.WriteLine($"specification {graph.Specification.Hash}");
+    Console.WriteLine($"set           {graph.Specification.SourcePack} {graph.Specification.SourceManifestHash}");
+    Console.WriteLine($"registry      {graph.Specification.RegistryRevision} {graph.Specification.RegistryHash}");
+    Console.WriteLine($"grammar       {graph.Specification.GrammarVersion} {graph.Specification.GrammarHash}");
+    Console.WriteLine($"seed          {graph.Specification.Seed}; instances {graph.NodeCount}; depth {graph.Depth}");
+    foreach (GraphNode node in graph.Nodes)
+    {
+        CategoryDefinition category = registry.Find(node.Definition.Category);
+        string indent = new(' ', 2 * (int)node.Depth);
+        Console.WriteLine($"  {indent}{node.Path} {category.Label} #{node.Definition.Id.LocalId}{Attachment(node)}");
+    }
+
+    return 0;
+}
+
+static string Attachment(GraphNode node)
+{
+    if (node.Transform is not { } transform)
+    {
+        return string.Empty;
+    }
+
+    IReadOnlyList<TransformComponent> schema = TransformSchema.For(transform.Kind);
+    IEnumerable<string> shown = schema
+        .Select((component, index) => (component.Label, Value: transform.Components[index]))
+        .Where(pair => pair.Value != 0)
+        .Select(pair => $"{pair.Label}={pair.Value}");
+    return $" [{transform.Kind}: {string.Join(", ", shown)}]";
+}
+
+static int ValidateGraph(string packText, string[] options)
+{
+    CompositionGraph graph = GraphLoader.Load(Root(options), PackId.Parse(packText), CategoryRegistries.Supported, CompositionGrammarVersion1.Grammar);
+    Console.WriteLine($"OK graph {graph.Pack}: {graph.NodeCount} instances verified against the record hash, the pinned set, the registry, and the connector rules.");
     return 0;
 }
 
@@ -94,7 +205,12 @@ static int List(string[] options)
     DataRoot root = Root(options);
     foreach ((PackId pack, ContentHash manifest, int count) in SetLoader.List(root))
     {
-        Console.WriteLine($"{pack} manifest {manifest} definitions {count}");
+        Console.WriteLine($"set   {pack} manifest {manifest} definitions {count}");
+    }
+
+    foreach (GraphEntry entry in GraphLoader.List(root))
+    {
+        Console.WriteLine($"graph {entry.Pack} record   {entry.GraphHash} instances {entry.NodeCount} domain {CompositionDomains.Label(entry.Domain)} set {entry.SourcePack}");
     }
 
     return 0;

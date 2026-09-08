@@ -44,6 +44,12 @@ public sealed class CategoryRegistry
     /// <summary>The domain label a template-vocabulary record laid out under this revision carries.</summary>
     public string VocabularyDomain => $"template-vocabulary/1/registry/{Revision}";
 
+    /// <summary>The domain label a composition-grammar record of <paramref name="grammarVersion"/> laid out under this revision carries.</summary>
+    public string GrammarDomain(uint grammarVersion) => $"composition-grammar/{grammarVersion}/registry/{Revision}";
+
+    /// <summary>The domain label a composition-graph record laid out under this revision carries.</summary>
+    public string GraphDomain => $"composition-graph/1/registry/{Revision}";
+
     /// <summary>The canonical bytes of this record.</summary>
     public byte[] Bytes => [.. _encoded.Value.Bytes];
 

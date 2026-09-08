@@ -14,7 +14,7 @@
       "parameters": { "shape": ["sphere", "box", "cylinder", "capsule", "cone", "torus"], "size": [1311, 32768], "segments": [6, 32], "displacement": [0, 1311] } },
     { "id": 6, "label": "solid-part", "category": "artifact-part",
       "parameters": { "mass": [50, 20000] },
-      "connectors": { "attach": { "provides": ["socket"], "requires": ["plug"] } } },
+      "connectors": { "attach": { "provides": ["plug"], "requires": ["plug"] } } },
     { "id": 7, "label": "found-artifact", "category": "artifact",
       "parameters": { "family": ["mineral", "biological", "relic"], "tier": [1, 2] } },
     { "id": 8, "label": "main-sequence-star", "category": "star",

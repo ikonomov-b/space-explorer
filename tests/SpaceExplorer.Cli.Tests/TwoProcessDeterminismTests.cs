@@ -4,12 +4,12 @@ using Xunit;
 namespace SpaceExplorer.Cli.Tests;
 
 /// <summary>
-/// The two-process clause of the Determinism check in the development plan: one specification is
-/// generated and published by two separate operating-system processes, into two separate data roots,
-/// and every byte they write must agree. A shared process, a shared static, or a warm cache cannot
-/// account for the result (decisions 0008, 0020, 0042).
+/// The two-process clause of the Determinism check in the development plan: one set specification and
+/// one graph specification are generated and published by separate operating-system processes, into
+/// separate data roots, and every byte they write must agree. A shared process, a shared static, or a
+/// warm cache cannot account for the result (decisions 0008, 0020, 0042, 0047).
 /// </summary>
-public sealed class GenerateSetProcessTests : IDisposable
+public sealed class TwoProcessDeterminismTests : IDisposable
 {
     private const string Seed = "42";
 
@@ -56,6 +56,24 @@ public sealed class GenerateSetProcessTests : IDisposable
     }
 
     [Fact]
+    public void Two_processes_compose_and_publish_the_same_graph_from_the_same_set()
+    {
+        Dictionary<string, string> first = GenerateSet("first");
+        Dictionary<string, string> second = GenerateSet("second");
+
+        Dictionary<string, string> composedFirst = Compose("first", first["pack"]);
+        Dictionary<string, string> composedSecond = Compose("second", second["pack"]);
+
+        Assert.Equal(composedFirst["grammar"], composedSecond["grammar"]);
+        Assert.Equal(composedFirst["pack"], composedSecond["pack"]);
+        Assert.Equal(composedFirst["graph"], composedSecond["graph"]);
+        Assert.Equal(composedFirst["instances"], composedSecond["instances"]);
+        Assert.Equal(
+            File.ReadAllBytes(Records("first", composedFirst["pack"]).Single()),
+            File.ReadAllBytes(Records("second", composedSecond["pack"]).Single()));
+    }
+
+    [Fact]
     public void A_different_seed_yields_a_different_pack_across_processes()
     {
         Dictionary<string, string> first = GenerateSet("first");
@@ -65,15 +83,17 @@ public sealed class GenerateSetProcessTests : IDisposable
         Assert.NotEqual(first["manifest"], second["manifest"]);
     }
 
-    private Dictionary<string, string> GenerateSet(string root, string seed = Seed)
-    {
-        string output = Run(["generate-set", "--vocabulary", Vocabulary, "--seed", seed, "--data-root", Root(root)]);
+    private Dictionary<string, string> GenerateSet(string root, string seed = Seed) =>
+        Fields(Run(["generate-set", "--vocabulary", Vocabulary, "--seed", seed, "--data-root", Root(root)]));
 
-        // Each line is a name padded to a column and then its value.
-        return output.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+    /// <summary>Each printed line is a name padded to a column and then its value.</summary>
+    private static Dictionary<string, string> Fields(string output) =>
+        output.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
             .Select(line => line.Split(' ', 2, StringSplitOptions.TrimEntries))
             .ToDictionary(parts => parts[0], parts => parts.Length > 1 ? parts[1] : string.Empty, StringComparer.Ordinal);
-    }
+
+    private Dictionary<string, string> Compose(string root, string set) =>
+        Fields(Run(["compose", "--set", set, "--domain", "solar-system", "--seed", Seed, "--data-root", Root(root)]));
 
     private string Root(string name) => Path.Combine(_directory, name);
 

@@ -4,17 +4,24 @@ using SpaceExplorer.Core.Shared;
 
 namespace SpaceExplorer.Persistence;
 
+/// <summary>One indexed composition graph: what a loader needs before it can read the record itself.</summary>
+internal sealed record GraphRow(PackId Pack, ContentHash GraphHash, PackId SourcePack, uint RegistryRevision, uint GrammarVersion, int NodeCount, CompositionDomain Domain);
+
 /// <summary>
-/// <c>&lt;data root&gt;/index.db</c>: the index of verified immutable packages and records, with one manifest
-/// per pack identifier enforced by a uniqueness constraint (decision 0039), and the reference index of
-/// dependants maintained in the same publish-last transaction (decision 0040).
+/// <c>&lt;data root&gt;/index.db</c>: the index of verified immutable packages, records, and composition
+/// graphs, with one manifest per pack identifier and one graph per graph pack identifier enforced by
+/// uniqueness constraints (decision 0039), and the reference index of dependants maintained in the same
+/// publish-last transaction (decision 0040).
 /// </summary>
 internal sealed class PackageIndex : IDisposable
 {
     private const int RecordKindManifest = 1;
     private const int RecordKindDefinition = 2;
     private const int DependantKindPackage = 1;
+    private const int DependantKindGraph = 2;
+    private const int DependencyKindPack = 1;
     private const int DependencyKindVocabulary = 2;
+    private const int DependencyKindGrammar = 3;
 
     private readonly SqliteConnection _connection;
 
@@ -44,6 +51,16 @@ internal sealed class PackageIndex : IDisposable
                 kind INTEGER NOT NULL,
                 local_id INTEGER CHECK (local_id IS NULL OR local_id BETWEEN 1 AND 4294967295),
                 PRIMARY KEY (pack_id, content_hash)
+            );
+            CREATE TABLE IF NOT EXISTS graphs (
+                pack_id BLOB PRIMARY KEY CHECK (length(pack_id) = 16),
+                graph_hash BLOB NOT NULL UNIQUE CHECK (length(graph_hash) = 32),
+                source_pack_id BLOB NOT NULL REFERENCES packages (pack_id),
+                registry_revision INTEGER NOT NULL CHECK (registry_revision >= 1),
+                generator_version INTEGER NOT NULL CHECK (generator_version >= 1),
+                grammar_version INTEGER NOT NULL CHECK (grammar_version >= 1),
+                domain INTEGER NOT NULL CHECK (domain >= 1),
+                node_count INTEGER NOT NULL CHECK (node_count >= 1)
             );
             CREATE TABLE IF NOT EXISTS dependants (
                 dependant_kind INTEGER NOT NULL,
@@ -111,6 +128,65 @@ internal sealed class PackageIndex : IDisposable
 
         transaction.Commit();
     }
+
+    /// <summary>The graph indexed under <paramref name="pack"/>, or null.</summary>
+    public GraphRow? FindGraph(PackId pack)
+    {
+        using SqliteCommand command = _connection.CreateCommand();
+        command.CommandText = "SELECT graph_hash, source_pack_id, registry_revision, grammar_version, node_count, domain FROM graphs WHERE pack_id = $pack;";
+        command.Parameters.AddWithValue("$pack", pack.Bytes.ToArray());
+        using SqliteDataReader reader = command.ExecuteReader();
+        return reader.Read() ? Row(pack, reader) : null;
+    }
+
+    /// <summary>Every indexed graph, in pack-identifier order.</summary>
+    public IReadOnlyList<GraphRow> ListGraphs()
+    {
+        using SqliteCommand command = _connection.CreateCommand();
+        command.CommandText = "SELECT graph_hash, source_pack_id, registry_revision, grammar_version, node_count, domain, pack_id FROM graphs ORDER BY pack_id;";
+        using SqliteDataReader reader = command.ExecuteReader();
+        var graphs = new List<GraphRow>();
+        while (reader.Read())
+        {
+            graphs.Add(Row(PackId.FromBytes((byte[])reader[6]), reader));
+        }
+
+        return graphs;
+    }
+
+    /// <summary>Commits the graph row and its reference-index edges in one transaction, last in the publish protocol.</summary>
+    public void RegisterGraph(CompositionGraph graph)
+    {
+        GraphSpecification specification = graph.Specification;
+        using SqliteTransaction transaction = _connection.BeginTransaction();
+        byte[] pack = graph.Pack.Bytes.ToArray();
+
+        Execute(
+            "INSERT INTO graphs (pack_id, graph_hash, source_pack_id, registry_revision, generator_version, grammar_version, domain, node_count) VALUES ($pack, $graph, $source, $registry, $generator, $grammar, $domain, $count);",
+            transaction,
+            ("$pack", pack), ("$graph", graph.Hash.Bytes.ToArray()), ("$source", specification.SourcePack.Bytes.ToArray()), ("$registry", (long)specification.RegistryRevision), ("$generator", (long)specification.GeneratorVersion), ("$grammar", (long)specification.GrammarVersion), ("$domain", (long)specification.CompositionDomain), ("$count", (long)graph.NodeCount));
+
+        Execute(
+            "INSERT INTO dependants (dependant_kind, dependant_id, dependency_kind, dependency_id) VALUES ($dkind, $did, $ykind, $yid);",
+            transaction,
+            ("$dkind", (long)DependantKindGraph), ("$did", pack), ("$ykind", (long)DependencyKindPack), ("$yid", specification.SourcePack.Bytes.ToArray()));
+
+        Execute(
+            "INSERT INTO dependants (dependant_kind, dependant_id, dependency_kind, dependency_id) VALUES ($dkind, $did, $ykind, $yid);",
+            transaction,
+            ("$dkind", (long)DependantKindGraph), ("$did", pack), ("$ykind", (long)DependencyKindGrammar), ("$yid", specification.GrammarHash.Bytes.ToArray()));
+
+        transaction.Commit();
+    }
+
+    private static GraphRow Row(PackId pack, SqliteDataReader reader) => new(
+        pack,
+        ContentHash.FromBytes((byte[])reader[0]),
+        PackId.FromBytes((byte[])reader[1]),
+        (uint)reader.GetInt64(2),
+        (uint)reader.GetInt64(3),
+        reader.GetInt32(4),
+        (CompositionDomain)reader.GetInt64(5));
 
     private void Execute(string sql, SqliteTransaction? transaction = null, params (string Name, object Value)[] parameters)
     {
