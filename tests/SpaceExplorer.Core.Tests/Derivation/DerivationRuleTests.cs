@@ -93,6 +93,19 @@ public class DerivationRuleTests
         Assert.Equal(expected, DerivationRules.SpectralClass(kelvin));
 
     [Fact]
+    public void The_orbit_scale_is_the_root_of_the_luminosity_in_solar_units()
+    {
+        // A body at sqrt(L) times the distance receives the same flux, so the scale is what holds one set
+        // of orbit bands at one range of temperatures around any star (decision 0051).
+        long solar = DerivationRules.OrbitScale(SunRadius, SunTemperature);
+        Assert.InRange(solar, DerivationRules.OrbitScaleUnit - 1, DerivationRules.OrbitScaleUnit);
+
+        // Four times the luminosity doubles it, a hundredth of it divides it by ten.
+        Assert.InRange(DerivationRules.OrbitScale(SunRadius * 2, SunTemperature), (2 * solar) - 2, (2 * solar) + 2);
+        Assert.InRange(DerivationRules.OrbitScale(SunRadius / 10, SunTemperature), (solar / 10) - 2, (solar / 10) + 2);
+    }
+
+    [Fact]
     public void The_extremes_of_the_registrys_ranges_do_not_overflow_or_divide_by_zero()
     {
         // The widest inputs registry revision 1 admits, so the 128-bit intermediates are shown to hold.

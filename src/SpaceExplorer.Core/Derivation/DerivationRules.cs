@@ -1,3 +1,5 @@
+using SpaceExplorer.Core.Registry;
+
 namespace SpaceExplorer.Core.Derivation;
 
 /// <summary>
@@ -22,6 +24,12 @@ public static class DerivationRules
 
     /// <summary>The generator revision identifier of <see cref="SpectralClass"/> (decision 0035).</summary>
     public const string SpectralClassRevision = "derive-spectral-class/1";
+
+    /// <summary>The generator revision identifier of <see cref="OrbitScale"/> (decision 0035).</summary>
+    public const string OrbitScaleRevision = "derive-orbit-scale/1";
+
+    /// <summary>The unit of <see cref="OrbitScale"/>: a scale of one.</summary>
+    public const long OrbitScaleUnit = 1_024;
 
     /// <summary>The gravitational constant, 6.6743 x 10^-11 m^3 kg^-1 s^-2, as its 2018 CODATA digits over a power of ten.</summary>
     private const long GravitationalConstantDigits = 66_743;
@@ -122,6 +130,23 @@ public static class DerivationRules
         UInt128 fourth = (UInt128)temperatureKelvin * (UInt128)temperatureKelvin * (UInt128)temperatureKelvin * (UInt128)temperatureKelvin;
         UInt128 scaled = Divide(area * fourth, 1_000_000_000_000);
         return (long)Divide(scaled * (UInt128)RadiantFactorDigits, (UInt128)10_000_000_000 * 10_000_000_000);
+    }
+
+    /// <summary>
+    /// How far a star's orbits stand out from it compared with the Sun's, in units of
+    /// <see cref="OrbitScaleUnit"/>: the square root of its luminosity in solar units, because a body at
+    /// <c>sqrt(L)</c> times the distance receives the same flux and so reaches the same temperature. It is
+    /// what makes one set of orbit bands mean the same thing around any star.
+    /// </summary>
+    /// <exception cref="ArgumentOutOfRangeException">The radius is not positive or the temperature is negative.</exception>
+    public static long OrbitScale(long starRadiusUnits, long starTemperatureKelvin)
+    {
+        long luminosity = Luminosity(starRadiusUnits, starTemperatureKelvin);
+
+        // sqrt(x) at a scale of u is isqrt(x u^2), and the ratio is taken inside the root so the division
+        // does not round away a faint star's scale before it is squared.
+        UInt128 scaled = Divide((UInt128)luminosity * (UInt128)OrbitScaleUnit * (UInt128)OrbitScaleUnit, (UInt128)CategoryRegistryRevision1.SolarLuminosity);
+        return (long)Sqrt(scaled);
     }
 
     /// <summary>The Morgan-Keenan class of a star of <paramref name="temperatureKelvin"/>, by the conventional boundaries.</summary>

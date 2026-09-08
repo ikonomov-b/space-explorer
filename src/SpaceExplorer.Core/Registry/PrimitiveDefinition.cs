@@ -51,6 +51,26 @@ public sealed class PrimitiveDefinition
     /// <summary>The exact reference to this definition.</summary>
     public PrimitiveRevisionRef Reference => new(Id, Hash);
 
+    /// <summary>
+    /// The descriptor and value of the parameter <paramref name="label"/> names, or null when this
+    /// definition's category does not carry it, which is how a reader tells a stored quantity from one a
+    /// later registry revision derives instead (decision 0037).
+    /// </summary>
+    public (ParameterDescriptor Descriptor, ParameterValue Value)? TryParameter(CategoryRegistry registry, string label)
+    {
+        ArgumentNullException.ThrowIfNull(registry);
+        CategoryDefinition schema = registry.Find(Category);
+        for (int index = 0; index < schema.Parameters.Count; index++)
+        {
+            if (schema.Parameters[index].Label == label)
+            {
+                return (schema.Parameters[index], Parameters[index]);
+            }
+        }
+
+        return null;
+    }
+
     /// <summary>The exact primitive references among the parameters, which are this definition's primitive dependencies.</summary>
     public IEnumerable<PrimitiveRevisionRef> Dependencies =>
         Parameters.Where(parameter => parameter.Kind == ParameterKind.PrimitiveRef).Select(parameter => parameter.AsRef);

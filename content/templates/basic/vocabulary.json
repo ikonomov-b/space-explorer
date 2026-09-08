@@ -40,14 +40,33 @@
     // Bodies. A radius is no longer drawn: registry revision 2 draws a mean density beside the mass and
     // derives the radius from the two, so a body's size and density can no longer contradict each other.
     // Densities are kg/m^3: rock and iron above 3,000, ice and volatiles below it.
-    { "id": 14, "label": "rocky-body", "category": "planet",
-      "parameters": { "mass": [30, 300000], "density": [3300, 8000], "albedo": [3000, 45000], "pole-declination": [-536870912, 536870912], "sidereal-period": [720000, 172800000], "body-type": ["rocky"] } },
-    { "id": 15, "label": "icy-body", "category": "planet",
-      "parameters": { "mass": [10, 60000], "density": [900, 3300], "albedo": [20000, 62000], "pole-declination": [-536870912, 536870912], "sidereal-period": [720000, 172800000], "body-type": ["icy"] } },
-    { "id": 16, "label": "ocean-body", "category": "planet",
-      "parameters": { "mass": [200, 200000], "density": [2000, 5500], "albedo": [6000, 30000], "pole-declination": [-536870912, 536870912], "sidereal-period": [720000, 172800000], "body-type": ["ocean"] } },
-    { "id": 17, "label": "gas-giant-body", "category": "planet",
-      "parameters": { "mass": [500000, 100000000], "density": [300, 2000], "albedo": [15000, 55000], "pole-declination": [-536870912, 536870912], "sidereal-period": [720000, 20000000], "body-type": ["gas-giant"] } }
+    //
+    // The orbit connector's tags decide where a body may sit and what may orbit it. It PROVIDES the zones
+    // it can occupy, which grammar version 3 demands per band, and a mass class; it REQUIRES of its own
+    // moons a class below its own, so a moon can no longer outweigh its planet. Nothing provides
+    // "mass-none", so the smallest bodies keep no moons at all.
+    { "id": 14, "label": "small-rocky-body", "category": "planet",
+      "parameters": { "mass": [30, 2000], "density": [3300, 8000], "albedo": [3000, 45000], "pole-declination": [-536870912, 536870912], "sidereal-period": [720000, 172800000], "body-type": ["rocky"] },
+      "connectors": { "orbit": { "provides": ["zone-hot", "zone-temperate", "zone-cold", "mass-small"], "requires": ["mass-none"] } } },
+    { "id": 15, "label": "large-rocky-body", "category": "planet",
+      "parameters": { "mass": [2000, 300000], "density": [3300, 8000], "albedo": [3000, 45000], "pole-declination": [-536870912, 536870912], "sidereal-period": [720000, 172800000], "body-type": ["rocky"] },
+      "connectors": { "orbit": { "provides": ["zone-hot", "zone-temperate", "zone-cold", "mass-large"], "requires": ["mass-small"] } } },
+    { "id": 16, "label": "small-icy-body", "category": "planet",
+      "parameters": { "mass": [10, 2000], "density": [900, 3300], "albedo": [20000, 62000], "pole-declination": [-536870912, 536870912], "sidereal-period": [720000, 172800000], "body-type": ["icy"] },
+      "connectors": { "orbit": { "provides": ["zone-cold", "mass-small"], "requires": ["mass-none"] } } },
+    { "id": 17, "label": "large-icy-body", "category": "planet",
+      "parameters": { "mass": [2000, 60000], "density": [900, 3300], "albedo": [20000, 62000], "pole-declination": [-536870912, 536870912], "sidereal-period": [720000, 172800000], "body-type": ["icy"] },
+      "connectors": { "orbit": { "provides": ["zone-cold", "mass-large"], "requires": ["mass-small"] } } },
+    { "id": 18, "label": "ocean-body", "category": "planet",
+      "parameters": { "mass": [200, 200000], "density": [2000, 5500], "albedo": [6000, 30000], "pole-declination": [-536870912, 536870912], "sidereal-period": [720000, 172800000], "body-type": ["ocean"] },
+      "connectors": { "orbit": { "provides": ["zone-temperate", "mass-large"], "requires": ["mass-small"] } } },
+    { "id": 19, "label": "gas-giant-body", "category": "planet",
+      "parameters": { "mass": [500000, 100000000], "density": [300, 2000], "albedo": [15000, 55000], "pole-declination": [-536870912, 536870912], "sidereal-period": [720000, 20000000], "body-type": ["gas-giant"] },
+      "connectors": { "orbit": { "provides": ["zone-hot", "zone-temperate", "zone-cold", "mass-giant"], "requires": ["mass-small"] } } },
+
+    // A barycentre sits in a band like a planet and hands its pair the band's own zone.
+    { "id": 20, "label": "pair-barycentre", "category": "barycentre",
+      "connectors": { "orbit": { "provides": ["zone-hot", "zone-temperate", "zone-cold", "mass-large"], "requires": [] } } }
   ],
   "requests": [
     { "template": 1, "count": 2 }, { "template": 2, "count": 4 },
@@ -55,6 +74,8 @@
     { "template": 5, "count": 6 }, { "template": 6, "count": 6 }, { "template": 7, "count": 4 },
     { "template": 8, "count": 3 }, { "template": 9, "count": 3 }, { "template": 10, "count": 2 },
     { "template": 11, "count": 1 }, { "template": 12, "count": 8 }, { "template": 13, "count": 6 },
-    { "template": 14, "count": 12 }, { "template": 15, "count": 10 }, { "template": 16, "count": 8 }, { "template": 17, "count": 6 }
+    { "template": 14, "count": 8 }, { "template": 15, "count": 8 }, { "template": 16, "count": 6 },
+    { "template": 17, "count": 6 }, { "template": 18, "count": 8 }, { "template": 19, "count": 6 },
+    { "template": 20, "count": 1 }
   ]
 }

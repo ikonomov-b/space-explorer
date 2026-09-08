@@ -17,7 +17,38 @@ public sealed record CategoryChoice(uint Category, uint Weight);
 /// and spaced as a real system is rather than scattered over one wide range. Carried only by grammar
 /// version 2 and later, whose domain label says so.
 /// </param>
-public sealed record ConnectorRule(uint MinCount, uint MaxCount, TransformRange Transform, IReadOnlyList<CategoryChoice> Choices, uint SpacingRatio = 0)
+/// <param name="BandScale">
+/// The generator revision identifier of a rule that scales every band by something about the parent, or
+/// empty for none. A star's bands scale by the square root of its luminosity, so one set of bands means
+/// the same temperature around any star. Carried only by grammar version 3 and later.
+/// </param>
+/// <param name="BandTags">
+/// The tag a child must provide to take each band, one per band and empty where a band demands none, or
+/// an empty list where no band does. It is what keeps a body suited to the orbit it takes. Carried only
+/// by grammar version 3 and later.
+/// </param>
+/// <param name="InheritsBandTag">
+/// Whether a child of this connector must provide the same band tag its parent was chosen for. A body
+/// that shares its parent's distance from the star shares its temperature, so it must suit the same
+/// zone: it is what carries a band's demand down to a moon and to the pair of a barycentre. Carried only
+/// by grammar version 3 and later.
+/// </param>
+/// <param name="BandBase">
+/// Where the innermost band begins at unit scale, or zero to begin at the transform range's own minimum.
+/// The range is the envelope every scaled band must stay inside, which is much wider than the
+/// progression itself once a scale moves it, so the two are stated separately. Carried only by grammar
+/// version 3 and later.
+/// </param>
+public sealed record ConnectorRule(
+    uint MinCount,
+    uint MaxCount,
+    TransformRange Transform,
+    IReadOnlyList<CategoryChoice> Choices,
+    uint SpacingRatio = 0,
+    string BandScale = "",
+    IReadOnlyList<string>? BandTags = null,
+    long BandBase = 0,
+    bool InheritsBandTag = false)
 {
     /// <summary>The unit of <see cref="SpacingRatio"/>: a ratio of one.</summary>
     public const uint RatioUnit = 256;
@@ -25,11 +56,23 @@ public sealed record ConnectorRule(uint MinCount, uint MaxCount, TransformRange 
     /// <summary>The first grammar version that carries a spacing ratio.</summary>
     public const uint FirstVersionWithSpacing = 2;
 
+    /// <summary>The first grammar version that carries a band scale and per-band tags.</summary>
+    public const uint FirstVersionWithBands = 3;
+
+    /// <summary>The tags per band, one per band this rule admits, or empty where no band demands one.</summary>
+    public IReadOnlyList<string> BandTags { get; } = [.. BandTags ?? []];
+
+    /// <summary>The tag the child at <paramref name="index"/> must provide beyond what the parent requires, or null.</summary>
+    public string? BandTag(int index) =>
+        index < this.BandTags.Count && this.BandTags[index].Length != 0 ? this.BandTags[index] : null;
+
     /// <summary>
     /// The bounds the child at <paramref name="index"/> draws its semi-major axis between: its band of
     /// the progression when this rule has a ratio, and the whole declared range when it has none.
+    /// <paramref name="scale"/> multiplies the band, in units of the band-scale rule, and stays inside
+    /// the declared range whatever it is.
     /// </summary>
-    public (long Min, long Max) OrbitBand(int index)
+    public (long Min, long Max) OrbitBand(int index, long scale = Derivation.DerivationRules.OrbitScaleUnit)
     {
         (long min, long max) = Transform.Bounds[0];
         if (SpacingRatio == 0)
@@ -37,16 +80,20 @@ public sealed record ConnectorRule(uint MinCount, uint MaxCount, TransformRange 
             return (min, max);
         }
 
-        long low = min;
+        long low = BandBase == 0 ? min : BandBase;
         for (int step = 0; step < index; step++)
         {
             low = Step(low);
         }
 
-        return (Math.Min(low, max), Math.Min(Step(low), max));
+        long high = Step(low);
+        return (Clamp(low, scale, min, max), Clamp(high, scale, min, max));
     }
 
     private long Step(long value) => value / RatioUnit * SpacingRatio;
+
+    private static long Clamp(long value, long scale, long min, long max) =>
+        Math.Clamp(value / Derivation.DerivationRules.OrbitScaleUnit * scale, min, max);
 }
 
 /// <summary>The rules for one category: one <see cref="ConnectorRule"/> per connector kind, in the category's own order.</summary>
@@ -236,7 +283,38 @@ public sealed class CompositionGrammar
                 TransformRange transform = TransformRange.Decode(reader, schema.Connectors[rule].Transform);
                 CategoryChoice[] choices = ReadChoices(reader);
                 uint spacing = expectedVersion >= ConnectorRule.FirstVersionWithSpacing ? reader.ReadUInt32() : 0;
-                rules[rule] = new ConnectorRule(minCount, maxCount, transform, choices, spacing);
+
+                string scale = string.Empty;
+                long bandBase = 0;
+                bool inheritsBandTag = false;
+                var tags = new List<string>();
+                if (expectedVersion >= ConnectorRule.FirstVersionWithBands)
+                {
+                    string named = reader.ReadPath();
+                    scale = named == "none" ? string.Empty : named;
+                    bandBase = reader.ReadVarInt();
+
+                    byte inherits = reader.ReadUInt8();
+                    if (inherits > 1)
+                    {
+                        throw new FormatException($"A rule's inherit flag must be 0 or 1; found {inherits}.");
+                    }
+
+                    inheritsBandTag = inherits == 1;
+
+                    int tagCount = reader.ReadCount();
+                    if (tagCount > ConnectorKind.MaxChildCategories)
+                    {
+                        throw new FormatException($"A rule declares {tagCount} band tags; the bound is {ConnectorKind.MaxChildCategories}.");
+                    }
+
+                    for (int tag = 0; tag < tagCount; tag++)
+                    {
+                        tags.Add(reader.ReadText());
+                    }
+                }
+
+                rules[rule] = new ConnectorRule(minCount, maxCount, transform, choices, spacing, scale, tags, bandBase, inheritsBandTag);
             }
 
             productions[index] = new Production(category, rules);
@@ -356,6 +434,11 @@ public sealed class CompositionGrammar
             {
                 throw new ArgumentException($"Rule {where} spaces {rule.MaxCount} orbits past its own maximum of {rule.Transform.Bounds[0].Max} m; widen the range or lower the ratio.", parameterName);
             }
+
+            if (rule.BandBase != 0 && (rule.BandBase < rule.Transform.Bounds[0].Min || rule.BandBase > rule.Transform.Bounds[0].Max))
+            {
+                throw new ArgumentException($"Rule {where} begins its bands at {rule.BandBase} m, outside the range they must stay inside.", parameterName);
+            }
         }
 
         if (rule.MinCount > rule.MaxCount || rule.MinCount < connector.MinCount || rule.MaxCount > connector.MaxCount)
@@ -371,6 +454,34 @@ public sealed class CompositionGrammar
         if ((rule.MaxCount == 0) != (rule.Choices.Count == 0))
         {
             throw new ArgumentException($"Rule {where} must list eligible categories exactly when it admits a child.", parameterName);
+        }
+
+        if (rule.BandScale.Length != 0 || rule.BandTags.Count != 0 || rule.BandBase != 0 || rule.InheritsBandTag)
+        {
+            if (version < ConnectorRule.FirstVersionWithBands)
+            {
+                throw new ArgumentException($"Rule {where} carries a band scale or band tags, which no grammar before version {ConnectorRule.FirstVersionWithBands} encodes.", parameterName);
+            }
+
+            if (connector.Transform != TransformKind.OrbitalElements)
+            {
+                throw new ArgumentException($"Rule {where} carries a band scale or band tags, which only an orbit connector has bands for.", parameterName);
+            }
+        }
+
+        if (rule.BandScale.Length != 0 && !Derivation.BandScaleRules.IsKnown(rule.BandScale))
+        {
+            throw new ArgumentException($"Rule {where} names band-scale rule '{rule.BandScale}', which this build does not retain (decision 0035).", parameterName);
+        }
+
+        if (rule.BandTags.Count != 0 && rule.BandTags.Count != rule.MaxCount)
+        {
+            throw new ArgumentException($"Rule {where} gives {rule.BandTags.Count} band tags for {rule.MaxCount} bands; it declares one per band or none at all.", parameterName);
+        }
+
+        foreach (string tag in rule.BandTags.Where(tag => tag.Length != 0))
+        {
+            StreamPath.Validate(tag);
         }
 
         ValidateChoices(rule.Choices, $"rule {where}", parameterName);
@@ -530,6 +641,18 @@ public sealed class CompositionGrammar
                 if (Version >= ConnectorRule.FirstVersionWithSpacing)
                 {
                     writer.WriteUInt32(rule.SpacingRatio);
+                }
+
+                if (Version >= ConnectorRule.FirstVersionWithBands)
+                {
+                    writer.WritePath(rule.BandScale.Length == 0 ? "none" : rule.BandScale);
+                    writer.WriteVarInt(rule.BandBase);
+                    writer.WriteUInt8(rule.InheritsBandTag ? (byte)1 : (byte)0);
+                    writer.WriteCount(rule.BandTags.Count);
+                    foreach (string tag in rule.BandTags)
+                    {
+                        writer.WriteText(tag);
+                    }
                 }
             }
         }

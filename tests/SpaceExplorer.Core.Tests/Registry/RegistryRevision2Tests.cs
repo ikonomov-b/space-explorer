@@ -89,8 +89,7 @@ public class RegistryRevision2Tests
 
         Assert.Equal(version2.Hash, CompositionGrammar.Decode(version2.Bytes, CategoryRegistryRevision2.Registry, 2).Hash);
         Assert.Throws<FormatException>(() => CompositionGrammar.Decode(version2.Bytes, CategoryRegistryRevision2.Registry, 1));
-        Assert.Equal(2, CompositionGrammars.Supported.Grammars.Count);
-        Assert.Equal(version2.Version, CompositionGrammars.Supported.Newest(2)!.Version);
+        Assert.Equal(version2.Version, CompositionGrammars.Supported.Find(2).Version);
         Assert.Equal(1u, CompositionGrammars.Supported.Newest(1)!.Version);
         Assert.Null(CompositionGrammars.Supported.Newest(3));
     }

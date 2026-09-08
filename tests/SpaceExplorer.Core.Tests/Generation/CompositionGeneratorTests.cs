@@ -111,7 +111,7 @@ public class CompositionGeneratorTests
         var exception = Assert.Throws<GenerationException>(() => CompositionGenerator.Generate(
             CompositionFixture.Specification(9, CompositionDomain.SolarSystem, starsOnly), starsOnly, CompositionFixture.Grammar, CompositionFixture.Registry));
 
-        Assert.Contains("no compatible definition", exception.Message, StringComparison.Ordinal);
+        Assert.Contains("holds no definition", exception.Message, StringComparison.Ordinal);
     }
 
     [Fact]
