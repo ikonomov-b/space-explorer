@@ -26,8 +26,14 @@ public static class CategoryRegistryRevision1
     /// <summary>Fixed-point fraction bits for artifact-local lengths: 1/65,536 m (decision 0036).</summary>
     public const byte ArtifactFractionBits = 16;
 
-    /// <summary>Mass unit: 10^20 kg, given as the exponent because the unit itself exceeds 64 bits. Earth is 59,720; the Sun is 19,890,000,000.</summary>
+    /// <summary>Mass unit: 10^20 kg, given as the exponent because the unit itself exceeds 64 bits.</summary>
     public const int MassUnitExponentKilograms = 20;
+
+    /// <summary>Earth's mass in that unit, from the published 5.972 x 10^24 kg; a planet's mass reads naturally against it.</summary>
+    public const long EarthMass = 59_720;
+
+    /// <summary>The Sun's mass in that unit, from the published 1.989 x 10^30 kg.</summary>
+    public const long SolarMass = 19_890_000_000;
 
     /// <summary>Luminosity unit: 10^20 W, given as the exponent. The Sun is 3,828,000.</summary>
     public const int LuminosityUnitExponentWatts = 20;

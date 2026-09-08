@@ -1,5 +1,6 @@
 using System.Runtime.InteropServices;
 using SpaceExplorer.Cli;
+using SpaceExplorer.Core.Description;
 using SpaceExplorer.Core.Generation;
 using SpaceExplorer.Core.Registry;
 using SpaceExplorer.Core.Shared;
@@ -22,6 +23,8 @@ try
         ["compose", .. string[] rest] => Compose(rest),
         ["inspect-graph", string pack, .. string[] rest] => InspectGraph(pack, rest),
         ["validate-graph", string pack, .. string[] rest] => ValidateGraph(pack, rest),
+        ["describe", string pack, .. string[] rest] => Describe(pack, rest),
+        ["iterate", .. string[] rest] => Iterate(rest),
         _ => Unknown(args[0]),
     };
 }
@@ -48,6 +51,10 @@ static int Usage()
     Console.WriteLine("                                      Compose a graph from a published set and publish it.");
     Console.WriteLine("  inspect-graph <pack-id> [--data-root <dir>]  Load a graph without composing and print its instances.");
     Console.WriteLine("  validate-graph <pack-id> [--data-root <dir>] Load and verify a graph; exit 0 when it is intact.");
+    Console.WriteLine("  describe <pack-id> [--tier <name>] [--data-root <dir>]");
+    Console.WriteLine("                                      Print the system description derived from a published graph.");
+    Console.WriteLine("  iterate --set <pack-id> --seeds <a-b> [--tier <name>] [--data-root <dir>]");
+    Console.WriteLine("                                      Compose one system per seed without publishing and describe each.");
     return 0;
 }
 
@@ -175,6 +182,95 @@ static int ValidateGraph(string packText, string[] options)
     CompositionGraph graph = GraphLoader.Load(Root(options), PackId.Parse(packText), CategoryRegistries.Supported, CompositionGrammarVersion1.Grammar);
     Console.WriteLine($"OK graph {graph.Pack}: {graph.NodeCount} instances verified against the record hash, the pinned set, the registry, and the connector rules.");
     return 0;
+}
+
+static int Describe(string packText, string[] options)
+{
+    DistanceTier tier = Tier(options);
+    CompositionGraph graph = GraphLoader.Load(Root(options), PackId.Parse(packText), CategoryRegistries.Supported, CompositionGrammarVersion1.Grammar);
+    CategoryRegistry registry = CategoryRegistries.Supported.Find(graph.Specification.RegistryRevision);
+    SystemDescription description = SystemDescription.Derive(graph, registry, SuitProfile.Version1);
+
+    Console.Write(description.Text);
+    Console.WriteLine(Verdict(description, tier));
+    return 0;
+}
+
+static int Iterate(string[] options)
+{
+    PackId set = PackId.Parse(Option(options, "--set") ?? throw new ArgumentException("iterate needs --set <pack-id>."));
+    (ulong first, ulong last) = Seeds(Option(options, "--seeds") ?? throw new ArgumentException("iterate needs --seeds <first>-<last>."));
+    DistanceTier tier = Tier(options);
+
+    DataRoot root = Root(options);
+    CompositionGrammar grammar = CompositionGrammarVersion1.Grammar;
+    SuitProfile suit = SuitProfile.Version1;
+    PrimitiveSet source = SetLoader.Load(root, set, CategoryRegistries.Supported);
+    CategoryRegistry registry = CategoryRegistries.Supported.Find(source.Manifest.RegistryRevision);
+
+    Console.WriteLine($"iteration over seeds {first} to {last}, tier {TierRules.Label(tier)}");
+    Console.WriteLine($"pinned        registry {registry.Revision} {registry.Hash}");
+    Console.WriteLine($"              vocabulary {source.Manifest.VocabularyHash}");
+    Console.WriteLine($"              grammar {grammar.Version} {grammar.Hash}");
+    Console.WriteLine($"              generator {GeneratorVersion.Current}; description {SystemDescription.Version}; suit profile {suit.Version} {suit.Hash}");
+    Console.WriteLine($"              set {source.Manifest.Pack} {source.Manifest.Hash}");
+
+    // Systems generated in an iteration are disposable and are never kept destinations (decision 0047),
+    // so nothing here is published.
+    int passed = 0;
+    int planets = 0;
+    int moons = 0;
+    int candidates = 0;
+    var refusals = new Dictionary<string, int>(StringComparer.Ordinal);
+    for (ulong seed = first; seed <= last; seed++)
+    {
+        GraphSpecification specification = GraphSpecification.Create(
+            registry.Revision, registry.Hash, GeneratorVersion.Current, grammar.Version, grammar.Hash, seed, source.Manifest.Pack, source.Manifest.Hash, CompositionDomain.SolarSystem);
+        SystemDescription description = SystemDescription.Derive(CompositionGenerator.Generate(specification, source, grammar, registry), registry, suit);
+
+        Console.WriteLine();
+        Console.Write(description.Text);
+        string verdict = Verdict(description, tier);
+        Console.WriteLine(verdict);
+        passed += verdict.StartsWith("tier          pass", StringComparison.Ordinal) ? 1 : 0;
+
+        planets += description.PlanetCount;
+        moons += description.MoonCount;
+        candidates += description.LandingCandidateCount;
+        foreach (string refusal in description.Bodies.SelectMany(body => body.Refusals))
+        {
+            refusals[refusal] = refusals.TryGetValue(refusal, out int seen) ? seen + 1 : 1;
+        }
+    }
+
+    ulong count = last - first + 1;
+    Console.WriteLine();
+    Console.WriteLine($"summary       {passed} of {count} systems satisfy the {TierRules.Label(tier)} tier's rules");
+    Console.WriteLine($"bodies        {planets} planets, {moons} moons; {candidates} landing candidates");
+    Console.WriteLine($"refused by    {string.Join(", ", refusals.OrderByDescending(entry => entry.Value).ThenBy(entry => entry.Key, StringComparer.Ordinal).Select(entry => $"{entry.Key} {entry.Value}"))}");
+    return 0;
+}
+
+static string Verdict(SystemDescription description, DistanceTier tier)
+{
+    IReadOnlyList<string> failures = TierRules.Check(description, tier);
+    return failures.Count == 0
+        ? $"tier          pass ({TierRules.Label(tier)})"
+        : $"tier          fail ({TierRules.Label(tier)}): {string.Join("; ", failures)}";
+}
+
+static DistanceTier Tier(string[] options)
+{
+    string label = Option(options, "--tier") ?? "starter";
+    return TierRules.TryParse(label) ?? throw new ArgumentException($"'{label}' is not a distance tier; one of {string.Join(", ", TierRules.Labels)}.");
+}
+
+static (ulong First, ulong Last) Seeds(string text)
+{
+    string[] parts = text.Split('-', 2);
+    ulong first = ulong.Parse(parts[0], System.Globalization.CultureInfo.InvariantCulture);
+    ulong last = parts.Length == 2 ? ulong.Parse(parts[1], System.Globalization.CultureInfo.InvariantCulture) : first;
+    return last >= first ? (first, last) : throw new ArgumentException($"The seed range {text} runs backwards.");
 }
 
 static int GenerateSet(string[] options)

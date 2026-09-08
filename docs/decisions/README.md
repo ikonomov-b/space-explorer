@@ -57,4 +57,5 @@ File name: `NNNN-short-title.md`. Use [0000-template.md](0000-template.md). A re
 | [0046](0046-artifact-families-human-height-cap-cargo-by-mass-and-material-rarity.md) | Artifacts: three families with relics covering technical pieces and art, a human-height cap, cargo by mass and size class, and material rarity through the rarity factor | Accepted |
 | [0047](0047-usable-storage-and-structure-generation-then-solar-system-iterations.md) | Next steps: usable primitive storage and structure generation, then solar-system randomization in description-judged iterations | Accepted |
 | [0048](0048-composition-grammar-version-1-graph-records-and-graph-publication.md) | Composition grammar version 1, the graph record, and graph publication | Accepted |
+| [0049](0049-suit-profile-and-system-description-version-1-and-derivation-rules-as-named-implementations.md) | Suit profile and system description version 1, and derivation rules as named implementations | Accepted |
 <!-- generated:end decisions -->

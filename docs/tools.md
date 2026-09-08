@@ -76,6 +76,12 @@ dotnet run --project src/SpaceExplorer.Cli -- compose --set <pack-id> --domain s
 dotnet run --project src/SpaceExplorer.Cli -- inspect-graph <pack-id>   # reload without composing; print every instance
 dotnet run --project src/SpaceExplorer.Cli -- validate-graph <pack-id>  # exit 0 when the graph and its set verify
 
+dotnet run --project src/SpaceExplorer.Cli -- describe <pack-id> --tier starter
+# the derived system description of a published graph, then its verdict against that tier's rules
+dotnet run --project src/SpaceExplorer.Cli -- iterate --set <pack-id> --seeds 1-24 --tier starter
+# one generation iteration: composes a system per seed without publishing, describes each, and prints
+# the pins that reproduce it, every verdict, and the sample's totals and refusal counts
+
 dotnet run --project src/SpaceExplorer.Cli -- --help   # usage; exits 0
                                                        # unknown command exits 2; a refused input exits 1
 ```

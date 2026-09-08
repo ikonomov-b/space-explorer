@@ -1,3 +1,4 @@
+using SpaceExplorer.Core.Derivation;
 using static SpaceExplorer.Core.Registry.CategoryRegistryRevision1;
 
 namespace SpaceExplorer.Core.Registry;
@@ -14,9 +15,6 @@ public static class CompositionGrammarVersion1
 {
     /// <summary>A turn is 2^32 binary turns, so this is the scale every angular bound below is derived from (decision 0036).</summary>
     private const long Turn = 1L << 32;
-
-    /// <summary>The astronomical unit in metres, for the orbit bounds; the value is exact by definition.</summary>
-    private const long AstronomicalUnit = 149_597_870_700L;
 
     /// <summary>Artifact-local lengths are 1/65,536 m, so this is a quarter metre per attachment (decision 0036).</summary>
     private const long QuarterMetre = 1L << (ArtifactFractionBits - 2);
@@ -49,7 +47,7 @@ public static class CompositionGrammarVersion1
             new Production(Star,
             [
                 new ConnectorRule(1, 8, Orbit(
-                    semiMajorAxis: (AstronomicalUnit / 20, 40 * AstronomicalUnit),
+                    semiMajorAxis: (PhysicalConstants.AstronomicalUnitMetres / 20, 40 * PhysicalConstants.AstronomicalUnitMetres),
                     eccentricity: (0, Fraction(3, 10)),
                     inclination: Degrees(7)),
                 [

@@ -1,0 +1,102 @@
+namespace SpaceExplorer.Core.Derivation;
+
+/// <summary>
+/// The derivation rules of [decision 0037] the system description needs, each a named revision with an
+/// integer implementation and recorded vectors: no floating point takes part, every division rounds to
+/// nearest, and the intermediates are 128-bit so nothing overflows within the registry's parameter
+/// ranges. The remaining rules decision 0037 lists arrive when a consumer needs them.
+/// </summary>
+public static class DerivationRules
+{
+    /// <summary>The generator revision identifier of <see cref="SurfaceGravity"/> (decision 0035).</summary>
+    public const string SurfaceGravityRevision = "derive-surface-gravity/1";
+
+    /// <summary>The generator revision identifier of <see cref="EquilibriumTemperature"/> (decision 0035).</summary>
+    public const string EquilibriumTemperatureRevision = "derive-equilibrium-temperature/1";
+
+    /// <summary>The gravitational constant, 6.6743 x 10^-11 m^3 kg^-1 s^-2, as its 2018 CODATA digits over a power of ten.</summary>
+    private const long GravitationalConstantDigits = 66_743;
+
+    /// <summary>
+    /// Surface gravity <c>G M / R^2</c> in mm/s^2, from a mass in units of 10^20 kg and a reference
+    /// radius in 1/256 m, which are the units the category registry's <c>mass</c> and <c>radius</c>
+    /// parameters carry.
+    /// </summary>
+    /// <remarks>
+    /// The digits fold into one multiplier: <c>G M / R^2</c> with those units and that output scale is
+    /// <c>66743 x 2^16 x 10^8 x mass / radius^2</c>, so the implementation is one multiplication, one
+    /// division, and no constant that has been rounded twice.
+    /// </remarks>
+    /// <exception cref="ArgumentOutOfRangeException">The mass is negative or the radius is not positive.</exception>
+    public static long SurfaceGravity(long massUnits, long radiusUnits)
+    {
+        ArgumentOutOfRangeException.ThrowIfNegative(massUnits);
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(radiusUnits);
+
+        UInt128 numerator = (UInt128)GravitationalConstantDigits * 65_536 * 100_000_000 * (UInt128)massUnits;
+        UInt128 denominator = (UInt128)radiusUnits * (UInt128)radiusUnits;
+        return (long)Divide(numerator, denominator);
+    }
+
+    /// <summary>
+    /// The equilibrium temperature in kelvin of a body of <paramref name="albedo"/>, a fraction of 2^16,
+    /// at <paramref name="distanceMetres"/> from a star of <paramref name="starTemperatureKelvin"/> and
+    /// <paramref name="starRadiusUnits"/> in 1/256 m: <c>T_star sqrt(R / 2a) (1 - A)^(1/4)</c>.
+    /// </summary>
+    /// <remarks>
+    /// Squaring the identity removes the outer root from the constant folding:
+    /// <c>T^2 = T_star^2 R sqrt(1 - A) / (2^25 a)</c>, where <c>sqrt(1 - A)</c> is
+    /// <c>isqrt((2^16 - A) 2^16) / 2^16</c>. One integer square root is taken of each, at a scale of 2^16
+    /// so the kelvin result rounds rather than truncates.
+    /// </remarks>
+    /// <exception cref="ArgumentOutOfRangeException">A value is out of range or the distance is not positive.</exception>
+    public static long EquilibriumTemperature(long starTemperatureKelvin, long starRadiusUnits, long distanceMetres, long albedo)
+    {
+        ArgumentOutOfRangeException.ThrowIfNegative(starTemperatureKelvin);
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(starRadiusUnits);
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(distanceMetres);
+        ArgumentOutOfRangeException.ThrowIfNegative(albedo);
+        ArgumentOutOfRangeException.ThrowIfGreaterThan(albedo, 65_535);
+
+        UInt128 reflected = Sqrt(((UInt128)65_536 - (UInt128)albedo) * 65_536);
+        UInt128 numerator = (UInt128)starTemperatureKelvin * (UInt128)starTemperatureKelvin * (UInt128)starRadiusUnits * reflected * 65_536;
+        UInt128 denominator = (UInt128)33_554_432 * (UInt128)distanceMetres;
+
+        // The quotient is T^2 at a scale of 2^16, so its root is T at a scale of 2^8.
+        return (long)Divide(Sqrt(Divide(numerator, denominator)), 256);
+    }
+
+    /// <summary>Divides, rounding half away from zero, so a derived value is never biased low.</summary>
+    private static UInt128 Divide(UInt128 numerator, UInt128 denominator) => (numerator + (denominator / 2)) / denominator;
+
+    /// <summary>The integer square root: the greatest <c>r</c> with <c>r^2 &lt;= value</c>, by the bit-at-a-time method, which needs no division and no seed.</summary>
+    private static UInt128 Sqrt(UInt128 value)
+    {
+        UInt128 remainder = value;
+        UInt128 result = 0;
+
+        // The highest power of four not above the value; 2^126 is the highest a 128-bit value can hold.
+        UInt128 bit = (UInt128)1 << 126;
+        while (bit > remainder)
+        {
+            bit >>= 2;
+        }
+
+        while (bit != 0)
+        {
+            if (remainder >= result + bit)
+            {
+                remainder -= result + bit;
+                result = (result >> 1) + bit;
+            }
+            else
+            {
+                result >>= 1;
+            }
+
+            bit >>= 2;
+        }
+
+        return result;
+    }
+}
