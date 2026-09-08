@@ -20,7 +20,7 @@ File name: `NNNN-short-title.md`. Use [0000-template.md](0000-template.md). A re
 | [0009](0009-solution-layout.md) | Solution layout by assembly; authored content outside the Godot project | Accepted; Benchmarks project superseded by [0024](0024-tests-comments-index-and-scaffolding-trimmed.md) |
 | [0010](0010-units-coordinates-and-region-bounds.md) | Units, coordinates, region bounds, and simulation tick | Accepted; region extent cap superseded by [0017](0017-region-extent-cap-and-storage-derivation.md), single position type and coordinate-frame row superseded by [0036](0036-frames-and-transforms-typed-by-connector-kind.md) |
 | [0011](0011-requirements-single-source.md) | Requirements document as the single source for platform policy and provenance | Accepted |
-| [0012](0012-core-travel-model.md) | Core travel model: hub and spoke, two tiers with a snapping distance control, one guest | Accepted |
+| [0012](0012-core-travel-model.md) | Core travel model: hub and spoke, two tiers with a snapping distance control, one guest | Accepted; preference clause superseded by [0043](0043-destination-controls-distance-tier-and-seed-lever.md) |
 | [0013](0013-host-simulates-hazards.md) | The host simulates hazards for every avatar | Accepted |
 | [0014](0014-tooling-and-licence.md) | Repository tooling aligned with the stack; licence deferred with an explicit notice | Accepted |
 | [0015](0015-greybox-prototype.md) | Disposable greybox expedition prototype in parallel with M0a | Accepted; no-gate clause superseded by [0022](0022-p0-gates-the-first-frozen-content-format.md) |
@@ -51,4 +51,8 @@ File name: `NNNN-short-title.md`. Use [0000-template.md](0000-template.md). A re
 | [0040](0040-reference-index-and-deletion-sweep.md) | A data-root reference index for shared content; deletion is an explicit confirmed sweep | Accepted |
 | [0041](0041-planet-fields-tangent-regions-minimum-radius-and-far-field.md) | Cube-sphere planet fields, tangent-plane regions, a minimum landable radius, and a derived far field | Accepted |
 | [0042](0042-category-registry-revision-1-first-content-records-generator-and-publish-protocol.md) | Category registry revision 1, the first content records, the set generator, and the publish protocol | Accepted |
+| [0043](0043-destination-controls-distance-tier-and-seed-lever.md) | Destination controls: a tiered distance control labelled in light years and a seed lever with no visible value; preferences leave the core | Accepted |
+| [0044](0044-tiered-system-composition-one-star-and-explorability-by-validation.md) | Tiered system composition: one star, a single lifeless explorable planet at the starter tier, explorability as a validation outcome, and per-tier planet and region counts | Accepted |
+| [0045](0045-close-views-only-in-the-surface-sky-and-a-derived-system-description.md) | Other bodies are seen only in the surface sky; a system description derived from the graph at M0b and M1 | Accepted |
+| [0046](0046-artifact-families-human-height-cap-cargo-by-mass-and-material-rarity.md) | Artifacts: three families with relics covering technical pieces and art, a human-height cap, cargo by mass and size class, and material rarity through the rarity factor | Accepted |
 <!-- generated:end decisions -->

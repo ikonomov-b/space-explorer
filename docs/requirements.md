@@ -1,6 +1,6 @@
 # Requirements
 
-Reviewed 2026-09-07. Owner-stated constraints that sit outside the game idea. The concept of record is [concept.md](concept.md); where a refinement was adopted, the concept keeps the original idea inline and [decisions/](decisions/README.md) records what was chosen. Working defaults chosen by the documents, such as the engine, database, renderer, and CPU architecture, are not requirements and live in the [technology decision](technology-stack.md).
+Reviewed 2026-09-08. Owner-stated constraints that sit outside the game idea. The concept of record is [concept.md](concept.md); where a refinement was adopted, the concept keeps the original idea inline and [decisions/](decisions/README.md) records what was chosen. Working defaults chosen by the documents, such as the engine, database, renderer, and CPU architecture, are not requirements and live in the [technology decision](technology-stack.md).
 
 ## Platform policy
 
@@ -21,6 +21,8 @@ This section is the single source for the platform policy. Other documents state
 - **R10. Primitive composition represents the complete generated environment.** Every authoritative property of a solar system, its planets and surfaces, life, sites, and artifacts originates in exact primitive revisions, generated instance parameters, or primitive-based mutable state; there is no parallel environment-data model. Solar systems, planets, surfaces, caves, life forms, sites, and artifacts are nested composition graphs of primitive IDs rather than monolithic types. Recorded in [decision 0031](decisions/0031-primitive-complete-composition-and-storage.md).
 - **R11. Existing generated systems reproduce exactly while derived exploration data remains cacheable.** Primitive revisions, generator/grammar versions, and parameters are pinned. Per-category storage may regenerate, materialize, or combine both according to measured determinism and performance, while memory and disk caches are fully evictable. Recorded in [decision 0031](decisions/0031-primitive-complete-composition-and-storage.md).
 - **R12. A planet-surface sky is astronomically consistent with its generated system.** From the observer's surface location and saved simulation time, the star direction and lighting, apparent motion caused by planet rotation, and the position, phase, angular size, horizon visibility, eclipses, and occultations of other generated celestial bodies derive from the same pinned system, orbit, rotation, and atmosphere data. Decorative bodies cannot replace this solution. Recorded in [decision 0032](decisions/0032-astronomically-consistent-surface-sky.md).
+- **R13. The destination dashboard has two controls: a tiered distance control and a seed lever.** The lever fills the destination's seed with a near-unique value that the player sees only as an abstract cue, never as a number and never typed back; environment preferences and survey focus are not core controls. Recorded in [decision 0043](decisions/0043-destination-controls-distance-tier-and-seed-lever.md).
+- **R14. System composition is tiered and explorability is a validation outcome.** The starter tier's destination has exactly one explorable planet and no life; every higher tier has at least two explorable planets and at least one life-bearing planet. A planet is explorable when a region on it passes the suit profile, not because of its kind. Recorded in [decision 0044](decisions/0044-tiered-system-composition-one-star-and-explorability-by-validation.md).
 
 ## Provenance
 
@@ -32,3 +34,4 @@ This section is the single source for the platform policy. Other documents state
 | R8, R9 | Owner statements during the design review | 2026-09-07 |
 | R10, R11 | Primitive composition and storage clarification from the project owner | 2026-09-07 |
 | R12 | Surface-view realism request from the project owner | 2026-09-07 |
+| R13, R14 | The owner's note "Environment generation and randomization" and its clarification session | 2026-09-08 |

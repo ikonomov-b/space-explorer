@@ -14,7 +14,9 @@ The central identity is a sequence of purposeful artifact expeditions. The playe
 
 ## 2. Destination programming
 
-A simple ship dashboard lets the player influence the next destination without knowing its exact contents. Travel distance is the main control. Additional environment and survey preferences can bias the kinds of planets and artifacts encountered while preserving surprise.
+A simple ship dashboard lets the player influence the next destination without knowing its exact contents. Travel distance is the main control. The original idea added environment and survey preferences that bias the kinds of planets and artifacts encountered while preserving surprise.
+
+The adopted refinement gives the dashboard two controls. The distance control selects a tier and shows it as a light-year value. A second lever seeds the destination in a near-unique way; the player sees it only as an abstract cue such as a glow level, never as a number, and has no reason to remember it, because a discovered place is reached again through its record rather than through its seed. Environment and survey preferences are an expansion option ([decision 0043](decisions/0043-destination-controls-distance-tier-and-seed-lever.md)).
 
 These settings express an explorer's intentions rather than requiring the player to write code. The player understands the broad cost, demands, and possibilities of a journey before committing, but exact landscapes, sites, and finds remain unknown.
 
@@ -22,13 +24,17 @@ Known destinations remain selectable for return visits. A recorded destination r
 
 ## 3. The destination planetary system
 
-Every destination is a planetary system inspired by current astronomical knowledge. It contains at least two planets with regions that a person could explore using a plausible fictional space suit, and at least one planet inhabited by some form of life. The inhabited planet may also be one of the two explorable planets.
+Every destination is a planetary system inspired by current astronomical knowledge, with one star. The original idea has every system contain at least two planets with regions that a person could explore using a plausible fictional space suit, and at least one planet inhabited by some form of life; the inhabited planet may also be one of the two explorable planets.
+
+The adopted refinement makes this depend on the journey. The shortest journeys lead to a small system with exactly one explorable planet and no life. Every longer journey keeps the original rule, at least two explorable planets and at least one planet with life, and brings more planets and more landing regions the further it goes. Whether a planet is explorable is decided by testing its surface against the suit, not by its kind: a world of gas has no surface to stand on, while an ocean world with land or a volcanic world with a calm region can qualify ([decision 0044](decisions/0044-tiered-system-composition-one-star-and-explorability-by-validation.md)). The other planets of the system are seen from the surface at their true size and phase; the core release has no closer view of them ([decision 0045](decisions/0045-close-views-only-in-the-surface-sky-and-a-derived-system-description.md)).
 
 Suit-survivable does not mean breathable, harmless everywhere, or safe indefinitely. Different combinations of gravity, pressure, temperature, radiation, and chemical hazards give planets their character and make preparation matter.
 
-Habitable means capable of supporting life; inhabited means life is actually present. The concept requires the latter on at least one planet, which may support simple or unfamiliar organisms rather than an intelligent civilization.
+Habitable means capable of supporting life; inhabited means life is actually present. The concept requires the latter on at least one planet of every journey beyond the shortest, which may support simple or unfamiliar organisms rather than an intelligent civilization.
 
 Wormholes and alien life belong to the fiction. The navigator selects destinations suitable for expeditions, explaining why the player consistently encounters explorable systems. This guarantee is a gameplay premise, not a claim about how common such systems are in reality.
+
+On arrival the traveller reads a description of the system: the kind of star, and each planet with its type, whether it can be explored, and whether it bears life. The same text, produced from the generated data and never stored separately, is the first check that generated systems vary as intended ([decision 0045](decisions/0045-close-views-only-in-the-surface-sky-and-a-derived-system-description.md)).
 
 Standing on a planet must reveal the generated system coherently. The star's position and illumination, the motion of the sky as the planet rotates, and the position, phase, apparent size, horizon visibility, eclipses, and occultations of other generated celestial bodies follow the observer's surface location and the saved astronomical time. An atmosphere changes scattering, twilight, extinction, and the horizon treatment; an airless world does not invent them. The core release uses bounded deterministic analytic propagation rather than full n-body simulation, but fixed decorative planets or an unrelated light direction are not an acceptable substitute ([decision 0032](decisions/0032-astronomically-consistent-surface-sky.md)).
 
@@ -54,7 +60,7 @@ The proposed initial social experience is cooperation in the host's campaign, co
 
 Artifacts are the main motivation for exploration. They occur throughout explorable regions and have varied physical characteristics, distinctive appearances, and a predefined relative value.
 
-Possible families include unusual mineral formations, preserved biological specimens, and manufactured relics. Their shapes, materials, arrangements, and environmental context make them recognizable. Their origin, discoverer, and recovery history give a collection meaning beyond its sale price.
+Possible families include unusual mineral formations, preserved biological specimens, and manufactured relics; relics include technical pieces and works of art whose makers are never encountered. Artifacts range from bean-sized to human height, and a large find costs more cargo room and a harder recovery than a small one, while a rare material makes a mineral rarer rather than differently priced ([decision 0046](decisions/0046-artifact-families-human-height-cap-cargo-by-mass-and-material-rarity.md)). Their shapes, materials, arrangements, and environmental context make them recognizable. Their origin, discoverer, and recovery history give a collection meaning beyond its sale price.
 
 Uniqueness should be visible as well as recorded: changing only an item's name does not make a discovery feel new. The intended collection avoids duplicate artifacts within a campaign; guaranteeing perceptually different objects forever across every player's worlds is an aspiration that a finite primitive library cannot promise.
 
