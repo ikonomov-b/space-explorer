@@ -80,6 +80,35 @@ public sealed class SystemDescription
     /// <summary>The description as the tool prints it and the arrival screen will show it.</summary>
     public string Text { get; }
 
+    /// <summary>
+    /// What the description says about the star, without the column the table prints it in, so a view can
+    /// put it on the star itself and the two cannot drift apart.
+    /// </summary>
+    public string StarLine
+    {
+        get
+        {
+            long luminosity = DerivationRules.Luminosity(Star.RadiusUnits, Star.TemperatureKelvin);
+            return $"class {Star.Type}, {Star.TemperatureKelvin} K, {Scaled(Rescale(Star.MassUnits, CategoryRegistryRevision1.SolarMass, 1_000), 1_000, 3)} Msun, {Kilometres(Star.RadiusUnits)} km, {Scaled(Rescale(luminosity, CategoryRegistryRevision1.SolarLuminosity, 1_000), 1_000, 3)} Lsun";
+        }
+    }
+
+    /// <summary>The line the table gives <paramref name="body"/>, without its indent or line break.</summary>
+    public static string LineFor(BodyDescription body) => Line(body).Trim();
+
+    /// <summary>
+    /// The same body in one short line: what it is, where it is, how warm, and the verdict. It is what a
+    /// view shows when there is no room for the whole line, and it is built here so the short and the
+    /// long form cannot say different things.
+    /// </summary>
+    public static string BriefFor(BodyDescription body)
+    {
+        string where = $"{Scaled(Rescale(body.DistanceMetres, PhysicalConstants.AstronomicalUnitMetres, 1_000), 1_000, 3)} AU";
+        return body.Role == BodyRole.Barycentre
+            ? $"{body.Number} barycentre  {where}"
+            : $"{body.Number} {body.Type}  {where}  {body.TemperatureKelvin} K  {(body.LandingCandidate ? "landing candidate" : $"no: {string.Join(" ", body.Refusals)}")}";
+    }
+
     /// <summary>The hash of <see cref="Text"/>, which is what a fixed-seed vector records.</summary>
     public ContentHash Hash => ContentHash.Of(Encoding.UTF8.GetBytes(Text));
 
@@ -274,8 +303,7 @@ public sealed class SystemDescription
         text.Append(CultureInfo.InvariantCulture, $"system description {Version}\n");
         text.Append(CultureInfo.InvariantCulture, $"graph         {description.Graph.Pack} seed {specification.Seed}\n");
         text.Append(CultureInfo.InvariantCulture, $"pinned        registry {specification.RegistryRevision}, grammar {specification.GrammarVersion}, generator {specification.GeneratorVersion}, suit profile {description.Suit.Version} {description.Suit.Hash.ToString()[..12]}\n");
-        long luminosity = DerivationRules.Luminosity(description.Star.RadiusUnits, description.Star.TemperatureKelvin);
-        text.Append(CultureInfo.InvariantCulture, $"star          class {description.Star.Type}, {description.Star.TemperatureKelvin} K, {Scaled(Rescale(description.Star.MassUnits, CategoryRegistryRevision1.SolarMass, 1_000), 1_000, 3)} Msun, {Kilometres(description.Star.RadiusUnits)} km, {Scaled(Rescale(luminosity, CategoryRegistryRevision1.SolarLuminosity, 1_000), 1_000, 3)} Lsun\n");
+        text.Append(CultureInfo.InvariantCulture, $"star          {StarLine}\n");
 
         foreach (BodyDescription body in description.Bodies)
         {

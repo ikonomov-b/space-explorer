@@ -25,6 +25,7 @@ try
         ["validate-graph", string pack, .. string[] rest] => ValidateGraph(pack, rest),
         ["describe", string pack, .. string[] rest] => Describe(pack, rest),
         ["iterate", .. string[] rest] => Iterate(rest),
+        ["destination", .. string[] rest] => Destination(rest),
         _ => Unknown(args[0]),
     };
 }
@@ -55,6 +56,8 @@ static int Usage()
     Console.WriteLine("                                      Print the system description derived from a published graph.");
     Console.WriteLine("  iterate --set <pack-id> --seeds <a-b> [--tier <name>] [--data-root <dir>]");
     Console.WriteLine("                                      Compose one system per seed without publishing and describe each.");
+    Console.WriteLine("  destination --tier <name> --seed <n> [--set <pack-id>] [--data-root <dir>]");
+    Console.WriteLine("                                      Compose the destination the two levers name and describe it.");
     return 0;
 }
 
@@ -257,6 +260,43 @@ static int Iterate(string[] options)
     Console.WriteLine($"bodies        {planets} planets, {moons} moons; {candidates} landing candidates");
     Console.WriteLine($"refused by    {string.Join(", ", refusals.OrderByDescending(entry => entry.Value).ThenBy(entry => entry.Key, StringComparer.Ordinal).Select(entry => $"{entry.Key} {entry.Value}"))}");
     return 0;
+}
+
+static int Destination(string[] options)
+{
+    DistanceTier tier = Tier(options);
+    ulong seed = ulong.Parse(Option(options, "--seed") ?? throw new ArgumentException("destination needs --seed <n>."), System.Globalization.CultureInfo.InvariantCulture);
+
+    DataRoot root = Root(options);
+    PrimitiveSet source = SourceSet(root, options);
+    CategoryRegistry registry = CategoryRegistries.Supported.Find(source.Manifest.RegistryRevision);
+    CompositionGrammar grammar = GrammarFor(registry);
+    SuitProfile suit = SuitProfile.Version1;
+
+    Destination destination = DestinationComposer.Compose(tier, seed, source, grammar, registry, suit);
+
+    Console.WriteLine($"destination   tier {TierRules.Label(tier)}, seed {seed}");
+    Console.WriteLine($"drawn         attempt {destination.Attempt + 1} of at most {DestinationComposer.MaxAttempts}; composition seed {destination.CompositionSeed}");
+    Console.WriteLine($"set           {source.Manifest.Pack} {source.Manifest.Hash}");
+    Console.Write(destination.Description.Text);
+    Console.WriteLine(Verdict(destination.Description, tier));
+    return 0;
+}
+
+/// <summary>The set a composition draws from: the one named, or the only one published under a supported revision.</summary>
+static PrimitiveSet SourceSet(DataRoot root, string[] options)
+{
+    if (Option(options, "--set") is { } named)
+    {
+        return SetLoader.Load(root, PackId.Parse(named), CategoryRegistries.Supported);
+    }
+
+    IReadOnlyList<(PackId Pack, ContentHash Manifest, int Count)> published = SetLoader.List(root);
+    return published.Count == 1
+        ? SetLoader.Load(root, published[0].Pack, CategoryRegistries.Supported)
+        : throw new ArgumentException(published.Count == 0
+            ? $"No set is published in {root.Path}; run generate-set first."
+            : $"{published.Count} sets are published in {root.Path}; name one with --set <pack-id>. Run list to see them.");
 }
 
 static string Verdict(SystemDescription description, DistanceTier tier)

@@ -60,4 +60,5 @@ File name: `NNNN-short-title.md`. Use [0000-template.md](0000-template.md). A re
 | [0049](0049-suit-profile-and-system-description-version-1-and-derivation-rules-as-named-implementations.md) | Suit profile and system description version 1, and derivation rules as named implementations | Accepted |
 | [0050](0050-registry-revision-2-grammar-version-2-and-versioned-record-growth.md) | Registry revision 2 derives what contradicted itself, grammar version 2 spaces the orbits, and a versioned record may grow | Accepted |
 | [0051](0051-grammar-version-3-orbits-scaled-to-the-star-and-bodies-suited-to-their-zone.md) | Grammar version 3: orbits scaled to the star, and a body suited to the zone it takes | Accepted |
+| [0052](0052-the-two-levers-compose-a-destination-and-a-review-view-shows-it.md) | The two levers compose a destination by bounded retry, and a review view shows it beside its description | Accepted |
 <!-- generated:end decisions -->

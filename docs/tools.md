@@ -81,6 +81,9 @@ dotnet run --project src/SpaceExplorer.Cli -- describe <pack-id> --tier starter
 dotnet run --project src/SpaceExplorer.Cli -- iterate --set <pack-id> --seeds 1-24 --tier starter
 # one generation iteration: composes a system per seed without publishing, describes each, and prints
 # the pins that reproduce it, every verdict, and the sample's totals and refusal counts
+dotnet run --project src/SpaceExplorer.Cli -- destination --tier starter --seed 7
+# the two destination levers: draws systems on seeds derived from the tier and the seed until one
+# satisfies that tier's rules, then describes it. --set names the pack when more than one is published
 
 dotnet run --project src/SpaceExplorer.Cli -- --help   # usage; exits 0
                                                        # unknown command exits 2; a refused input exits 1
@@ -99,6 +102,20 @@ godot --version                                        # 4.7.2.stable.mono.offic
 godot --path src/SpaceExplorer.Game --editor           # open the editor
 godot --path src/SpaceExplorer.Game                    # run the main scene (Main.tscn)
 godot --headless --path src/SpaceExplorer.Game --import   # import assets; run before any export
+```
+
+The solar-system review view of [decision 0052](decisions/0052-the-two-levers-compose-a-destination-and-a-review-view-shows-it.md). Its arguments come after `--`, like the smoke flag, and it needs a published set in the data root:
+
+```sh
+godot --path src/SpaceExplorer.Game -- --system --tier starter --seed 7
+# composes the destination the two levers name and draws it, each body wearing its own description
+# --set <pack-id> when more than one set is published; --data-root <dir> to read another root
+# tab and shift-tab cycle bodies, 1-9 choose one, 0 frames the system, w a s d q e move, shift is
+# faster, drag turns, the wheel closes in, escape quits
+
+godot --path src/SpaceExplorer.Game --resolution 1600x900 -- --system --tier starter --seed 7 \
+  --focus 2 --screenshot /tmp/system.png
+# opens at body 2, saves a picture and exits, so a system is reviewable without sitting at the window
 ```
 
 Exports. The preset names are exactly `Linux` and `Windows Desktop`, and they must be quoted:

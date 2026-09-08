@@ -74,6 +74,22 @@ public sealed class TwoProcessDeterminismTests : IDisposable
     }
 
     [Fact]
+    public void The_two_levers_name_the_same_destination_in_two_processes()
+    {
+        // The destination command is what the review view runs on, so the wiring from the two levers to a
+        // system that satisfies its tier is checked here, where no display is needed (decision 0052).
+        Dictionary<string, string> first = GenerateSet("first");
+        GenerateSet("second");
+
+        string one = Run(["destination", "--tier", "starter", "--seed", "7", "--data-root", Root("first")]);
+        string two = Run(["destination", "--tier", "starter", "--seed", "7", "--data-root", Root("second")]);
+
+        Assert.Equal(one, two);
+        Assert.Contains("tier          pass (starter)", one, StringComparison.Ordinal);
+        Assert.Contains($"set           {first["pack"]}", one, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void A_different_seed_yields_a_different_pack_across_processes()
     {
         Dictionary<string, string> first = GenerateSet("first");
