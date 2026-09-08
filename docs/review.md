@@ -54,7 +54,7 @@ The nineteen findings of the documentation stage were cleared on 2026-09-07; the
 | 44 | [A required child and the depth bound can contradict each other](#44-a-required-child-and-the-depth-bound-can-contradict-each-other) | Gap | Cleared, [decision 0048](decisions/0048-composition-grammar-version-1-graph-records-and-graph-publication.md) |
 | 45 | [A transform's fields are fixed but nothing bounds their values](#45-a-transforms-fields-are-fixed-but-nothing-bounds-their-values) | Gap | Cleared, [decision 0048](decisions/0048-composition-grammar-version-1-graph-records-and-graph-publication.md) |
 | 46 | [The suit profile and the numeric tables have no home, no version, and no values](#46-the-suit-profile-and-the-numeric-tables-have-no-home-no-version-and-no-values) | Gap | Cleared, [decision 0049](decisions/0049-suit-profile-and-system-description-version-1-and-derivation-rules-as-named-implementations.md) |
-| 47 | [Nothing holds independently drawn parameters of one body physically consistent](#47-nothing-holds-independently-drawn-parameters-of-one-body-physically-consistent) | Foundational | **Open**, awaiting the owner's verdict on iteration 1 |
+| 47 | [Nothing holds independently drawn parameters of one body physically consistent](#47-nothing-holds-independently-drawn-parameters-of-one-body-physically-consistent) | Foundational | **Open**; the owner's verdict on iteration 1 chose the derivation path, and it clears with the registry revision that records it |
 
 ## Foundational findings
 
@@ -637,4 +637,4 @@ Affects: [decision 0044](decisions/0044-tiered-system-composition-one-star-and-e
 
 **Proposed solution.** Derive the dependent quantity instead of drawing it, which is what [decision 0017](decisions/0017-region-extent-cap-and-storage-derivation.md) does for the region constants and what decision 0037 already provides the mechanism for: draw a planet's mass and a density, derive its radius; draw a star's effective temperature, derive its class and its luminosity from radius and temperature. That replaces stored parameters with derived ones, which is a category-registry revision and a new template vocabulary, not a grammar version. The alternative, a validation rule that rejects an inconsistent definition at generation, keeps the schema but spends the retry budget on rejecting most of what it draws.
 
-**Status:** Open. It is a registry-revision question whose answer belongs to the owner's verdict on iteration 1 and the change that verdict names for iteration 2 ([progress](progress.md#solar-system-iterations)).
+**Status:** Open. The owner's verdict on iteration 1, recorded 2026-09-08, chose the derivation path: iteration 2 derives a planet's radius from its mass and a drawn density, and a star's spectral class and luminosity from its effective temperature ([progress](progress.md#solar-system-iterations)). This finding clears when the registry revision that records those schemas is accepted.
