@@ -55,4 +55,5 @@ File name: `NNNN-short-title.md`. Use [0000-template.md](0000-template.md). A re
 | [0044](0044-tiered-system-composition-one-star-and-explorability-by-validation.md) | Tiered system composition: one star, a single lifeless explorable planet at the starter tier, explorability as a validation outcome, and per-tier planet and region counts | Accepted |
 | [0045](0045-close-views-only-in-the-surface-sky-and-a-derived-system-description.md) | Other bodies are seen only in the surface sky; a system description derived from the graph at M0b and M1 | Accepted |
 | [0046](0046-artifact-families-human-height-cap-cargo-by-mass-and-material-rarity.md) | Artifacts: three families with relics covering technical pieces and art, a human-height cap, cargo by mass and size class, and material rarity through the rarity factor | Accepted |
+| [0047](0047-usable-storage-and-structure-generation-then-solar-system-iterations.md) | Next steps: usable primitive storage and structure generation, then solar-system randomization in description-judged iterations | Accepted |
 <!-- generated:end decisions -->
