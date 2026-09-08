@@ -3,10 +3,18 @@ using SpaceExplorer.Core.Shared;
 namespace SpaceExplorer.Core.Registry;
 
 /// <summary>
+/// A quantity a category does not store because a rule computes it: the label it is known by and the
+/// generator revision identifier of the rule, which is decision 0037's computed derived parameter and
+/// the pin decision 0035 requires. A registry revision that carries one is the first to encode them.
+/// </summary>
+public sealed record DerivedParameter(string Label, string Rule);
+
+/// <summary>
 /// One category of the registry: a stable numeric ID with zero reserved, a label, the domains its
 /// primitives may join, the ordered parameter schema, the connector kinds, the permitted storage
-/// policies, the derived-instance budget, and the generator revision identifiers that may produce it
-/// (decisions 0031, 0034, 0035, 0038).
+/// policies, the derived-instance budget, the generator revision identifiers that may produce it, and,
+/// from registry revision 2, the parameters a rule derives rather than the record storing
+/// (decisions 0031, 0034, 0035, 0037, 0038).
 /// </summary>
 public sealed record CategoryDefinition
 {
@@ -14,6 +22,9 @@ public sealed record CategoryDefinition
     public const int MaxConnectors = 64;
     public const int MaxDomains = 7;
     public const int MaxGeneratorRevisions = 64;
+
+    /// <summary>The first registry revision whose record encodes derived parameters.</summary>
+    public const uint FirstRevisionWithDerived = 2;
 
     public CategoryDefinition(
         uint id,
@@ -23,13 +34,34 @@ public sealed record CategoryDefinition
         IReadOnlyList<ConnectorKind> connectors,
         StoragePolicies permittedPolicies,
         uint maxDerivedInstances,
-        IReadOnlyList<string> generatorRevisions)
+        IReadOnlyList<string> generatorRevisions,
+        IReadOnlyList<DerivedParameter>? derivedParameters = null)
     {
         StreamPath.Validate(label);
         ArgumentNullException.ThrowIfNull(domains);
         ArgumentNullException.ThrowIfNull(parameters);
         ArgumentNullException.ThrowIfNull(connectors);
         ArgumentNullException.ThrowIfNull(generatorRevisions);
+
+        DerivedParameter[] derived = [.. derivedParameters ?? []];
+        var derivedLabels = new HashSet<string>(StringComparer.Ordinal);
+        foreach (DerivedParameter parameter in derived)
+        {
+            StreamPath.Validate(parameter.Label);
+            GeneratorRevisionIdentifier.Validate(parameter.Rule);
+
+            if (!derivedLabels.Add(parameter.Label) || parameters.Any(stored => stored.Label == parameter.Label))
+            {
+                throw new ArgumentException($"Category '{label}' derives '{parameter.Label}' twice, or derives what it also stores.", nameof(derivedParameters));
+            }
+        }
+
+        if (derived.Length > MaxParameters)
+        {
+            throw new ArgumentException($"Category '{label}' derives {derived.Length} parameters; the bound is {MaxParameters}.", nameof(derivedParameters));
+        }
+
+        DerivedParameters = derived;
 
         if (id == 0)
         {
@@ -127,7 +159,13 @@ public sealed record CategoryDefinition
         }
     }
 
-    internal void Encode(CanonicalWriter writer)
+    /// <summary>The parameters a rule computes rather than the record storing (decision 0037).</summary>
+    public IReadOnlyList<DerivedParameter> DerivedParameters { get; }
+
+    /// <summary>The rule that derives <paramref name="label"/>, or null when this category stores it or does not have it.</summary>
+    public string? DerivationOf(string label) => DerivedParameters.FirstOrDefault(parameter => parameter.Label == label)?.Rule;
+
+    internal void Encode(CanonicalWriter writer, uint revision)
     {
         writer.WriteUInt32(Id);
         writer.WriteText(Label);
@@ -152,13 +190,25 @@ public sealed record CategoryDefinition
         writer.WriteUInt8((byte)PermittedPolicies);
         writer.WriteUInt32(MaxDerivedInstances);
         writer.WriteCount(GeneratorRevisions.Count);
-        foreach (string revision in GeneratorRevisions)
+        foreach (string identifier in GeneratorRevisions)
         {
-            writer.WriteText(revision);
+            writer.WritePath(identifier);
+        }
+
+        // A record's domain label carries its revision, so a later revision may add a field without
+        // moving an earlier one's bytes; the reader dispatches on the label it opened (decision 0035).
+        if (revision >= FirstRevisionWithDerived)
+        {
+            writer.WriteCount(DerivedParameters.Count);
+            foreach (DerivedParameter parameter in DerivedParameters)
+            {
+                writer.WriteText(parameter.Label);
+                writer.WritePath(parameter.Rule);
+            }
         }
     }
 
-    internal static CategoryDefinition Decode(CanonicalReader reader)
+    internal static CategoryDefinition Decode(CanonicalReader reader, uint revision)
     {
         uint id = reader.ReadUInt32();
         string label = reader.ReadText();
@@ -211,12 +261,27 @@ public sealed record CategoryDefinition
         var revisions = new string[revisionCount];
         for (int index = 0; index < revisionCount; index++)
         {
-            revisions[index] = reader.ReadText();
+            revisions[index] = reader.ReadPath();
+        }
+
+        var derived = new List<DerivedParameter>();
+        if (revision >= FirstRevisionWithDerived)
+        {
+            int derivedCount = reader.ReadCount();
+            if (derivedCount > MaxParameters)
+            {
+                throw new FormatException($"Category '{label}' derives {derivedCount} parameters; the bound is {MaxParameters}.");
+            }
+
+            for (int index = 0; index < derivedCount; index++)
+            {
+                derived.Add(new DerivedParameter(reader.ReadText(), reader.ReadPath()));
+            }
         }
 
         try
         {
-            return new CategoryDefinition(id, label, domains, parameters, connectors, policies, maxDerived, revisions);
+            return new CategoryDefinition(id, label, domains, parameters, connectors, policies, maxDerived, revisions, derived);
         }
         catch (ArgumentException exception)
         {

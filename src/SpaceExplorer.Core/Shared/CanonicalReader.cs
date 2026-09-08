@@ -136,6 +136,23 @@ public sealed class CanonicalReader
         return new string(characters);
     }
 
+    /// <summary>Reads a length-prefixed path written by <see cref="CanonicalWriter.WritePath"/>.</summary>
+    /// <exception cref="FormatException">The bytes are not a canonical stream path.</exception>
+    public string ReadPath()
+    {
+        string path = Encoding.UTF8.GetString(ReadBytes());
+        try
+        {
+            StreamPath.Validate(path);
+        }
+        catch (ArgumentException exception)
+        {
+            throw new FormatException(exception.Message, exception);
+        }
+
+        return path;
+    }
+
     /// <summary>Reads the 32 bytes <see cref="CanonicalWriter.WriteContentHash"/> wrote.</summary>
     public ContentHash ReadContentHash() => ContentHash.FromBytes(NextBytes(ContentHash.ByteCount));
 

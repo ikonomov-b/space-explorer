@@ -50,6 +50,48 @@ public class DerivationRuleTests
         Assert.True(Math.Abs(temperature - expected) <= 1, $"{body}: {temperature} K against the published {expected} K");
     }
 
+    [Theory]
+    // Mass in units of 10^20 kg and mean density in kg/m^3, then the published mean radius in km, which
+    // the rule reproduces to within a kilometre from those two figures alone.
+    [InlineData("Mercury", 3_301L, 5_429L, 2_440L)]
+    [InlineData("Earth", 59_720L, 5_514L, 6_371L)]
+    [InlineData("Moon", 735L, 3_344L, 1_737L)]
+    [InlineData("Mars", 6_417L, 3_934L, 3_390L)]
+    [InlineData("Jupiter", 18_980_000L, 1_326L, 69_911L)]
+    public void Radius_matches_the_published_mean_radius(string body, long massUnits, long density, long expectedKilometres)
+    {
+        long kilometres = (DerivationRules.Radius(massUnits, density) >> 8) / 1_000;
+
+        Assert.True(Math.Abs(kilometres - expectedKilometres) <= 1, $"{body}: {kilometres} km against the published {expectedKilometres} km");
+    }
+
+    [Fact]
+    public void Luminosity_matches_the_suns_published_output()
+    {
+        // 4 pi R^2 sigma T^4 for the Sun's radius and effective temperature, against the 3.828 x 10^26 W
+        // the fact sheet states, in the registry's units of 10^20 W.
+        long luminosity = DerivationRules.Luminosity(SunRadius, SunTemperature);
+
+        Assert.InRange(luminosity, 3_827_000, 3_829_000);
+    }
+
+    [Theory]
+    // The conventional Morgan-Keenan boundaries, checked at each one and just below it.
+    [InlineData(40_000, "O")]
+    [InlineData(33_000, "O")]
+    [InlineData(32_999, "B")]
+    [InlineData(10_000, "B")]
+    [InlineData(9_999, "A")]
+    [InlineData(7_500, "A")]
+    [InlineData(6_000, "F")]
+    [InlineData(5_772, "G")]
+    [InlineData(5_200, "G")]
+    [InlineData(3_700, "K")]
+    [InlineData(3_699, "M")]
+    [InlineData(2_000, "M")]
+    public void Spectral_class_follows_the_effective_temperature(long kelvin, string expected) =>
+        Assert.Equal(expected, DerivationRules.SpectralClass(kelvin));
+
     [Fact]
     public void The_extremes_of_the_registrys_ranges_do_not_overflow_or_divide_by_zero()
     {
@@ -59,7 +101,12 @@ public class DerivationRuleTests
         Assert.True(DerivationRules.EquilibriumTemperature(50_000, 2_000_000_000L << 8, 1, 0) > 0);
         Assert.Equal(0, DerivationRules.EquilibriumTemperature(0, 1, 1, 65_535));
 
+        Assert.True(DerivationRules.Radius(100_000_000L, 300) > 0);
+        Assert.True(DerivationRules.Luminosity(2_000_000_000L << 8, 50_000) > 0);
+
         Assert.Throws<ArgumentOutOfRangeException>(() => DerivationRules.SurfaceGravity(1, 0));
+        Assert.Throws<ArgumentOutOfRangeException>(() => DerivationRules.Radius(1, 0));
+        Assert.Throws<ArgumentOutOfRangeException>(() => DerivationRules.Luminosity(0, 1));
         Assert.Throws<ArgumentOutOfRangeException>(() => DerivationRules.EquilibriumTemperature(1, 1, 0, 0));
         Assert.Throws<ArgumentOutOfRangeException>(() => DerivationRules.EquilibriumTemperature(1, 1, 1, 65_536));
     }

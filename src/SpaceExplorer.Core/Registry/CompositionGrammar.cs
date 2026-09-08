@@ -7,9 +7,47 @@ public sealed record CategoryChoice(uint Category, uint Weight);
 
 /// <summary>
 /// What a grammar allows on one connector kind: how many children, the bounded transform they attach
-/// with, and the weighted categories they may belong to (decisions 0031, 0036).
+/// with, the weighted categories they may belong to (decisions 0031, 0036), and, from grammar version 2,
+/// the geometric progression their orbits follow.
 /// </summary>
-public sealed record ConnectorRule(uint MinCount, uint MaxCount, TransformRange Transform, IReadOnlyList<CategoryChoice> Choices);
+/// <param name="SpacingRatio">
+/// The ratio between one child's orbit and the next, in 1/256, or zero for none. When it is set, the
+/// child at index <c>i</c> draws its semi-major axis from the band that begins at the transform range's
+/// own minimum multiplied by the ratio <c>i</c> times, so the children of one connector come out ordered
+/// and spaced as a real system is rather than scattered over one wide range. Carried only by grammar
+/// version 2 and later, whose domain label says so.
+/// </param>
+public sealed record ConnectorRule(uint MinCount, uint MaxCount, TransformRange Transform, IReadOnlyList<CategoryChoice> Choices, uint SpacingRatio = 0)
+{
+    /// <summary>The unit of <see cref="SpacingRatio"/>: a ratio of one.</summary>
+    public const uint RatioUnit = 256;
+
+    /// <summary>The first grammar version that carries a spacing ratio.</summary>
+    public const uint FirstVersionWithSpacing = 2;
+
+    /// <summary>
+    /// The bounds the child at <paramref name="index"/> draws its semi-major axis between: its band of
+    /// the progression when this rule has a ratio, and the whole declared range when it has none.
+    /// </summary>
+    public (long Min, long Max) OrbitBand(int index)
+    {
+        (long min, long max) = Transform.Bounds[0];
+        if (SpacingRatio == 0)
+        {
+            return (min, max);
+        }
+
+        long low = min;
+        for (int step = 0; step < index; step++)
+        {
+            low = Step(low);
+        }
+
+        return (Math.Min(low, max), Math.Min(Step(low), max));
+    }
+
+    private long Step(long value) => value / RatioUnit * SpacingRatio;
+}
 
 /// <summary>The rules for one category: one <see cref="ConnectorRule"/> per connector kind, in the category's own order.</summary>
 public sealed record Production(uint Category, IReadOnlyList<ConnectorRule> ConnectorRules);
@@ -137,7 +175,7 @@ public sealed class CompositionGrammar
         }
 
         RootRule[] orderedRoots = ValidateRoots(registry, roots);
-        Production[] orderedProductions = ValidateProductions(registry, productions);
+        Production[] orderedProductions = ValidateProductions(registry, productions, version);
         ValidateClosure(orderedRoots, orderedProductions);
         Dictionary<uint, (uint Depth, long Nodes)> minima = Minima(orderedProductions);
 
@@ -196,7 +234,9 @@ public sealed class CompositionGrammar
                 uint minCount = reader.ReadUInt32();
                 uint maxCount = reader.ReadUInt32();
                 TransformRange transform = TransformRange.Decode(reader, schema.Connectors[rule].Transform);
-                rules[rule] = new ConnectorRule(minCount, maxCount, transform, ReadChoices(reader));
+                CategoryChoice[] choices = ReadChoices(reader);
+                uint spacing = expectedVersion >= ConnectorRule.FirstVersionWithSpacing ? reader.ReadUInt32() : 0;
+                rules[rule] = new ConnectorRule(minCount, maxCount, transform, choices, spacing);
             }
 
             productions[index] = new Production(category, rules);
@@ -262,7 +302,7 @@ public sealed class CompositionGrammar
         return ordered;
     }
 
-    private static Production[] ValidateProductions(CategoryRegistry registry, IReadOnlyList<Production> productions)
+    private static Production[] ValidateProductions(CategoryRegistry registry, IReadOnlyList<Production> productions, uint version)
     {
         Production[] ordered = [.. productions.OrderBy(production => production.Category)];
         for (int index = 0; index < ordered.Length; index++)
@@ -283,16 +323,40 @@ public sealed class CompositionGrammar
 
             for (int rule = 0; rule < production.ConnectorRules.Count; rule++)
             {
-                ValidateRule(production.ConnectorRules[rule], schema, schema.Connectors[rule], nameof(productions));
+                ValidateRule(production.ConnectorRules[rule], schema, schema.Connectors[rule], version, nameof(productions));
             }
         }
 
         return ordered;
     }
 
-    private static void ValidateRule(ConnectorRule rule, CategoryDefinition schema, ConnectorKind connector, string parameterName)
+    private static void ValidateRule(ConnectorRule rule, CategoryDefinition schema, ConnectorKind connector, uint version, string parameterName)
     {
         string where = $"'{schema.Label}/{connector.Label}'";
+
+        if (rule.SpacingRatio != 0)
+        {
+            if (version < ConnectorRule.FirstVersionWithSpacing)
+            {
+                throw new ArgumentException($"Rule {where} carries a spacing ratio, which no grammar before version {ConnectorRule.FirstVersionWithSpacing} encodes.", parameterName);
+            }
+
+            if (connector.Transform != TransformKind.OrbitalElements)
+            {
+                throw new ArgumentException($"Rule {where} carries a spacing ratio, which only an orbit connector has a semi-major axis to space.", parameterName);
+            }
+
+            if (rule.SpacingRatio <= ConnectorRule.RatioUnit)
+            {
+                throw new ArgumentException($"Rule {where} has a spacing ratio of {rule.SpacingRatio}/{ConnectorRule.RatioUnit}, which does not grow.", parameterName);
+            }
+
+            (long low, long high) = rule.OrbitBand(rule.MaxCount == 0 ? 0 : (int)rule.MaxCount - 1);
+            if (high >= rule.Transform.Bounds[0].Max && low >= rule.Transform.Bounds[0].Max)
+            {
+                throw new ArgumentException($"Rule {where} spaces {rule.MaxCount} orbits past its own maximum of {rule.Transform.Bounds[0].Max} m; widen the range or lower the ratio.", parameterName);
+            }
+        }
 
         if (rule.MinCount > rule.MaxCount || rule.MinCount < connector.MinCount || rule.MaxCount > connector.MaxCount)
         {
@@ -460,6 +524,13 @@ public sealed class CompositionGrammar
                 writer.WriteUInt32(rule.MaxCount);
                 rule.Transform.Encode(writer);
                 WriteChoices(writer, rule.Choices);
+
+                // A record's domain label carries its version, so a later version may add a field without
+                // moving an earlier version's bytes; the reader dispatches on the label it opened.
+                if (Version >= ConnectorRule.FirstVersionWithSpacing)
+                {
+                    writer.WriteUInt32(rule.SpacingRatio);
+                }
             }
         }
 

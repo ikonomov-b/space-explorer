@@ -138,7 +138,7 @@ public sealed class SetManifest
         writer.WriteCount(generatorRevisions.Count);
         foreach (string revision in generatorRevisions)
         {
-            writer.WriteText(revision);
+            writer.WritePath(revision);
         }
 
         writer.WriteCount(storagePolicies.Count);
@@ -188,7 +188,7 @@ public sealed class SetManifest
         var revisions = new string[revisionCount];
         for (int index = 0; index < revisionCount; index++)
         {
-            revisions[index] = reader.ReadText();
+            revisions[index] = reader.ReadPath();
         }
 
         int pinCount = reader.ReadCount();

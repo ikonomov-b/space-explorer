@@ -106,6 +106,14 @@ public sealed class CanonicalWriter
         }
     }
 
+    /// <summary>
+    /// Writes a length prefix followed by the bytes of <paramref name="value"/>, which must be a
+    /// <see cref="StreamPath"/>: the same character set as <see cref="WriteText"/> plus the separator, so
+    /// a generator revision identifier such as <c>derive-radius/1</c> encodes, which text alone cannot.
+    /// </summary>
+    /// <exception cref="ArgumentException"><paramref name="value"/> is not in canonical path form.</exception>
+    public void WritePath(string value) => WriteBytes(StreamPath.ToCanonicalBytes(value));
+
     /// <summary>Writes the 32 bytes of <paramref name="value"/>, which is a fixed width and needs no length prefix.</summary>
     /// <exception cref="ArgumentException"><paramref name="value"/> is unset.</exception>
     public void WriteContentHash(ContentHash value)

@@ -104,7 +104,7 @@ public static class CompositionGenerator
                     }
 
                     Count++;
-                    attached.Add(Build(chosen, childPath, depth + 1, childStream, Sample(childStream, rule.Transform)));
+                    attached.Add(Build(chosen, childPath, depth + 1, childStream, Sample(childStream, rule, (int)child)));
                 }
 
                 children.Add(attached);
@@ -158,13 +158,20 @@ public static class CompositionGenerator
             return choices[^1].Category;
         }
 
-        private static InstanceTransform Sample(Pcg32 stream, TransformRange range)
+        /// <summary>
+        /// Draws one attachment transform. The first component of an orbit is drawn from the band the
+        /// rule's spacing ratio gives the child at <paramref name="index"/>, so the children of one
+        /// connector come out ordered and geometrically spaced; every other component spans its own
+        /// declared range (decision 0050).
+        /// </summary>
+        private static InstanceTransform Sample(Pcg32 stream, ConnectorRule rule, int index)
         {
+            TransformRange range = rule.Transform;
             var components = new long[range.Bounds.Count];
-            for (int index = 0; index < components.Length; index++)
+            for (int component = 0; component < components.Length; component++)
             {
-                (long min, long max) = range.Bounds[index];
-                components[index] = ParameterSampler.SampleInclusive(stream, min, max);
+                (long min, long max) = component == 0 ? rule.OrbitBand(index) : range.Bounds[component];
+                components[component] = ParameterSampler.SampleInclusive(stream, min, max);
             }
 
             return new InstanceTransform(range.Kind, components);

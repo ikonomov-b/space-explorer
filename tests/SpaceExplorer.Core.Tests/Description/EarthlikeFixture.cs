@@ -116,6 +116,62 @@ internal static class EarthlikeFixture
         return SystemDescription.Derive(CompositionGenerator.Generate(specification, set, grammar, Registry), Registry, SuitProfile.Version1);
     }
 
+    /// <summary>
+    /// The same Sun and Earth under category registry revision 2, which stores neither the planet's radius
+    /// nor the star's class and luminosity but derives all three. The description must come out with the
+    /// same numbers as the revision 1 fixture, since the bodies are the same.
+    /// </summary>
+    public static SystemDescription Revision2()
+    {
+        CategoryRegistry registry = CategoryRegistryRevision2.Registry;
+        TemplateVocabulary vocabulary = TemplateVocabulary.Create(registry, PackId.Parse("5011ab00c0ffee00d00d00feed00f00d"),
+        [
+            PrimitiveTemplate.Create(registry, 1, "sun", Star,
+            [
+                ParameterRange.Integer(SolarMass, SolarMass),
+                ParameterRange.Integer(695_700_000L << PlanetFractionBits, 695_700_000L << PlanetFractionBits),
+                ParameterRange.Integer(5_772, 5_772),
+            ], [ConnectorDeclaration.Empty]),
+
+            // Earth's mass and its mean density of 5,514 kg/m^3, from which the radius follows.
+            PrimitiveTemplate.Create(registry, 2, "earth", Planet,
+            [
+                ParameterRange.Integer(EarthMass, EarthMass),
+                ParameterRange.Integer(5_514, 5_514),
+                ParameterRange.Integer(20_054, 20_054),
+                ParameterRange.BinaryTurn(0, 0),
+                ParameterRange.BinaryTurn(0, 0),
+                ParameterRange.Integer(20 * 86_164, 20 * 86_164),
+                ParameterRange.BinaryTurn(0, 0),
+                ParameterRange.Enum(0),
+            ], [ConnectorDeclaration.Empty, ConnectorDeclaration.Empty]),
+
+            PrimitiveTemplate.Create(registry, 3, "air", Atmosphere, [.. Vocabulary.Templates[2].Ranges], []),
+        ]);
+
+        PrimitiveSet set = SetGenerator.Generate(
+            SetSpecification.Create(registry.Revision, registry.Hash, GeneratorVersion.Current, SetGenerator.GrammarVersion, 1, vocabulary.Pack, vocabulary.Hash, [new SetRequest(1, 1), new SetRequest(2, 1), new SetRequest(3, 1)], 4),
+            vocabulary,
+            registry);
+
+        CompositionGrammar grammar = CompositionGrammar.Create(registry, 2, 2, 8, 4,
+            [new RootRule(CompositionDomain.SolarSystem, [new CategoryChoice(Star, 1)])],
+            [
+                new Production(Star, [new ConnectorRule(1, 1, EarthOrbit, [new CategoryChoice(Planet, 1)])]),
+                new Production(Planet,
+                [
+                    new ConnectorRule(1, 1, TransformRange.Origin(TransformKind.Rigid), [new CategoryChoice(Atmosphere, 1)]),
+                    new ConnectorRule(0, 0, TransformRange.Origin(TransformKind.OrbitalElements), []),
+                ]),
+                new Production(Atmosphere, []),
+            ]);
+
+        GraphSpecification specification = GraphSpecification.Create(
+            registry.Revision, registry.Hash, GeneratorVersion.Current, grammar.Version, grammar.Hash, 1, set.Manifest.Pack, set.Manifest.Hash, CompositionDomain.SolarSystem);
+
+        return SystemDescription.Derive(CompositionGenerator.Generate(specification, set, grammar, registry), registry, SuitProfile.Version1);
+    }
+
     /// <summary>The tagged vocabulary of <see cref="GiantWithLandableMoon"/>: the same three templates, plus Jupiter.</summary>
     private static readonly TemplateVocabulary GiantVocabulary = TemplateVocabulary.Create(Registry, PackId.Parse("5011ab00c0ffee00d00d00feed00fade"),
     [

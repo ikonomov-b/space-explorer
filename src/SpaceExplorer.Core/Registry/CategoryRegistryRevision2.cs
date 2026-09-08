@@ -1,61 +1,39 @@
+using SpaceExplorer.Core.Derivation;
+using static SpaceExplorer.Core.Registry.CategoryRegistryRevision1;
+
 namespace SpaceExplorer.Core.Registry;
 
 /// <summary>
-/// Category registry revision 1: the initial vocabulary M0a criterion 1 generates from, covering the
-/// basic solar-system, planet, and artifact groups plus the material and texture primitives the owner
-/// asked for (decision 0030), under the schema rules of decisions 0031 and 0034 to 0037. Every
-/// category permits materialize only, so no generator revision identifiers are listed yet. Defined in
-/// code and frozen by its recorded hash; a second revision or an authoring tool moves the source form
-/// to <c>content/</c> (decision 0035).
+/// Category registry revision 2: revision 1 with the parameters that could contradict each other removed
+/// and derived instead (review finding 47). A planet carries a mean density
+/// and no radius, because a radius drawn beside a mass fixes a density that nothing checked, and a star
+/// carries neither a spectral class nor a luminosity, because both follow from its effective temperature
+/// and radius. Each category declares what it no longer stores as a derived parameter naming the rule
+/// that computes it, which is decision 0037's computed default and the pin decision 0035 requires.
+/// Everything else is revision 1 unchanged.
 /// </summary>
-public static class CategoryRegistryRevision1
+public static class CategoryRegistryRevision2
 {
-    public const uint Star = 1;
-    public const uint Barycentre = 2;
-    public const uint Planet = 3;
-    public const uint Atmosphere = 4;
-    public const uint SurfaceMaterial = 5;
-    public const uint TextureRecipe = 6;
-    public const uint GeometryRecipe = 7;
-    public const uint ArtifactPart = 8;
-    public const uint Artifact = 9;
+    /// <summary>The least mean density in kg/m^3 a body may draw: below Saturn's 687, and above a comet's.</summary>
+    public const long MinimumDensity = 300;
 
-    /// <summary>Fixed-point fraction bits for planet-fixed radial lengths: 1/256 m (decision 0036).</summary>
-    public const byte PlanetFractionBits = 8;
+    /// <summary>The greatest mean density in kg/m^3: above iron's 7,874 and below osmium's 22,590.</summary>
+    public const long MaximumDensity = 12_000;
 
-    /// <summary>Fixed-point fraction bits for artifact-local lengths: 1/65,536 m (decision 0036).</summary>
-    public const byte ArtifactFractionBits = 16;
-
-    /// <summary>Mass unit: 10^20 kg, given as the exponent because the unit itself exceeds 64 bits.</summary>
-    public const int MassUnitExponentKilograms = 20;
-
-    /// <summary>Earth's mass in that unit, from the published 5.972 x 10^24 kg; a planet's mass reads naturally against it.</summary>
-    public const long EarthMass = 59_720;
-
-    /// <summary>The Sun's mass in that unit, from the published 1.989 x 10^30 kg.</summary>
-    public const long SolarMass = 19_890_000_000;
-
-    /// <summary>Luminosity unit: 10^20 W, given as the exponent.</summary>
-    public const int LuminosityUnitExponentWatts = 20;
-
-    /// <summary>The Sun's luminosity in that unit, from the published 3.828 x 10^26 W.</summary>
-    public const long SolarLuminosity = 3_828_000;
-
-    /// <summary>The minimum landable reference radius, 524,288 m, in 1/256 m units (decision 0041).</summary>
-    public const long MinimumLandableRadius = 524_288L << PlanetFractionBits;
-
-    public static readonly CategoryRegistry Registry = CategoryRegistry.Create(1,
+    public static readonly CategoryRegistry Registry = CategoryRegistry.Create(2,
     [
         new CategoryDefinition(Star, "star", [CompositionDomain.SolarSystem],
         [
             ParameterDescriptor.Integer("mass", 1_000_000_000L, 400_000_000_000L),
             ParameterDescriptor.Integer("radius", 10_000_000L << PlanetFractionBits, 2_000_000_000L << PlanetFractionBits, PlanetFractionBits),
-            ParameterDescriptor.Integer("luminosity", 1_000L, 100_000_000_000L),
             ParameterDescriptor.Integer("effective-temperature", 2_000L, 50_000L),
-            ParameterDescriptor.Choice("spectral-class", "O", "B", "A", "F", "G", "K", "M"),
         ],
         [new ConnectorKind("orbit", TransformKind.OrbitalElements, 0, 16, [Planet, Barycentre])],
-        StoragePolicies.Materialize, 0, []),
+        StoragePolicies.Materialize, 0, [],
+        [
+            new DerivedParameter("luminosity", DerivationRules.LuminosityRevision),
+            new DerivedParameter("spectral-class", DerivationRules.SpectralClassRevision),
+        ]),
 
         new CategoryDefinition(Barycentre, "barycentre", [CompositionDomain.SolarSystem],
         [],
@@ -65,7 +43,7 @@ public static class CategoryRegistryRevision1
         new CategoryDefinition(Planet, "planet", [CompositionDomain.SolarSystem, CompositionDomain.Planet],
         [
             ParameterDescriptor.Integer("mass", 1L, 100_000_000L),
-            ParameterDescriptor.Integer("radius", 100_000L << PlanetFractionBits, 100_000_000L << PlanetFractionBits, PlanetFractionBits),
+            ParameterDescriptor.Integer("density", MinimumDensity, MaximumDensity),
             ParameterDescriptor.Integer("albedo", 0, 65_535),
             ParameterDescriptor.BinaryTurn("pole-right-ascension"),
             ParameterDescriptor.BinaryTurn("pole-declination", -(1 << 30), 1 << 30),
@@ -77,7 +55,8 @@ public static class CategoryRegistryRevision1
             new ConnectorKind("atmosphere", TransformKind.Rigid, 1, 1, [Atmosphere]),
             new ConnectorKind("orbit", TransformKind.OrbitalElements, 0, 8, [Planet]),
         ],
-        StoragePolicies.Materialize, 0, []),
+        StoragePolicies.Materialize, 0, [],
+        [new DerivedParameter("radius", DerivationRules.RadiusRevision)]),
 
         new CategoryDefinition(Atmosphere, "atmosphere", [CompositionDomain.Planet],
         [

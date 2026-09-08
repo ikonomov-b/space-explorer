@@ -17,19 +17,44 @@
       "connectors": { "attach": { "provides": ["plug"], "requires": ["plug"] } } },
     { "id": 7, "label": "found-artifact", "category": "artifact",
       "parameters": { "family": ["mineral", "biological", "relic"], "tier": [1, 2] } },
-    { "id": 8, "label": "main-sequence-star", "category": "star",
-      "parameters": { "mass": [1600000000, 60000000000], "radius": [25600000000, 512000000000], "luminosity": [8000, 60000000], "effective-temperature": [2800, 10000], "spectral-class": ["A", "F", "G", "K", "M"] } },
-    { "id": 9, "label": "airless-atmosphere", "category": "atmosphere",
+
+    // Stars. The class and the luminosity are derived from the effective temperature and the radius under
+    // registry revision 2, so only the three drawn quantities appear here. Radii are in 1/256 m.
+    { "id": 8, "label": "cool-dwarf-star", "category": "star",
+      "parameters": { "mass": [1600000000, 16000000000], "radius": [25600000000, 179000000000], "effective-temperature": [2800, 5200] } },
+    { "id": 9, "label": "sun-like-star", "category": "star",
+      "parameters": { "mass": [16000000000, 34000000000], "radius": [140000000000, 300000000000], "effective-temperature": [5200, 7500] } },
+    { "id": 10, "label": "hot-star", "category": "star",
+      "parameters": { "mass": [34000000000, 120000000000], "radius": [250000000000, 512000000000], "effective-temperature": [7500, 20000] } },
+
+    // Atmospheres.
+    // Every parameter of an airless atmosphere is pinned, so the set holds exactly one of it however
+    // many are asked for; meaningful absence is one explicit primitive (decision 0031).
+    { "id": 11, "label": "airless-atmosphere", "category": "atmosphere",
       "parameters": { "model": ["airless"], "surface-pressure": [0, 0], "composition": ["none"], "scattering-tint": [[0, 0], [0, 0], [0, 0], [0, 0]] } },
-    { "id": 10, "label": "thin-atmosphere", "category": "atmosphere",
-      "parameters": { "model": ["thin", "dense"], "surface-pressure": [100, 5000000], "composition": ["nitrogen-oxygen", "carbon-dioxide", "methane"], "scattering-tint": [[60, 255], [60, 255], [60, 255], [255, 255]] } },
-    { "id": 11, "label": "rocky-planet", "category": "planet",
-      "parameters": { "mass": [100, 200000], "radius": [134217728, 2560000000], "albedo": [3000, 45000], "pole-declination": [-536870912, 536870912], "sidereal-period": [720000, 172800000], "body-type": ["rocky", "icy", "ocean"] } }
+    { "id": 12, "label": "thin-atmosphere", "category": "atmosphere",
+      "parameters": { "model": ["thin"], "surface-pressure": [100, 120000], "composition": ["nitrogen-oxygen", "carbon-dioxide", "methane"], "scattering-tint": [[60, 255], [60, 255], [60, 255], [255, 255]] } },
+    { "id": 13, "label": "dense-atmosphere", "category": "atmosphere",
+      "parameters": { "model": ["dense"], "surface-pressure": [120000, 9000000], "composition": ["carbon-dioxide", "hydrogen-helium", "methane"], "scattering-tint": [[60, 255], [60, 255], [60, 255], [255, 255]] } },
+
+    // Bodies. A radius is no longer drawn: registry revision 2 draws a mean density beside the mass and
+    // derives the radius from the two, so a body's size and density can no longer contradict each other.
+    // Densities are kg/m^3: rock and iron above 3,000, ice and volatiles below it.
+    { "id": 14, "label": "rocky-body", "category": "planet",
+      "parameters": { "mass": [30, 300000], "density": [3300, 8000], "albedo": [3000, 45000], "pole-declination": [-536870912, 536870912], "sidereal-period": [720000, 172800000], "body-type": ["rocky"] } },
+    { "id": 15, "label": "icy-body", "category": "planet",
+      "parameters": { "mass": [10, 60000], "density": [900, 3300], "albedo": [20000, 62000], "pole-declination": [-536870912, 536870912], "sidereal-period": [720000, 172800000], "body-type": ["icy"] } },
+    { "id": 16, "label": "ocean-body", "category": "planet",
+      "parameters": { "mass": [200, 200000], "density": [2000, 5500], "albedo": [6000, 30000], "pole-declination": [-536870912, 536870912], "sidereal-period": [720000, 172800000], "body-type": ["ocean"] } },
+    { "id": 17, "label": "gas-giant-body", "category": "planet",
+      "parameters": { "mass": [500000, 100000000], "density": [300, 2000], "albedo": [15000, 55000], "pole-declination": [-536870912, 536870912], "sidereal-period": [720000, 20000000], "body-type": ["gas-giant"] } }
   ],
   "requests": [
     { "template": 1, "count": 2 }, { "template": 2, "count": 4 },
     { "template": 3, "count": 3 }, { "template": 4, "count": 3 },
     { "template": 5, "count": 6 }, { "template": 6, "count": 6 }, { "template": 7, "count": 4 },
-    { "template": 8, "count": 2 }, { "template": 9, "count": 1 }, { "template": 10, "count": 2 }, { "template": 11, "count": 3 }
+    { "template": 8, "count": 3 }, { "template": 9, "count": 3 }, { "template": 10, "count": 2 },
+    { "template": 11, "count": 1 }, { "template": 12, "count": 8 }, { "template": 13, "count": 6 },
+    { "template": 14, "count": 12 }, { "template": 15, "count": 10 }, { "template": 16, "count": 8 }, { "template": 17, "count": 6 }
   ]
 }

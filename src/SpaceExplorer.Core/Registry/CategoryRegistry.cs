@@ -131,7 +131,7 @@ public sealed class CategoryRegistry
         var categories = new CategoryDefinition[count];
         for (int index = 0; index < count; index++)
         {
-            categories[index] = CategoryDefinition.Decode(reader);
+            categories[index] = CategoryDefinition.Decode(reader, expectedRevision);
         }
 
         if (!reader.IsAtEnd)
@@ -198,7 +198,7 @@ public sealed class CategoryRegistry
         writer.WriteCount(_categories.Length);
         foreach (CategoryDefinition category in _categories)
         {
-            category.Encode(writer);
+            category.Encode(writer, Revision);
         }
 
         return writer;

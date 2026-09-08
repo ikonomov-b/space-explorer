@@ -22,7 +22,7 @@ public class SystemDescriptionTests
         // of which is a version change of something the description names.
         SystemDescription description = Describe(9);
 
-        Assert.Equal("36f83686c01ce4ff5e1516791baf8d0374dda519b58a6a08d9032ac38645ddcc", description.Hash.ToString());
+        Assert.Equal("d27a9e43a1c77390546e9e7def0c859ff44b9a3d1f4149bca0add0de06f138ff", description.Hash.ToString());
     }
 
     [Fact]
@@ -40,7 +40,9 @@ public class SystemDescriptionTests
         Assert.Equal(Core.Derivation.PhysicalConstants.AstronomicalUnitMetres, earth.DistanceMetres);
         Assert.True(earth.LandingCandidate);
 
-        Assert.Contains("star          class G, 5772 K, 1.000 Msun, 695700 km", description.Text, StringComparison.Ordinal);
+        // A star of the Sun's radius and temperature radiates one solar luminosity, which the derived
+        // column must show, whatever registry revision the graph was composed under.
+        Assert.Contains("star          class G, 5772 K, 1.000 Msun, 695700 km, 1.000 Lsun", description.Text, StringComparison.Ordinal);
         Assert.Contains("1.000 AU", description.Text, StringComparison.Ordinal);
         Assert.Contains("1.00 Me", description.Text, StringComparison.Ordinal);
         Assert.Contains("6371 km", description.Text, StringComparison.Ordinal);
@@ -49,6 +51,41 @@ public class SystemDescriptionTests
         Assert.Contains("254 K", description.Text, StringComparison.Ordinal);
         Assert.Contains("landing candidate", description.Text, StringComparison.Ordinal);
         Assert.EndsWith("totals        1 planet, 0 moons, 0 barycentres; 1 landing candidate; no life\n", description.Text, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Deriving_a_radius_and_a_class_gives_what_storing_them_gave()
+    {
+        // The same Sun and Earth under registry revision 2, which stores a mean density instead of a
+        // radius and no spectral class at all. Every number the description shows must be unchanged,
+        // because the bodies are (review finding 47).
+        BodyDescription stored = Assert.Single(EarthlikeFixture.Describe(planets: 1).Bodies);
+        SystemDescription derived = EarthlikeFixture.Revision2();
+        BodyDescription earth = Assert.Single(derived.Bodies);
+
+        // The published mean density carries four digits, so the derived radius lands within 300 m of
+        // the published one and both print as 6,371 km.
+        Assert.InRange(earth.RadiusUnits >> 8, (stored.RadiusUnits >> 8) - 300, stored.RadiusUnits >> 8);
+        Assert.Contains("6371 km", derived.Text, StringComparison.Ordinal);
+        Assert.InRange(earth.GravityMillimetres, stored.GravityMillimetres, stored.GravityMillimetres + 5);
+        Assert.Equal(stored.TemperatureKelvin, earth.TemperatureKelvin);
+        Assert.Equal("G", derived.Star.Type);
+        Assert.Equal(5_514, earth.DensityKilogramsPerCubicMetre);
+        Assert.Contains("5514 kg/m3", derived.Text, StringComparison.Ordinal);
+        Assert.True(earth.LandingCandidate);
+    }
+
+    [Fact]
+    public void The_listing_is_in_orbit_order_even_where_the_generator_drew_none()
+    {
+        // Grammar version 1 draws every orbit from one range, so the graph's child order is not orbit
+        // order; decision 0045 asks for orbit order, so the description sorts it.
+        SystemDescription description = Enumerable.Range(1, 40)
+            .Select(seed => Describe((ulong)seed))
+            .First(candidate => candidate.PlanetCount >= 3);
+
+        long[] orbits = [.. description.Bodies.Where(body => body.Role == BodyRole.Planet).Select(body => body.OrbitMetres)];
+        Assert.Equal(orbits.Order(), orbits);
     }
 
     [Fact]

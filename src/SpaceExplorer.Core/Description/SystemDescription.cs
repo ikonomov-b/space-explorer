@@ -25,8 +25,10 @@ public sealed record BodyDescription(
     BodyRole Role,
     string Type,
     long DistanceMetres,
+    long OrbitMetres,
     long MassUnits,
     long RadiusUnits,
+    long DensityKilogramsPerCubicMetre,
     long GravityMillimetres,
     long PressurePascals,
     string Atmosphere,
@@ -52,7 +54,7 @@ public sealed record BodyDescription(
 public sealed class SystemDescription
 {
     /// <summary>The version of this description's content and wording; a change to either is a new version.</summary>
-    public const uint Version = 1;
+    public const uint Version = 2;
 
     private const string LifeCategoryLabel = "life";
 
@@ -110,14 +112,20 @@ public sealed class SystemDescription
         long starTemperature = Integer(graph.Root, registry, "effective-temperature");
         long starRadius = Integer(graph.Root, registry, "radius");
 
+        // A spectral class the registry still stores is read; from revision 2 it follows from the
+        // effective temperature instead, and can no longer contradict it (review finding 47).
+        string spectralClass = TryChoice(graph.Root, registry, "spectral-class") ?? DerivationRules.SpectralClass(starTemperature);
+
         var star = new BodyDescription(
             Number: "-",
             graph.Root.Path,
             BodyRole.Star,
-            Choice(graph.Root, registry, "spectral-class"),
+            spectralClass,
             DistanceMetres: 0,
+            OrbitMetres: 0,
             Integer(graph.Root, registry, "mass"),
             starRadius,
+            DensityKilogramsPerCubicMetre: 0,
             GravityMillimetres: 0,
             PressurePascals: 0,
             Atmosphere: "-",
@@ -143,8 +151,10 @@ public sealed class SystemDescription
                 continue;
             }
 
-            IReadOnlyList<GraphNode> children = node.Children[index];
-            for (int child = 0; child < children.Count; child++)
+            // Decision 0045 asks for each planet in orbit order, which is not the order the generator
+            // attached them, so the listing sorts by semi-major axis and numbers them from the star out.
+            GraphNode[] children = [.. node.Children[index].OrderBy(body => body.Transform!.Component("semi-major-axis"))];
+            for (int child = 0; child < children.Length; child++)
             {
                 GraphNode body = children[child];
                 string number = parentNumber.Length == 0
@@ -154,27 +164,32 @@ public sealed class SystemDescription
                 // A body's distance from the star is the semi-major axis of the orbit that hangs from the
                 // star on its ancestry, so a moon shares its planet's distance and a planet on a
                 // barycentre shares the barycentre's.
-                long distance = parentDistance == 0 ? body.Transform!.Component("semi-major-axis") : parentDistance;
+                long orbit = body.Transform!.Component("semi-major-axis");
+                long distance = parentDistance == 0 ? orbit : parentDistance;
 
-                BodyDescription described = Describe(body, registry, suit, lifeCategory, starTemperature, starRadius, number, distance, parentRole);
+                BodyDescription described = Describe(body, registry, suit, lifeCategory, starTemperature, starRadius, number, distance, orbit, parentRole);
                 bodies.Add(described);
                 Walk(body, registry, suit, lifeCategory, starTemperature, starRadius, number, distance, described.Role, bodies);
             }
         }
     }
 
-    private static BodyDescription Describe(GraphNode node, CategoryRegistry registry, SuitProfile suit, uint? lifeCategory, long starTemperature, long starRadius, string number, long distance, BodyRole parentRole)
+    private static BodyDescription Describe(GraphNode node, CategoryRegistry registry, SuitProfile suit, uint? lifeCategory, long starTemperature, long starRadius, string number, long distance, long orbit, BodyRole parentRole)
     {
         CategoryDefinition schema = registry.Find(node.Definition.Category);
         if (schema.Label == "barycentre")
         {
             // A barycentre is a point, not a body: it carries no parameter and reaches no verdict.
-            return new BodyDescription(number, node.Path, BodyRole.Barycentre, "-", distance, 0, 0, 0, 0, "-", 0, false, [], false);
+            return new BodyDescription(number, node.Path, BodyRole.Barycentre, "-", distance, orbit, 0, 0, 0, 0, 0, "-", 0, false, [], false);
         }
 
         long mass = Integer(node, registry, "mass");
-        long radius = Integer(node, registry, "radius");
         long albedo = Integer(node, registry, "albedo");
+
+        // A radius the registry still stores is read; from revision 2 a body carries a mean density and
+        // its radius follows from that and its mass, so the two can no longer disagree (finding 47).
+        long density = TryInteger(node, registry, "density") ?? 0;
+        long radius = TryInteger(node, registry, "radius") ?? DerivationRules.Radius(mass, density);
         long gravity = DerivationRules.SurfaceGravity(mass, radius);
         long temperature = DerivationRules.EquilibriumTemperature(starTemperature, starRadius, distance, albedo);
 
@@ -191,8 +206,10 @@ public sealed class SystemDescription
             parentRole == BodyRole.Planet ? BodyRole.Moon : BodyRole.Planet,
             Choice(node, registry, "body-type"),
             distance,
+            orbit,
             mass,
             radius,
+            density,
             gravity,
             pressure,
             atmosphere,
@@ -219,15 +236,20 @@ public sealed class SystemDescription
         return (0, "none");
     }
 
-    private static long Integer(GraphNode node, CategoryRegistry registry, string label) => Parameter(node, registry, label).Value.AsInteger;
+    private static long Integer(GraphNode node, CategoryRegistry registry, string label) =>
+        TryInteger(node, registry, label) ?? throw Missing(node, registry, label);
 
-    private static string Choice(GraphNode node, CategoryRegistry registry, string label)
-    {
-        (ParameterDescriptor descriptor, ParameterValue value) = Parameter(node, registry, label);
-        return descriptor.EnumLabels[(int)value.AsEnumIndex];
-    }
+    private static string Choice(GraphNode node, CategoryRegistry registry, string label) =>
+        TryChoice(node, registry, label) ?? throw Missing(node, registry, label);
 
-    private static (ParameterDescriptor Descriptor, ParameterValue Value) Parameter(GraphNode node, CategoryRegistry registry, string label)
+    private static long? TryInteger(GraphNode node, CategoryRegistry registry, string label) =>
+        Parameter(node, registry, label) is { } found ? found.Value.AsInteger : null;
+
+    /// <summary>The label of an enum parameter, or null when this registry revision does not store it and a rule derives it instead.</summary>
+    private static string? TryChoice(GraphNode node, CategoryRegistry registry, string label) =>
+        Parameter(node, registry, label) is { } found ? found.Descriptor.EnumLabels[(int)found.Value.AsEnumIndex] : null;
+
+    private static (ParameterDescriptor Descriptor, ParameterValue Value)? Parameter(GraphNode node, CategoryRegistry registry, string label)
     {
         CategoryDefinition schema = registry.Find(node.Definition.Category);
         for (int index = 0; index < schema.Parameters.Count; index++)
@@ -238,8 +260,11 @@ public sealed class SystemDescription
             }
         }
 
-        throw new ArgumentException($"Category '{schema.Label}' has no parameter '{label}', so this registry revision cannot be described by version {Version}.", nameof(label));
+        return null;
     }
+
+    private static ArgumentException Missing(GraphNode node, CategoryRegistry registry, string label) =>
+        new($"Category '{registry.Find(node.Definition.Category).Label}' has no parameter '{label}', so registry revision {registry.Revision} cannot be described by version {Version}.", nameof(label));
 
     private string Render()
     {
@@ -249,7 +274,8 @@ public sealed class SystemDescription
         text.Append(CultureInfo.InvariantCulture, $"system description {Version}\n");
         text.Append(CultureInfo.InvariantCulture, $"graph         {description.Graph.Pack} seed {specification.Seed}\n");
         text.Append(CultureInfo.InvariantCulture, $"pinned        registry {specification.RegistryRevision}, grammar {specification.GrammarVersion}, generator {specification.GeneratorVersion}, suit profile {description.Suit.Version} {description.Suit.Hash.ToString()[..12]}\n");
-        text.Append(CultureInfo.InvariantCulture, $"star          class {description.Star.Type}, {description.Star.TemperatureKelvin} K, {Scaled(Rescale(description.Star.MassUnits, CategoryRegistryRevision1.SolarMass, 1_000), 1_000, 3)} Msun, {Kilometres(description.Star.RadiusUnits)} km\n");
+        long luminosity = DerivationRules.Luminosity(description.Star.RadiusUnits, description.Star.TemperatureKelvin);
+        text.Append(CultureInfo.InvariantCulture, $"star          class {description.Star.Type}, {description.Star.TemperatureKelvin} K, {Scaled(Rescale(description.Star.MassUnits, CategoryRegistryRevision1.SolarMass, 1_000), 1_000, 3)} Msun, {Kilometres(description.Star.RadiusUnits)} km, {Scaled(Rescale(luminosity, CategoryRegistryRevision1.SolarLuminosity, 1_000), 1_000, 3)} Lsun\n");
 
         foreach (BodyDescription body in description.Bodies)
         {
@@ -276,9 +302,15 @@ public sealed class SystemDescription
         }
 
         string verdict = body.LandingCandidate ? "landing candidate" : $"no: {string.Join(" ", body.Refusals)}";
+        // A registry revision that still stores a radius derives no density, and prints none.
+        string density = body.DensityKilogramsPerCubicMetre == 0
+            ? "-"
+            : $"{body.DensityKilogramsPerCubicMetre.ToString(CultureInfo.InvariantCulture)} kg/m3";
+
         return head
             + $"{Scaled(Rescale(body.MassUnits, CategoryRegistryRevision1.EarthMass, 100), 100, 2) + " Me",11}"
             + $"{Kilometres(body.RadiusUnits) + " km",11}"
+            + $"{density,13}"
             + $"{Scaled((body.GravityMillimetres + 5) / 10, 100, 2) + " m/s^2",13}"
             + $"{Scaled((body.PressurePascals + 50) / 100, 10, 1) + " kPa",13}"
             + $"  {body.Atmosphere,-16}"

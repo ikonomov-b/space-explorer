@@ -84,7 +84,16 @@ static int Registry()
 
 static int Grammar()
 {
-    CompositionGrammar grammar = CompositionGrammarVersion1.Grammar;
+    foreach (CompositionGrammar supported in CompositionGrammars.Supported.Grammars)
+    {
+        PrintGrammar(supported);
+    }
+
+    return 0;
+}
+
+static void PrintGrammar(CompositionGrammar grammar)
+{
     CategoryRegistry registry = CategoryRegistries.Supported.Find(grammar.RegistryRevision);
     Console.WriteLine($"version  {grammar.Version}");
     Console.WriteLine($"hash     {grammar.Hash}");
@@ -102,11 +111,10 @@ static int Grammar()
         for (int index = 0; index < production.ConnectorRules.Count; index++)
         {
             ConnectorRule rule = production.ConnectorRules[index];
-            Console.WriteLine($"    {category.Connectors[index].Label,-16} [{rule.MinCount}, {rule.MaxCount}] {rule.Transform.Kind} {Choices(rule.Choices, registry)}");
+            string spacing = rule.SpacingRatio == 0 ? string.Empty : $"; spacing {rule.SpacingRatio}/{ConnectorRule.RatioUnit}";
+            Console.WriteLine($"    {category.Connectors[index].Label,-16} [{rule.MinCount}, {rule.MaxCount}] {rule.Transform.Kind} {Choices(rule.Choices, registry)}{spacing}");
         }
     }
-
-    return 0;
 }
 
 static string Choices(IReadOnlyList<CategoryChoice> choices, CategoryRegistry registry) =>
@@ -120,9 +128,9 @@ static int Compose(string[] options)
     ulong seed = ulong.Parse(Option(options, "--seed") ?? throw new ArgumentException("compose needs --seed <n>."), System.Globalization.CultureInfo.InvariantCulture);
 
     DataRoot root = Root(options);
-    CompositionGrammar grammar = CompositionGrammarVersion1.Grammar;
     PrimitiveSet source = SetLoader.Load(root, set, CategoryRegistries.Supported);
     CategoryRegistry registry = CategoryRegistries.Supported.Find(source.Manifest.RegistryRevision);
+    CompositionGrammar grammar = GrammarFor(registry);
 
     GraphSpecification specification = GraphSpecification.Create(
         registry.Revision, registry.Hash, GeneratorVersion.Current, grammar.Version, grammar.Hash, seed, source.Manifest.Pack, source.Manifest.Hash, domain);
@@ -142,7 +150,7 @@ static int Compose(string[] options)
 
 static int InspectGraph(string packText, string[] options)
 {
-    CompositionGraph graph = GraphLoader.Load(Root(options), PackId.Parse(packText), CategoryRegistries.Supported, CompositionGrammarVersion1.Grammar);
+    CompositionGraph graph = LoadGraph(packText, options);
     CategoryRegistry registry = CategoryRegistries.Supported.Find(graph.Specification.RegistryRevision);
 
     Console.WriteLine($"pack          {graph.Pack}");
@@ -179,7 +187,7 @@ static string Attachment(GraphNode node)
 
 static int ValidateGraph(string packText, string[] options)
 {
-    CompositionGraph graph = GraphLoader.Load(Root(options), PackId.Parse(packText), CategoryRegistries.Supported, CompositionGrammarVersion1.Grammar);
+    CompositionGraph graph = LoadGraph(packText, options);
     Console.WriteLine($"OK graph {graph.Pack}: {graph.NodeCount} instances verified against the record hash, the pinned set, the registry, and the connector rules.");
     return 0;
 }
@@ -187,7 +195,7 @@ static int ValidateGraph(string packText, string[] options)
 static int Describe(string packText, string[] options)
 {
     DistanceTier tier = Tier(options);
-    CompositionGraph graph = GraphLoader.Load(Root(options), PackId.Parse(packText), CategoryRegistries.Supported, CompositionGrammarVersion1.Grammar);
+    CompositionGraph graph = LoadGraph(packText, options);
     CategoryRegistry registry = CategoryRegistries.Supported.Find(graph.Specification.RegistryRevision);
     SystemDescription description = SystemDescription.Derive(graph, registry, SuitProfile.Version1);
 
@@ -203,10 +211,10 @@ static int Iterate(string[] options)
     DistanceTier tier = Tier(options);
 
     DataRoot root = Root(options);
-    CompositionGrammar grammar = CompositionGrammarVersion1.Grammar;
     SuitProfile suit = SuitProfile.Version1;
     PrimitiveSet source = SetLoader.Load(root, set, CategoryRegistries.Supported);
     CategoryRegistry registry = CategoryRegistries.Supported.Find(source.Manifest.RegistryRevision);
+    CompositionGrammar grammar = GrammarFor(registry);
 
     Console.WriteLine($"iteration over seeds {first} to {last}, tier {TierRules.Label(tier)}");
     Console.WriteLine($"pinned        registry {registry.Revision} {registry.Hash}");
@@ -259,6 +267,22 @@ static string Verdict(SystemDescription description, DistanceTier tier)
         : $"tier          fail ({TierRules.Label(tier)}): {string.Join("; ", failures)}";
 }
 
+/// <summary>Loads a published graph under whichever grammar version it pins.</summary>
+static CompositionGraph LoadGraph(string packText, string[] options)
+{
+    DataRoot root = Root(options);
+    PackId pack = PackId.Parse(packText);
+    uint version = GraphLoader.List(root).FirstOrDefault(entry => entry.Pack == pack)?.GrammarVersion
+        ?? throw new PackageNotFoundException(pack);
+
+    return GraphLoader.Load(root, pack, CategoryRegistries.Supported, CompositionGrammars.Supported.Find(version));
+}
+
+/// <summary>The grammar a new graph over <paramref name="registry"/> is composed under.</summary>
+static CompositionGrammar GrammarFor(CategoryRegistry registry) =>
+    CompositionGrammars.Supported.Newest(registry.Revision)
+        ?? throw new ArgumentException($"This build has no composition grammar over category-registry revision {registry.Revision}.");
+
 static DistanceTier Tier(string[] options)
 {
     string label = Option(options, "--tier") ?? "starter";
@@ -277,7 +301,10 @@ static int GenerateSet(string[] options)
 {
     string vocabularyPath = Option(options, "--vocabulary") ?? throw new ArgumentException("generate-set needs --vocabulary <json>.");
     ulong seed = ulong.Parse(Option(options, "--seed") ?? throw new ArgumentException("generate-set needs --seed <n>."), System.Globalization.CultureInfo.InvariantCulture);
-    CategoryRegistry registry = CategoryRegistryRevision1.Registry;
+
+    // A new set is generated under the newest revision this build supports; the vocabulary is authored
+    // for it, and packs published under an earlier revision keep loading (decision 0035).
+    CategoryRegistry registry = CategoryRegistries.Supported.Registries[^1];
     VocabularyFile file = VocabularyFile.Read(vocabularyPath, registry);
     uint retries = Option(options, "--retries") is { } r ? uint.Parse(r, System.Globalization.CultureInfo.InvariantCulture) : file.Retries;
 

@@ -113,7 +113,15 @@ public sealed class PrimitiveDefinition
             connector.Encode(writer);
         }
 
-        writer.WriteText(generatorRevision);
+        // Empty means no recipe produced this definition; anything else is a path-form identifier.
+        if (generatorRevision.Length == 0)
+        {
+            writer.WriteCount(0);
+        }
+        else
+        {
+            writer.WritePath(generatorRevision);
+        }
 
         return new PrimitiveDefinition(id, category, provenance, [.. parameters], [.. connectors], generatorRevision, writer.ToArray(), writer.ToContentHash());
     }
@@ -143,7 +151,19 @@ public sealed class PrimitiveDefinition
             connectors[index] = ConnectorDeclaration.Decode(reader);
         }
 
-        string generatorRevision = reader.ReadText();
+        byte[] revisionBytes = reader.ReadBytes();
+        string generatorRevision = System.Text.Encoding.UTF8.GetString(revisionBytes);
+        if (generatorRevision.Length != 0)
+        {
+            try
+            {
+                StreamPath.Validate(generatorRevision);
+            }
+            catch (ArgumentException exception)
+            {
+                throw new FormatException(exception.Message, exception);
+            }
+        }
 
         if (!reader.IsAtEnd)
         {

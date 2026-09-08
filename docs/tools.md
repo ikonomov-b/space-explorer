@@ -62,6 +62,7 @@ dotnet run --project src/SpaceExplorer.Cli -- diagnostics
 # sqlite   3.53.3
 
 dotnet run --project src/SpaceExplorer.Cli -- registry           # every supported registry revision, its hash, and its categories
+dotnet run --project src/SpaceExplorer.Cli -- grammar            # every supported grammar version, with its bounds and rules
 dotnet run --project src/SpaceExplorer.Cli -- generate-set --vocabulary content/templates/basic/vocabulary.json --seed 42
 # publishes to the data root (decision 0018); prints pack, manifest hash, definition count
 # add --data-root <dir> to publish elsewhere, --retries <n> to override the vocabulary's budget
@@ -69,10 +70,9 @@ dotnet run --project src/SpaceExplorer.Cli -- list               # published pac
 dotnet run --project src/SpaceExplorer.Cli -- inspect <pack-id>  # reload without generating; print every definition
 dotnet run --project src/SpaceExplorer.Cli -- validate <pack-id> # exit 0 when every record verifies; 1 with the reason otherwise
 
-dotnet run --project src/SpaceExplorer.Cli -- grammar            # composition grammar version, hash, bounds, and rules
 dotnet run --project src/SpaceExplorer.Cli -- compose --set <pack-id> --domain solar-system --seed 7
 # composes a graph from a published set and publishes it; prints the graph pack, hash, instance count, and depth
-# --domain takes solar-system or artifact under grammar version 1; --data-root works as it does for generate-set
+# --domain takes solar-system or artifact; the grammar version follows the set's registry revision
 dotnet run --project src/SpaceExplorer.Cli -- inspect-graph <pack-id>   # reload without composing; print every instance
 dotnet run --project src/SpaceExplorer.Cli -- validate-graph <pack-id>  # exit 0 when the graph and its set verify
 

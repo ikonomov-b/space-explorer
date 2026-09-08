@@ -58,4 +58,5 @@ File name: `NNNN-short-title.md`. Use [0000-template.md](0000-template.md). A re
 | [0047](0047-usable-storage-and-structure-generation-then-solar-system-iterations.md) | Next steps: usable primitive storage and structure generation, then solar-system randomization in description-judged iterations | Accepted |
 | [0048](0048-composition-grammar-version-1-graph-records-and-graph-publication.md) | Composition grammar version 1, the graph record, and graph publication | Accepted |
 | [0049](0049-suit-profile-and-system-description-version-1-and-derivation-rules-as-named-implementations.md) | Suit profile and system description version 1, and derivation rules as named implementations | Accepted |
+| [0050](0050-registry-revision-2-grammar-version-2-and-versioned-record-growth.md) | Registry revision 2 derives what contradicted itself, grammar version 2 spaces the orbits, and a versioned record may grow | Accepted |
 <!-- generated:end decisions -->
