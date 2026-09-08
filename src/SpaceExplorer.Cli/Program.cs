@@ -33,7 +33,7 @@ static int Usage()
     Console.WriteLine();
     Console.WriteLine("Commands:");
     Console.WriteLine("  diagnostics                         Print runtime, platform, and SQLite library versions.");
-    Console.WriteLine("  registry                            Print the category registry revision, hash, and categories.");
+    Console.WriteLine("  registry                            Print every supported category registry revision, hash, and categories.");
     Console.WriteLine("  generate-set --vocabulary <json> --seed <n> [--retries <n>] [--data-root <dir>]");
     Console.WriteLine("                                      Generate a set from an authored vocabulary and publish it.");
     Console.WriteLine("  list [--data-root <dir>]            List published packs.");
@@ -52,13 +52,15 @@ static int Diagnostics()
 
 static int Registry()
 {
-    CategoryRegistry registry = CategoryRegistryRevision1.Registry;
-    Console.WriteLine($"revision {registry.Revision}");
-    Console.WriteLine($"hash     {registry.Hash}");
-    Console.WriteLine($"domain   {registry.Domain}");
-    foreach (CategoryDefinition category in registry.Categories)
+    foreach (CategoryRegistry registry in CategoryRegistries.Supported.Registries)
     {
-        Console.WriteLine($"  {category.Id,3} {category.Label,-18} domains {string.Join(",", category.Domains)}; {category.Parameters.Count} parameters; {category.Connectors.Count} connectors; policies {category.PermittedPolicies}");
+        Console.WriteLine($"revision {registry.Revision}");
+        Console.WriteLine($"hash     {registry.Hash}");
+        Console.WriteLine($"domain   {registry.Domain}");
+        foreach (CategoryDefinition category in registry.Categories)
+        {
+            Console.WriteLine($"  {category.Id,3} {category.Label,-18} domains {string.Join(",", category.Domains)}; {category.Parameters.Count} parameters; {category.Connectors.Count} connectors; policies {category.PermittedPolicies}");
+        }
     }
 
     return 0;
@@ -100,9 +102,9 @@ static int List(string[] options)
 
 static int Inspect(string packText, string[] options)
 {
-    CategoryRegistry registry = CategoryRegistryRevision1.Registry;
-    PrimitiveSet set = SetLoader.Load(Root(options), PackId.Parse(packText), registry);
+    PrimitiveSet set = SetLoader.Load(Root(options), PackId.Parse(packText), CategoryRegistries.Supported);
     SetManifest manifest = set.Manifest;
+    CategoryRegistry registry = CategoryRegistries.Supported.Find(manifest.RegistryRevision);
     Console.WriteLine($"pack          {manifest.Pack}");
     Console.WriteLine($"manifest      {manifest.Hash}");
     Console.WriteLine($"specification {manifest.SpecificationHash}");
@@ -121,7 +123,7 @@ static int Inspect(string packText, string[] options)
 
 static int Validate(string packText, string[] options)
 {
-    PrimitiveSet set = SetLoader.Load(Root(options), PackId.Parse(packText), CategoryRegistryRevision1.Registry);
+    PrimitiveSet set = SetLoader.Load(Root(options), PackId.Parse(packText), CategoryRegistries.Supported);
     Console.WriteLine($"OK pack {set.Manifest.Pack}: manifest and {set.Definitions.Count} definitions verified against their hashes, the registry, and each other.");
     return 0;
 }

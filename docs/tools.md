@@ -49,6 +49,7 @@ dotnet build --no-restore              # what CI runs after its own restore
 dotnet test                            # all test projects
 dotnet test --no-build                 # what CI runs after its own build
 dotnet test tests/SpaceExplorer.Core.Tests                        # one project
+dotnet test tests/SpaceExplorer.Cli.Tests                         # launches the tool as a child process, twice
 dotnet test --filter FullyQualifiedName~CanonicalWriter           # one class or method
 ```
 
@@ -60,7 +61,7 @@ dotnet run --project src/SpaceExplorer.Cli -- diagnostics
 # platform linux-x64 (Debian GNU/Linux 13 (trixie))
 # sqlite   3.53.3
 
-dotnet run --project src/SpaceExplorer.Cli -- registry           # category registry revision, hash, categories
+dotnet run --project src/SpaceExplorer.Cli -- registry           # every supported registry revision, its hash, and its categories
 dotnet run --project src/SpaceExplorer.Cli -- generate-set --vocabulary content/templates/basic/vocabulary.json --seed 42
 # publishes to the data root (decision 0018); prints pack, manifest hash, definition count
 # add --data-root <dir> to publish elsewhere, --retries <n> to override the vocabulary's budget
@@ -121,7 +122,7 @@ GODOT=~/.local/opt/godot-4.7.2-mono/Godot_v4.7.2-stable_mono_linux.x86_64 \
 powershell -ExecutionPolicy Bypass -File tests\SpaceExplorer.Game.Smoke\smoke.ps1   # Windows only
 ```
 
-Exit 0 means the marker was printed. Non-zero means either the export failed, the build exited non-zero, or the marker was absent; the script prints which. On Windows the script launches `SpaceExplorer.Game.console.exe`, the console wrapper, because the plain `.exe` detaches from the console and its output and exit code would not reach the script. Neither script runs in CI yet — that waits on provisioning Godot and its templates on the runners.
+Exit 0 means the marker was printed. Non-zero means either the export failed, the build exited non-zero, or the marker was absent; the script prints which. On Windows the script launches `SpaceExplorer.Game.console.exe`, the console wrapper, because the plain `.exe` detaches from the console and its output and exit code would not reach the script. Both scripts run as [continuous integration](#github-actions) steps, which provision Godot and its export templates per operating system.
 
 ## The documentation tool (`tools/docs.cs`)
 
@@ -169,9 +170,10 @@ dotnet restore
 dotnet build --no-restore
 dotnet test --no-build
 dotnet run tools/docs.cs -- --check      # ubuntu-latest only
+tests/SpaceExplorer.Game.Smoke/smoke.sh  # smoke.ps1 on windows-latest
 ```
 
-To reproduce that sequence locally, run those four commands with `CI=true` exported. The runners build and test the libraries only; no job launches an exported game, which is why requirement R2 is still undemonstrated.
+To reproduce that sequence locally, run those commands with `CI=true` exported. The smoke step exports and launches the packaged build headlessly, so it exercises no graphics or input; requirement R2 is still undemonstrated for those.
 
 ## Native SQLite (called indirectly)
 

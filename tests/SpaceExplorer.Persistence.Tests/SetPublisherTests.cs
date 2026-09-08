@@ -9,6 +9,7 @@ namespace SpaceExplorer.Persistence.Tests;
 public sealed class SetPublisherTests : IDisposable
 {
     private static readonly CategoryRegistry Registry = CategoryRegistryRevision1.Registry;
+    private static readonly CategoryRegistries Registries = CategoryRegistries.Supported;
     private static readonly PackId TemplatePack = PackId.Parse("00112233445566778899aabbccddeeff");
 
     private static readonly TemplateVocabulary Vocabulary = TemplateVocabulary.Create(Registry, TemplatePack,
@@ -35,7 +36,7 @@ public sealed class SetPublisherTests : IDisposable
     {
         PrimitiveSet set = Generate(1);
         PublishResult result = SetPublisher.Publish(_root, set);
-        PrimitiveSet loaded = SetLoader.Load(_root, set.Manifest.Pack, Registry);
+        PrimitiveSet loaded = SetLoader.Load(_root, set.Manifest.Pack, Registries);
 
         Assert.False(result.AlreadyPublished);
         Assert.Equal(7, result.RecordsWritten);
@@ -83,7 +84,7 @@ public sealed class SetPublisherTests : IDisposable
         bytes[^1] ^= 0x01;
         File.WriteAllBytes(path, bytes);
 
-        Assert.Throws<PackageIntegrityException>(() => SetLoader.Load(_root, set.Manifest.Pack, Registry));
+        Assert.Throws<PackageIntegrityException>(() => SetLoader.Load(_root, set.Manifest.Pack, Registries));
     }
 
     [Fact]
@@ -93,7 +94,7 @@ public sealed class SetPublisherTests : IDisposable
         SetPublisher.Publish(_root, set);
         File.Delete(_root.RecordPath(set.Manifest.Pack, set.Definitions[0].Hash));
 
-        Assert.Throws<PackageIntegrityException>(() => SetLoader.Load(_root, set.Manifest.Pack, Registry));
+        Assert.Throws<PackageIntegrityException>(() => SetLoader.Load(_root, set.Manifest.Pack, Registries));
     }
 
     [Fact]
@@ -107,17 +108,17 @@ public sealed class SetPublisherTests : IDisposable
         SetPublisher.Publish(_root, set);
 
         Assert.Empty(Directory.EnumerateFiles(directory, "*.tmp"));
-        Assert.Equal(set.Manifest.Hash, SetLoader.Load(_root, set.Manifest.Pack, Registry).Manifest.Hash);
+        Assert.Equal(set.Manifest.Hash, SetLoader.Load(_root, set.Manifest.Pack, Registries).Manifest.Hash);
     }
 
     [Fact]
     public void An_unknown_pack_and_an_unsupported_registry_fail_explicitly()
     {
         PrimitiveSet set = Generate(1);
-        Assert.Throws<PackageNotFoundException>(() => SetLoader.Load(_root, set.Manifest.Pack, Registry));
+        Assert.Throws<PackageNotFoundException>(() => SetLoader.Load(_root, set.Manifest.Pack, Registries));
 
         SetPublisher.Publish(_root, set);
-        CategoryRegistry other = CategoryRegistry.Create(2, [.. Registry.Categories]);
+        CategoryRegistries other = CategoryRegistries.Of(CategoryRegistry.Create(2, [.. Registry.Categories]));
         Assert.Throws<CompatibilityException>(() => SetLoader.Load(_root, set.Manifest.Pack, other));
     }
 

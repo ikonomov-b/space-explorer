@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- The tool is launched as a child process, so the reference is for build order and for copying its
+         executable beside these tests, not for calling into it. -->
+    <ProjectReference Include="../../src/SpaceExplorer.Cli/SpaceExplorer.Cli.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- The shipped vocabulary, so the comparison runs on real content rather than a fixture. -->
+    <None Include="../../content/templates/basic/vocabulary.json" Link="vocabulary.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="xunit" />
+    <PackageReference Include="xunit.runner.visualstudio" />
+  </ItemGroup>
+
+</Project>

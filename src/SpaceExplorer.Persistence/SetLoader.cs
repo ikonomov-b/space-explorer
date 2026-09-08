@@ -5,15 +5,16 @@ namespace SpaceExplorer.Persistence;
 
 /// <summary>
 /// Loads a published set without generating anything: the index names the manifest, every record is
-/// verified against its hash before it is decoded, the manifest must pin the registry the caller holds,
-/// and the definitions must fit the manifest exactly (decisions 0031, 0033, 0035).
+/// verified against its hash before it is decoded, the manifest's pinned registry revision must be one
+/// the caller supports and must pin that revision's hash, and the definitions must fit the manifest
+/// exactly (decisions 0031, 0033, 0035).
 /// </summary>
 public static class SetLoader
 {
-    public static PrimitiveSet Load(DataRoot root, PackId pack, CategoryRegistry registry)
+    public static PrimitiveSet Load(DataRoot root, PackId pack, CategoryRegistries registries)
     {
         ArgumentNullException.ThrowIfNull(root);
-        ArgumentNullException.ThrowIfNull(registry);
+        ArgumentNullException.ThrowIfNull(registries);
 
         ContentHash manifestHash;
         using (PackageIndex index = PackageIndex.Open(root))
@@ -41,10 +42,14 @@ public static class SetLoader
             throw new PackageIntegrityException($"The manifest indexed under pack {pack} declares pack {manifest.Pack}.");
         }
 
-        if (manifest.RegistryRevision != registry.Revision || manifest.RegistryHash != registry.Hash)
+        CategoryRegistry registry = registries.TryFind(manifest.RegistryRevision)
+            ?? throw new CompatibilityException(
+                $"Pack {pack} was generated under category-registry revision {manifest.RegistryRevision}; this build supports revision(s) {string.Join(", ", registries.Revisions)}.");
+
+        if (manifest.RegistryHash != registry.Hash)
         {
             throw new CompatibilityException(
-                $"Pack {pack} was generated under category-registry revision {manifest.RegistryRevision} ({manifest.RegistryHash}); this build holds revision {registry.Revision} ({registry.Hash}).");
+                $"Pack {pack} pins category-registry revision {manifest.RegistryRevision} with hash {manifest.RegistryHash}; this build holds {registry.Hash} for that revision.");
         }
 
         var definitions = new PrimitiveDefinition[manifest.Definitions.Count];
