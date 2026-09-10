@@ -37,14 +37,18 @@ public partial class SystemView : Node3D
     private readonly List<Target> _targets = [];
 
     /// <summary>
-    /// What each body's caption needs to be placed: the body, its two forms, the leader tying them, the
-    /// body's own radius, and how many steps this caption is staggered above its neighbours'.
+    /// What each body's caption needs to be placed: the body it belongs to, its two forms, the label and
+    /// leader line that carry them, and the body's own radius, which the leader rises from.
     /// </summary>
-    private sealed record Caption3D(Node3D Body, Label3D Full, Label3D Brief, Node3D Leader, float Radius, float Stagger);
+    private sealed record Caption(Node3D Body, string Full, string Brief, Label Label, Line2D Leader, float Radius);
 
-    private readonly List<Caption3D> _captions = [];
+    private readonly List<Caption> _captions = [];
 
     private Camera3D _camera = null!;
+    private CanvasLayer _canvas = null!;
+    private CanvasLayer _marks = null!;
+    private Label _description = null!;
+    private ColorRect _behind = null!;
     private Label _hud = null!;
     private Vector3 _focus = Vector3.Zero;
     private float _yaw = 0.6f;
@@ -68,6 +72,14 @@ public partial class SystemView : Node3D
     public override void _Ready()
     {
         AddChild(Environment());
+
+        // The panel comes first: every caption is a child of it, and where it sits is what the captions
+        // stand clear of. Leader lines go on the layer under it, so one drawn across the panel passes
+        // behind the text rather than through it.
+        _marks = new CanvasLayer { Layer = 0 };
+        AddChild(_marks);
+        _canvas = Panel();
+        AddChild(_canvas);
         AddChild(Star());
         _targets.Add(new Target($"star, class {_destination.Description.Star.Type}", Vector3.Zero, StarRadius));
 
@@ -104,7 +116,6 @@ public partial class SystemView : Node3D
         AddChild(Light());
         _camera = new Camera3D { Far = 2_000f, Near = 0.02f };
         AddChild(_camera);
-        AddChild(Panel());
 
         // A review can open straight at a body, so a picture of one can be taken without a hand on the keys.
         int opening = _openOn is null ? -1 : _targets.FindIndex(target => target.Name.StartsWith(_openOn + " ", StringComparison.Ordinal) || target.Name.StartsWith(_openOn + ",", StringComparison.Ordinal));
@@ -113,7 +124,7 @@ public partial class SystemView : Node3D
 
     public override void _Process(double delta)
     {
-        ShowNearCaptions();
+        PlaceCaptions();
 
         if (_screenshot is not null)
         {
@@ -151,35 +162,111 @@ public partial class SystemView : Node3D
     }
 
     /// <summary>
-    /// Places every caption for the distance it is being read from. A body near the camera shows its whole
-    /// line and a far one its short form, and each caption stands off its body in proportion to that
-    /// distance, so captions keep the same separation on screen whether the view takes in one body or the
-    /// whole system, and none is thrown off the top of it.
+    /// Places every caption for the distance it is being read from, and apart from every other. A body
+    /// near the camera shows its whole line and a far one its short form; the label is then laid out on
+    /// screen rather than in the world, because whether two captions collide is a question about the
+    /// screen: bodies that sit a long way apart in the system can project a few pixels from each other.
+    /// The nearest body is placed first and keeps the place it wants, and each caption after it climbs a
+    /// ladder of candidate places until it stands clear of the ones already placed and of the panel, which
+    /// is what decision 0052 asks for in saying no caption is in doubt about the object it belongs to.
     /// </summary>
-    private void ShowNearCaptions()
+    private void PlaceCaptions()
     {
+        Vector2 viewport = GetViewport().GetVisibleRect().Size;
         Vector3 eye = _camera.GlobalPosition;
-        foreach (Caption3D caption in _captions)
+        _behind.Size = _description.GetMinimumSize() + new Vector2(16f, 12f);
+
+        // The panel's own text and the key line at the foot of the screen are places a caption may not
+        // take: text over text is unreadable whichever of the two the reader wanted.
+        List<Rect2> taken = [new Rect2(_description.Position, _description.GetMinimumSize()).Grow(6f), new Rect2(0f, viewport.Y - 40f, viewport.X, 40f)];
+
+        foreach (Caption caption in _captions.OrderBy(entry => eye.DistanceSquaredTo(entry.Body.GlobalPosition)))
         {
+            Vector3 top = caption.Body.GlobalPosition + (Vector3.Up * caption.Radius);
+            if (_camera.IsPositionBehind(top))
+            {
+                caption.Label.Visible = false;
+                caption.Leader.Visible = false;
+                continue;
+            }
+
             float distance = eye.DistanceTo(caption.Body.GlobalPosition);
-            bool near = distance < ReadingDistance;
-            caption.Full.Visible = near;
-            caption.Brief.Visible = !near;
+            caption.Label.Text = distance < ReadingDistance ? caption.Full : caption.Brief;
+            Vector2 size = caption.Label.GetMinimumSize();
+            Vector2 anchor = _camera.UnprojectPosition(top);
+            Vector2 place = Clear(anchor, size, viewport, taken);
+            taken.Add(new Rect2(place, size).Grow(3f));
 
-            float lead = caption.Radius + (0.06f * distance * (1f + caption.Stagger));
+            caption.Label.Position = place;
+            caption.Label.Size = size;
+            caption.Label.Visible = true;
 
-            // Captions of bodies that sit on top of each other, a planet and its moons, are also drawn
-            // apart across the screen: the offset follows the camera's own right, so it stays a sideways
-            // step however the view is turned.
-            Vector3 sideways = caption.Stagger == 0f
-                ? Vector3.Zero
-                : _camera.GlobalTransform.Basis.X * (0.05f * distance * (caption.Stagger % 2f == 0f ? 1f : -1f));
+            // The leader runs from the body to the nearest edge of its own label, so a caption standing
+            // several rows away from a crowded body is still tied to it and to nothing else.
+            var rect = new Rect2(place, size);
+            caption.Leader.ClearPoints();
+            caption.Leader.AddPoint(anchor);
+            caption.Leader.AddPoint(new Vector2(Mathf.Clamp(anchor.X, rect.Position.X, rect.End.X), Mathf.Clamp(anchor.Y, rect.Position.Y, rect.End.Y)));
+            caption.Leader.Visible = true;
+        }
+    }
 
-            var anchor = new Vector3(0f, lead, 0f);
-            caption.Full.Position = anchor + sideways;
-            caption.Brief.Position = anchor + sideways;
-            caption.Leader.Scale = new Vector3(1f, Mathf.Max(lead - caption.Radius, 0.01f), 1f);
-            caption.Leader.Position = new Vector3(0f, caption.Radius, 0f);
+    /// <summary>
+    /// The first candidate place of <paramref name="size"/> that no rectangle in <paramref name="taken"/>
+    /// holds, or, where a crowded view leaves no free place at all, the one that covers least of what is
+    /// already there, so a caption that cannot stand clear still hides as little as it can.
+    /// </summary>
+    private static Vector2 Clear(Vector2 anchor, Vector2 size, Vector2 viewport, List<Rect2> taken)
+    {
+        Vector2 least = Vector2.Zero;
+        float leastCovered = float.MaxValue;
+        foreach (Vector2 candidate in Candidates(anchor, size))
+        {
+            Vector2 clamped = new(Mathf.Clamp(candidate.X, 4f, Mathf.Max(4f, viewport.X - size.X - 4f)), Mathf.Clamp(candidate.Y, 4f, Mathf.Max(4f, viewport.Y - size.Y - 4f)));
+            var rect = new Rect2(clamped, size);
+            float covered = 0f;
+            foreach (Rect2 other in taken)
+            {
+                Rect2 shared = other.Intersection(rect);
+                covered += shared.Size.X * shared.Size.Y;
+            }
+
+            if (covered <= 0f)
+            {
+                return clamped;
+            }
+
+            if (covered < leastCovered)
+            {
+                leastCovered = covered;
+                least = clamped;
+            }
+        }
+
+        return least;
+    }
+
+    /// <summary>
+    /// The places a caption will take, in the order it prefers them: above its body to the right, then in
+    /// steps further above, then the same below, then both again to the left. A caption crowded out of its
+    /// own place therefore moves the shortest way that still reads as belonging to its body, and one whose
+    /// body sits under the panel can walk far enough to come out beneath it.
+    /// </summary>
+    private static IEnumerable<Vector2> Candidates(Vector2 anchor, Vector2 size)
+    {
+        const float gap = 10f;
+        float step = size.Y + 5f;
+        foreach (float side in (float[])[gap, -size.X - gap])
+        {
+            for (int rung = 0; rung < 8; rung++)
+            {
+                yield return new Vector2(anchor.X + side, anchor.Y - size.Y - gap - (rung * step));
+            }
+
+            for (int rung = 0; rung < 20; rung++)
+            {
+                yield return new Vector2(anchor.X + side, anchor.Y + gap + (rung * step));
+            }
         }
     }
 
@@ -301,22 +388,18 @@ public partial class SystemView : Node3D
         };
 
         // The star wears exactly what the description says of it, on the same rule and the same leader.
-        Color caption = colour.Lightened(0.3f);
-        Label3D brief = Caption($"star, class {_destination.Description.Star.Type}, {_destination.Description.Star.TemperatureKelvin} K", caption);
-        Label3D full = Caption(_destination.Description.StarLine, caption);
-        MeshInstance3D leader = Leader(caption);
-        full.Visible = false;
-        star.AddChild(leader);
-        star.AddChild(brief);
-        star.AddChild(full);
-        _captions.Add(new Caption3D(star, full, brief, leader, StarRadius, 0f));
+        _captions.Add(Wear(
+            star,
+            _destination.Description.StarLine,
+            $"star, class {_destination.Description.Star.Type}, {_destination.Description.Star.TemperatureKelvin} K",
+            colour.Lightened(0.3f),
+            StarRadius));
 
         return star;
     }
 
     private Node3D Body(BodyDescription body, Vector3 position, float radius)
     {
-        List<Caption3D> captions = _captions;
         Color colour = BodyColour(body.Type);
         var node = new MeshInstance3D
         {
@@ -326,19 +409,11 @@ public partial class SystemView : Node3D
         };
 
         // Every body wears its own line of the description, the same one the panel lists, so what is read
-        // on the body and what is read in the text cannot disagree. Its name stands there always and the
-        // whole line appears as the camera comes near, which is the only way eight of them fit at once.
+        // on the body and what is read in the text cannot disagree. Its short form stands there always and
+        // the whole line appears as the camera comes near, which is the only way eight of them fit at once.
         // The caption takes the body's own colour and stands on a leader line rising from it, so which
         // text belongs to which object is never in doubt even where two bodies sit close together.
-        Color caption = colour.Lightened(0.45f);
-        Label3D brief = Caption(SystemDescription.BriefFor(body), caption);
-        Label3D full = Caption(SystemDescription.LineFor(body), caption);
-        MeshInstance3D leader = Leader(caption);
-        full.Visible = false;
-        node.AddChild(leader);
-        node.AddChild(brief);
-        node.AddChild(full);
-        captions.Add(new Caption3D(node, full, brief, leader, radius, Stagger(body.Number)));
+        _captions.Add(Wear(node, SystemDescription.LineFor(body), SystemDescription.BriefFor(body), colour.Lightened(0.45f), radius));
 
         if (body.LandingCandidate)
         {
@@ -359,27 +434,35 @@ public partial class SystemView : Node3D
     }
 
     /// <summary>
-    /// A body's own description standing above it, wrapped so a long line reads as a block rather than a
-    /// banner, and always facing the camera.
+    /// Hangs a caption on <paramref name="body"/>: a label carrying the body's own line, in the body's own
+    /// colour, and the leader that ties the two. Both are drawn on the panel rather than in the world, so
+    /// a caption keeps one size on screen however near the camera is and can be placed clear of its
+    /// neighbours' by <see cref="PlaceCaptions"/>.
     /// </summary>
-    /// <summary>
-    /// A caption above a body: one size on screen however near or far the camera is, so it neither
-    /// vanishes across the system nor swallows the body it belongs to.
-    /// </summary>
-    private static Label3D Caption(string text, Color colour) => new()
+    private Caption Wear(Node3D body, string full, string brief, Color colour, float radius)
     {
-        Text = Wrap(text),
-        Billboard = BaseMaterial3D.BillboardModeEnum.Enabled,
-        FixedSize = true,
-        Modulate = colour,
-        OutlineModulate = new Color(0f, 0f, 0f, 0.95f),
-        OutlineSize = 20,
-        FontSize = 48,
-        PixelSize = 0.00042f,
-        NoDepthTest = true,
-        RenderPriority = 4,
-        HorizontalAlignment = HorizontalAlignment.Left,
-    };
+        var leader = new Line2D { Width = 1f, DefaultColor = colour with { A = 0.55f }, Antialiased = true };
+        var label = new Label
+        {
+            Text = brief,
+            MouseFilter = Control.MouseFilterEnum.Ignore,
+            AutowrapMode = TextServer.AutowrapMode.Off,
+        };
+
+        label.AddThemeFontOverride("font", CaptionFont);
+        label.AddThemeFontSizeOverride("font_size", 12);
+        label.AddThemeColorOverride("font_color", colour);
+        label.AddThemeColorOverride("font_outline_color", new Color(0f, 0f, 0f, 0.9f));
+        label.AddThemeConstantOverride("outline_size", 5);
+
+        _marks.AddChild(leader);
+        _canvas.AddChild(label);
+
+        return new Caption(body, Wrap(full), Wrap(brief), label, leader, radius);
+    }
+
+    /// <summary>The monospace face the panel and every caption share, so a caption reads as the panel's own row.</summary>
+    private static SystemFont CaptionFont => new() { FontNames = ["monospace", "Monospace", "DejaVu Sans Mono"] };
 
     /// <summary>Breaks a description line into readable rows without losing a field across the break.</summary>
     private static string Wrap(string text)
@@ -389,7 +472,7 @@ public partial class SystemView : Node3D
         var row = new System.Text.StringBuilder();
         foreach (string word in words)
         {
-            if (row.Length > 0 && row.Length + word.Length + 1 > 26)
+            if (row.Length > 0 && row.Length + word.Length + 1 > 34)
             {
                 rows.Add(row.ToString());
                 row.Clear();
@@ -405,31 +488,6 @@ public partial class SystemView : Node3D
 
         return string.Join("\n", rows);
     }
-
-    /// <summary>The line that ties a caption to the body under it, one unit long and scaled to reach it.</summary>
-    private static MeshInstance3D Leader(Color colour)
-    {
-        var mesh = new ImmediateMesh();
-        mesh.SurfaceBegin(Mesh.PrimitiveType.LineStrip);
-        mesh.SurfaceAddVertex(Vector3.Zero);
-        mesh.SurfaceAddVertex(new Vector3(0f, 1f, 0f));
-        mesh.SurfaceEnd();
-
-        return new MeshInstance3D
-        {
-            Mesh = mesh,
-            MaterialOverride = new StandardMaterial3D
-            {
-                AlbedoColor = colour,
-                ShadingMode = BaseMaterial3D.ShadingModeEnum.Unshaded,
-                NoDepthTest = true,
-            },
-        };
-    }
-
-    /// <summary>Staggers a moon's caption above its planet's so two captions on one spot do not sit on each other.</summary>
-    private static float Stagger(string number) =>
-        number.IndexOf('.', StringComparison.Ordinal) < 0 ? 0f : 1f + (number[^1] - '0');
 
     private static MeshInstance3D OrbitRing(float radius, float inclination)
     {
@@ -457,24 +515,29 @@ public partial class SystemView : Node3D
 
     private CanvasLayer Panel()
     {
-        var font = new SystemFont { FontNames = ["monospace", "Monospace", "DejaVu Sans Mono"] };
-        var description = new Label
+        SystemFont font = CaptionFont;
+        _description = new Label
         {
             Text = $"{Heading()}\n{_destination.Description.Text}{Verdict()}\n{Legend()}",
             Position = new Vector2(16f, 12f),
         };
 
-        description.AddThemeFontOverride("font", font);
-        description.AddThemeFontSizeOverride("font_size", 13);
-        description.AddThemeColorOverride("font_color", new Color(0.85f, 0.88f, 0.95f));
+        _description.AddThemeFontOverride("font", font);
+        _description.AddThemeFontSizeOverride("font_size", 13);
+        _description.AddThemeColorOverride("font_color", new Color(0.85f, 0.88f, 0.95f));
+
+        // The text the system is judged by is read over whatever the view draws behind it, so it keeps its
+        // own ground rather than competing with an orbit ring for the same pixels.
+        _behind = new ColorRect { Color = new Color(0.02f, 0.02f, 0.05f, 0.55f), Position = new Vector2(8f, 6f), MouseFilter = Control.MouseFilterEnum.Ignore };
 
         _hud = new Label { Position = new Vector2(16f, 8f), GrowVertical = Control.GrowDirection.Begin, AnchorTop = 1f, AnchorBottom = 1f, OffsetTop = -34f };
         _hud.AddThemeFontOverride("font", font);
         _hud.AddThemeFontSizeOverride("font_size", 13);
         _hud.AddThemeColorOverride("font_color", new Color(0.55f, 0.95f, 0.7f));
 
-        var layer = new CanvasLayer();
-        layer.AddChild(description);
+        var layer = new CanvasLayer { Layer = 1 };
+        layer.AddChild(_behind);
+        layer.AddChild(_description);
         layer.AddChild(_hud);
         return layer;
     }

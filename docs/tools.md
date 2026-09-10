@@ -116,6 +116,8 @@ godot --path src/SpaceExplorer.Game -- --system --tier starter --seed 7
 godot --path src/SpaceExplorer.Game --resolution 1600x900 -- --system --tier starter --seed 7 \
   --focus 2 --screenshot /tmp/system.png
 # opens at body 2, saves a picture and exits, so a system is reviewable without sitting at the window
+# give --screenshot an absolute path: a relative one resolves against src/SpaceExplorer.Game, not the
+# shell's directory, and the save fails where that directory does not exist
 ```
 
 Exports. The preset names are exactly `Linux` and `Windows Desktop`, and they must be quoted:
