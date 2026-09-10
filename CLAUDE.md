@@ -23,6 +23,8 @@ dotnet run tools/docs.cs -- --check
 
 It verifies every internal link and anchor, and that decision-record numbering is contiguous — CI runs it on every push.
 
+The [`software-architect`](.claude/agents/software-architect.md) agent carries that process: delegate a design question, a check of the code against the documents, or the drafting of a record and its application to every affected document. It does not implement, commit, or accept — acceptance stays with Boyan.
+
 ## This repo is edited by concurrent sessions
 
 Boyan and other Claude Code sessions can be working the same checkout at the same time, coordinating over `SendMessage` when visible as peers. Decision numbers are contiguous only among *git-tracked* files, so a peer's in-flight, uncommitted decision is invisible until it lands — claiming its number produces a collision. Re-check `git status` and `ls docs/decisions/` immediately before writing, not just at the start of a turn; prefer `git add <specific paths>` over `git add -A`; announce what you're about to touch before you start, not only when asked.
