@@ -18,6 +18,7 @@ The scaffold, the core's deterministic random foundation, the primitive-set foun
 - [Technical design](docs/technical-design.md): generation, primitive versions, persistence, artifact valuation, and multiplayer ownership.
 - [Technology decision](docs/technology-stack.md): selected platform/libraries, alternatives, native-platform validation, and numbered decisions for confirmation.
 - [Design review](docs/review.md): foundational decisions that would be costly to reverse, gaps, inconsistencies, proposed solutions, and their status.
+- [Inspection: documents and structure](docs/inspection.md): the documents read against each other and against the code, what the two no longer agree on, and what each finding needs to clear it.
 - [Glossary](docs/glossary.md): terms used across the documents.
 - [Decision records](docs/decisions/README.md): accepted decisions, one record each.
 
