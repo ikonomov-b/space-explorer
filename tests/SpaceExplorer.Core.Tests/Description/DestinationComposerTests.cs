@@ -17,7 +17,7 @@ public class DestinationComposerTests
     private static readonly CompositionGrammar Grammar = ZoneFixture.Grammar(moonsInherit: false, moons: 0);
 
     private static Destination Compose(DistanceTier tier, ulong seed) =>
-        DestinationComposer.Compose(tier, seed, ZoneFixture.Set, Grammar, ZoneFixture.Registry, SuitProfile.Version1);
+        DestinationComposer.Compose(tier, seed, ZoneFixture.Set, Grammar, ZoneFixture.Registry, SuitProfile.Version1, TierProfile.Version1, RegionLimits.Version1);
 
     [Fact]
     public void One_pair_of_lever_values_names_one_destination()
@@ -40,7 +40,7 @@ public class DestinationComposerTests
         {
             Destination destination = Compose(DistanceTier.Starter, seed);
 
-            Assert.Empty(TierRules.Check(destination.Description, DistanceTier.Starter));
+            Assert.Empty(TierRules.Check(destination.Description, DistanceTier.Starter, TierProfile.Version1));
             Assert.InRange(destination.Attempt, 0u, DestinationComposer.MaxAttempts - 1);
         }
     }
@@ -66,9 +66,12 @@ public class DestinationComposerTests
     {
         // No registry revision defines a life category, so no system can bear life and the second tier
         // can never be met; the levers say so instead of handing back a system that breaks the rule.
+        // They say it before the first draw rather than after sixty-four identical ones, and the message
+        // names the missing category rather than the last attempt's failures (review finding 52).
         var exception = Assert.Throws<GenerationException>(() => Compose(DistanceTier.Second, 1));
 
-        Assert.Contains("within 64 attempts", exception.Message, StringComparison.Ordinal);
-        Assert.Contains("life-bearing planet", exception.Message, StringComparison.Ordinal);
+        Assert.Contains("'life' category", exception.Message, StringComparison.Ordinal);
+        Assert.Contains("no seed can satisfy it", exception.Message, StringComparison.Ordinal);
+        Assert.DoesNotContain("within 64 attempts", exception.Message, StringComparison.Ordinal);
     }
 }

@@ -54,14 +54,16 @@ public sealed record BodyDescription(
 public sealed class SystemDescription
 {
     /// <summary>The version of this description's content and wording; a change to either is a new version.</summary>
-    public const uint Version = 2;
+    public const uint Version = 3;
 
-    private const string LifeCategoryLabel = "life";
+    /// <summary>The category whose presence makes a body life-bearing; no registry revision defines one yet (review finding 52).</summary>
+    internal const string LifeCategoryLabel = "life";
 
-    private SystemDescription(CompositionGraph graph, SuitProfile suit, BodyDescription star, BodyDescription[] bodies)
+    private SystemDescription(CompositionGraph graph, SuitProfile suit, RegionLimits regions, BodyDescription star, BodyDescription[] bodies)
     {
         Graph = graph;
         Suit = suit;
+        Regions = regions;
         Star = star;
         Bodies = bodies;
         Text = Render();
@@ -71,6 +73,12 @@ public sealed class SystemDescription
 
     /// <summary>The profile the landing-candidate flag was decided against; its hash is part of the description.</summary>
     public SuitProfile Suit { get; }
+
+    /// <summary>
+    /// The region limits the same flag was decided against: the fourth number a landing candidate turns
+    /// on, pinned like the other three (decision 0059).
+    /// </summary>
+    public RegionLimits Regions { get; }
 
     public BodyDescription Star { get; }
 
@@ -120,11 +128,12 @@ public sealed class SystemDescription
 
     /// <summary>Derives the description of <paramref name="graph"/>, which must be a composed solar system.</summary>
     /// <exception cref="ArgumentException">The graph is of another domain or is not rooted at a star.</exception>
-    public static SystemDescription Derive(CompositionGraph graph, CategoryRegistry registry, SuitProfile suit)
+    public static SystemDescription Derive(CompositionGraph graph, CategoryRegistry registry, SuitProfile suit, RegionLimits regions)
     {
         ArgumentNullException.ThrowIfNull(graph);
         ArgumentNullException.ThrowIfNull(registry);
         ArgumentNullException.ThrowIfNull(suit);
+        ArgumentNullException.ThrowIfNull(regions);
 
         if (graph.Specification.CompositionDomain != CompositionDomain.SolarSystem)
         {
@@ -164,12 +173,12 @@ public sealed class SystemDescription
             LifeBearing: false);
 
         var bodies = new List<BodyDescription>();
-        Walk(graph.Root, registry, suit, lifeCategory, starTemperature, starRadius, parentNumber: string.Empty, parentDistance: 0, parentRole: BodyRole.Star, bodies);
+        Walk(graph.Root, registry, suit, regions, lifeCategory, starTemperature, starRadius, parentNumber: string.Empty, parentDistance: 0, parentRole: BodyRole.Star, bodies);
 
-        return new SystemDescription(graph, suit, star, [.. bodies]);
+        return new SystemDescription(graph, suit, regions, star, [.. bodies]);
     }
 
-    private static void Walk(GraphNode node, CategoryRegistry registry, SuitProfile suit, uint? lifeCategory, long starTemperature, long starRadius, string parentNumber, long parentDistance, BodyRole parentRole, List<BodyDescription> bodies)
+    private static void Walk(GraphNode node, CategoryRegistry registry, SuitProfile suit, RegionLimits regions, uint? lifeCategory, long starTemperature, long starRadius, string parentNumber, long parentDistance, BodyRole parentRole, List<BodyDescription> bodies)
     {
         CategoryDefinition schema = registry.Find(node.Definition.Category);
         for (int index = 0; index < schema.Connectors.Count; index++)
@@ -196,14 +205,14 @@ public sealed class SystemDescription
                 long orbit = body.Transform!.Component("semi-major-axis");
                 long distance = parentDistance == 0 ? orbit : parentDistance;
 
-                BodyDescription described = Describe(body, registry, suit, lifeCategory, starTemperature, starRadius, number, distance, orbit, parentRole);
+                BodyDescription described = Describe(body, registry, suit, regions, lifeCategory, starTemperature, starRadius, number, distance, orbit, parentRole);
                 bodies.Add(described);
-                Walk(body, registry, suit, lifeCategory, starTemperature, starRadius, number, distance, described.Role, bodies);
+                Walk(body, registry, suit, regions, lifeCategory, starTemperature, starRadius, number, distance, described.Role, bodies);
             }
         }
     }
 
-    private static BodyDescription Describe(GraphNode node, CategoryRegistry registry, SuitProfile suit, uint? lifeCategory, long starTemperature, long starRadius, string number, long distance, long orbit, BodyRole parentRole)
+    private static BodyDescription Describe(GraphNode node, CategoryRegistry registry, SuitProfile suit, RegionLimits regions, uint? lifeCategory, long starTemperature, long starRadius, string number, long distance, long orbit, BodyRole parentRole)
     {
         CategoryDefinition schema = registry.Find(node.Definition.Category);
         if (schema.Label == "barycentre")
@@ -224,7 +233,7 @@ public sealed class SystemDescription
 
         (long pressure, string atmosphere) = Atmosphere(node, registry);
         List<string> refusals = [.. suit.Refusals(gravity, pressure, temperature)];
-        if (radius < CategoryRegistryRevision1.MinimumLandableRadius)
+        if (!regions.AdmitsRegion(radius))
         {
             refusals.Insert(0, "radius");
         }
@@ -302,7 +311,7 @@ public sealed class SystemDescription
         var text = new StringBuilder();
         text.Append(CultureInfo.InvariantCulture, $"system description {Version}\n");
         text.Append(CultureInfo.InvariantCulture, $"graph         {description.Graph.Pack} seed {specification.Seed}\n");
-        text.Append(CultureInfo.InvariantCulture, $"pinned        registry {specification.RegistryRevision}, grammar {specification.GrammarVersion}, generator {specification.GeneratorVersion}, suit profile {description.Suit.Version} {description.Suit.Hash.ToString()[..12]}\n");
+        text.Append(CultureInfo.InvariantCulture, $"pinned        registry {specification.RegistryRevision}, grammar {specification.GrammarVersion}, generator {specification.GeneratorVersion}, suit profile {description.Suit.Version} {description.Suit.Hash.ToString()[..12]}, region limits {description.Regions.Version} {description.Regions.Hash.ToString()[..12]}\n");
         text.Append(CultureInfo.InvariantCulture, $"star          {StarLine}\n");
 
         foreach (BodyDescription body in description.Bodies)

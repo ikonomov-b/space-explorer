@@ -113,7 +113,7 @@ internal static class EarthlikeFixture
         GraphSpecification specification = GraphSpecification.Create(
             Registry.Revision, Registry.Hash, GeneratorVersion.Current, grammar.Version, grammar.Hash, seed, set.Manifest.Pack, set.Manifest.Hash, CompositionDomain.SolarSystem);
 
-        return SystemDescription.Derive(CompositionGenerator.Generate(specification, set, grammar, Registry), Registry, SuitProfile.Version1);
+        return SystemDescription.Derive(CompositionGenerator.Generate(specification, set, grammar, Registry), Registry, SuitProfile.Version1, RegionLimits.Version1);
     }
 
     /// <summary>
@@ -169,7 +169,7 @@ internal static class EarthlikeFixture
         GraphSpecification specification = GraphSpecification.Create(
             registry.Revision, registry.Hash, GeneratorVersion.Current, grammar.Version, grammar.Hash, 1, set.Manifest.Pack, set.Manifest.Hash, CompositionDomain.SolarSystem);
 
-        return SystemDescription.Derive(CompositionGenerator.Generate(specification, set, grammar, registry), registry, SuitProfile.Version1);
+        return SystemDescription.Derive(CompositionGenerator.Generate(specification, set, grammar, registry), registry, SuitProfile.Version1, RegionLimits.Version1);
     }
 
     /// <summary>The tagged vocabulary of <see cref="GiantWithLandableMoon"/>: the same three templates, plus Jupiter.</summary>

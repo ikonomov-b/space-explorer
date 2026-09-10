@@ -73,7 +73,7 @@ public partial class Main : Node
                     record.Attempt,
                     record.CompositionSeed,
                     graph,
-                    SystemDescription.Derive(graph, registry, SuitProfile.Version1));
+                    SystemDescription.Derive(graph, registry, SuitProfile.Version1, RegionLimits.Version1));
                 GD.Print($"destination   {record.Pack} loaded; graph {record.GraphPack}");
             }
             else
@@ -110,19 +110,19 @@ public partial class Main : Node
     /// </summary>
     private static Destination Draw(DataRoot root, DistanceTier tier, ulong seed, PrimitiveSet set, CompositionGrammar grammar, CategoryRegistry registry, bool noPublish)
     {
-        DestinationSpecification specification = DestinationSpecification.For(tier, seed, set, grammar, registry, SuitProfile.Version1);
+        DestinationSpecification specification = DestinationSpecification.For(tier, seed, set, grammar, registry, SuitProfile.Version1, TierProfile.Version1, RegionLimits.Version1);
         if (DestinationStore.Find(root, specification) is { } stored)
         {
             CompositionGraph loaded = GraphLoader.Load(root, stored.GraphPack, CategoryRegistries.Supported, grammar);
             GD.Print($"destination   {stored.Pack} loaded; graph {stored.GraphPack}");
-            return new Destination(tier, seed, stored.Attempt, stored.CompositionSeed, loaded, SystemDescription.Derive(loaded, registry, SuitProfile.Version1));
+            return new Destination(tier, seed, stored.Attempt, stored.CompositionSeed, loaded, SystemDescription.Derive(loaded, registry, SuitProfile.Version1, RegionLimits.Version1));
         }
 
-        Destination composed = DestinationComposer.Compose(tier, seed, set, grammar, registry, SuitProfile.Version1);
+        Destination composed = DestinationComposer.Compose(tier, seed, set, grammar, registry, SuitProfile.Version1, TierProfile.Version1, RegionLimits.Version1);
         if (!noPublish)
         {
             GraphPublisher.Publish(root, composed.Graph);
-            DestinationStore.Publish(root, DestinationRecord.Of(composed, set, grammar, registry, SuitProfile.Version1));
+            DestinationStore.Publish(root, DestinationRecord.Of(composed, set, grammar, registry, SuitProfile.Version1, TierProfile.Version1, RegionLimits.Version1));
             GD.Print($"destination   {specification.PackId} composed and published; graph {composed.Graph.Pack}");
         }
         else

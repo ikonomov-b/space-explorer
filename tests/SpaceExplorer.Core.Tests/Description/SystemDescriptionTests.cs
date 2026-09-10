@@ -12,17 +12,19 @@ public class SystemDescriptionTests
         SystemDescription.Derive(
             CompositionGenerator.Generate(CompositionFixture.Specification(seed, domain), CompositionFixture.Set, CompositionFixture.Grammar, CompositionFixture.Registry),
             CompositionFixture.Registry,
-            SuitProfile.Version1);
+            SuitProfile.Version1,
+            RegionLimits.Version1);
 
     [Fact]
     public void The_fixture_description_is_a_frozen_vector()
     {
         // The recorded fixed-seed description of decision 0045, which continuous integration compares on
         // Linux and Windows. It moves when the wording, the derived values, or the composition move, each
-        // of which is a version change of something the description names.
+        // of which is a version change of something the description names. It last moved at description
+        // version 3, which prints the region limits the landing verdict used (decision 0059).
         SystemDescription description = Describe(9);
 
-        Assert.Equal("d27a9e43a1c77390546e9e7def0c859ff44b9a3d1f4149bca0add0de06f138ff", description.Hash.ToString());
+        Assert.Equal("8b367b936d85406e9e540486ca6bf1ebd19b19c19a90da77b8a941ae34c3347a", description.Hash.ToString());
     }
 
     [Fact]

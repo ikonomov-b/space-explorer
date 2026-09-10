@@ -15,7 +15,7 @@ public class DestinationRecordTests
     private static readonly CompositionGrammar Grammar = ZoneFixture.Grammar(moonsInherit: false, moons: 0);
 
     private static DestinationSpecification Specification(DistanceTier tier, ulong seed, SuitProfile? suit = null) =>
-        DestinationSpecification.For(tier, seed, ZoneFixture.Set, Grammar, ZoneFixture.Registry, suit ?? SuitProfile.Version1);
+        DestinationSpecification.For(tier, seed, ZoneFixture.Set, Grammar, ZoneFixture.Registry, suit ?? SuitProfile.Version1, TierProfile.Version1, RegionLimits.Version1);
 
     [Fact]
     public void The_levers_and_the_pins_name_the_pack_without_composing_anything()
@@ -33,8 +33,8 @@ public class DestinationRecordTests
     [Fact]
     public void A_record_holds_the_retry_result_and_round_trips()
     {
-        Destination destination = DestinationComposer.Compose(DistanceTier.Starter, 3, ZoneFixture.Set, Grammar, ZoneFixture.Registry, SuitProfile.Version1);
-        DestinationRecord record = DestinationRecord.Of(destination, ZoneFixture.Set, Grammar, ZoneFixture.Registry, SuitProfile.Version1);
+        Destination destination = DestinationComposer.Compose(DistanceTier.Starter, 3, ZoneFixture.Set, Grammar, ZoneFixture.Registry, SuitProfile.Version1, TierProfile.Version1, RegionLimits.Version1);
+        DestinationRecord record = DestinationRecord.Of(destination, ZoneFixture.Set, Grammar, ZoneFixture.Registry, SuitProfile.Version1, TierProfile.Version1, RegionLimits.Version1);
         DestinationRecord decoded = DestinationRecord.Decode(record.Bytes);
 
         Assert.Equal(Specification(DistanceTier.Starter, 3).PackId, record.Pack);
@@ -51,14 +51,14 @@ public class DestinationRecordTests
     {
         // The record cannot claim a system the levers would never draw: the seed of an attempt follows from
         // the two lever values alone, so a wrong one is a broken record rather than another destination.
-        Destination destination = DestinationComposer.Compose(DistanceTier.Starter, 3, ZoneFixture.Set, Grammar, ZoneFixture.Registry, SuitProfile.Version1);
+        Destination destination = DestinationComposer.Compose(DistanceTier.Starter, 3, ZoneFixture.Set, Grammar, ZoneFixture.Registry, SuitProfile.Version1, TierProfile.Version1, RegionLimits.Version1);
         DestinationSpecification specification = Specification(DistanceTier.Starter, 3);
 
         Assert.Throws<ArgumentException>(() => DestinationRecord.Create(specification, destination.Attempt, destination.CompositionSeed + 1, destination.Graph.Pack, destination.Graph.Hash));
         Assert.Throws<ArgumentException>(() => DestinationRecord.Create(specification, destination.Attempt + 1, destination.CompositionSeed, destination.Graph.Pack, destination.Graph.Hash));
         Assert.Throws<ArgumentException>(() => DestinationRecord.Create(specification, DestinationComposer.MaxAttempts, DestinationComposer.CompositionSeed(DistanceTier.Starter, 3, DestinationComposer.MaxAttempts), destination.Graph.Pack, destination.Graph.Hash));
 
-        DestinationRecord record = DestinationRecord.Of(destination, ZoneFixture.Set, Grammar, ZoneFixture.Registry, SuitProfile.Version1);
+        DestinationRecord record = DestinationRecord.Of(destination, ZoneFixture.Set, Grammar, ZoneFixture.Registry, SuitProfile.Version1, TierProfile.Version1, RegionLimits.Version1);
         Assert.Throws<FormatException>(() => DestinationRecord.Decode([.. record.Bytes, 0x00]));
     }
 }

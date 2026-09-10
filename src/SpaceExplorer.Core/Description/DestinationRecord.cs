@@ -30,6 +30,10 @@ public sealed class DestinationSpecification
         uint descriptionVersion,
         uint suitVersion,
         ContentHash suitHash,
+        uint tierProfileVersion,
+        ContentHash tierProfileHash,
+        uint regionLimitsVersion,
+        ContentHash regionLimitsHash,
         byte[] bytes,
         ContentHash hash)
     {
@@ -45,6 +49,10 @@ public sealed class DestinationSpecification
         DescriptionVersion = descriptionVersion;
         SuitVersion = suitVersion;
         SuitHash = suitHash;
+        TierProfileVersion = tierProfileVersion;
+        TierProfileHash = tierProfileHash;
+        RegionLimitsVersion = regionLimitsVersion;
+        RegionLimitsHash = regionLimitsHash;
         _bytes = bytes;
         Hash = hash;
     }
@@ -74,6 +82,19 @@ public sealed class DestinationSpecification
     /// <summary>The suit profile's hash: its limits decide the landing candidates a tier's rules count (decision 0049).</summary>
     public ContentHash SuitHash { get; }
 
+    public uint TierProfileVersion { get; }
+
+    /// <summary>
+    /// The tier profile's hash: what the tier demanded of this system, so a stored verdict can be
+    /// re-checked against the rules that gave it (decision 0058).
+    /// </summary>
+    public ContentHash TierProfileHash { get; }
+
+    public uint RegionLimitsVersion { get; }
+
+    /// <summary>The region limits the landing verdict used: the fourth number a candidate turns on (decision 0059).</summary>
+    public ContentHash RegionLimitsHash { get; }
+
     public byte[] Bytes => [.. _bytes];
     public ContentHash Hash { get; }
 
@@ -81,12 +102,14 @@ public sealed class DestinationSpecification
     public PackId PackId => PackId.FromSpecificationHash(Hash);
 
     /// <summary>The specification the two levers name over <paramref name="set"/>, <paramref name="grammar"/>, <paramref name="registry"/>, and <paramref name="suit"/>.</summary>
-    public static DestinationSpecification For(DistanceTier tier, ulong seed, PrimitiveSet set, CompositionGrammar grammar, CategoryRegistry registry, SuitProfile suit)
+    public static DestinationSpecification For(DistanceTier tier, ulong seed, PrimitiveSet set, CompositionGrammar grammar, CategoryRegistry registry, SuitProfile suit, TierProfile tiers, RegionLimits regions)
     {
         ArgumentNullException.ThrowIfNull(set);
         ArgumentNullException.ThrowIfNull(grammar);
         ArgumentNullException.ThrowIfNull(registry);
         ArgumentNullException.ThrowIfNull(suit);
+        ArgumentNullException.ThrowIfNull(tiers);
+        ArgumentNullException.ThrowIfNull(regions);
 
         return Create(
             tier,
@@ -100,7 +123,11 @@ public sealed class DestinationSpecification
             set.Manifest.Hash,
             SystemDescription.Version,
             suit.Version,
-            suit.Hash);
+            suit.Hash,
+            tiers.Version,
+            tiers.Hash,
+            regions.Version,
+            regions.Hash);
     }
 
     public static DestinationSpecification Create(
@@ -115,7 +142,11 @@ public sealed class DestinationSpecification
         ContentHash sourceManifestHash,
         uint descriptionVersion,
         uint suitVersion,
-        ContentHash suitHash)
+        ContentHash suitHash,
+        uint tierProfileVersion,
+        ContentHash tierProfileHash,
+        uint regionLimitsVersion,
+        ContentHash regionLimitsHash)
     {
         if (!Enum.IsDefined(tier))
         {
@@ -137,16 +168,26 @@ public sealed class DestinationSpecification
             throw new ArgumentException("A destination pins the description version and the suit profile its verdict was read under.", nameof(descriptionVersion));
         }
 
+        if (tierProfileVersion == 0 || tierProfileHash.IsUnset)
+        {
+            throw new ArgumentException("A destination pins the tier profile its verdict was given under (decision 0058).", nameof(tierProfileVersion));
+        }
+
+        if (regionLimitsVersion == 0 || regionLimitsHash.IsUnset)
+        {
+            throw new ArgumentException("A destination pins the region limits its landing verdict used (decision 0059).", nameof(regionLimitsVersion));
+        }
+
         var writer = new CanonicalWriter(Domain);
-        Encode(writer, tier, seed, generatorVersion, registryRevision, registryHash, grammarVersion, grammarHash, sourcePack, sourceManifestHash, descriptionVersion, suitVersion, suitHash);
+        Encode(writer, tier, seed, generatorVersion, registryRevision, registryHash, grammarVersion, grammarHash, sourcePack, sourceManifestHash, descriptionVersion, suitVersion, suitHash, tierProfileVersion, tierProfileHash, regionLimitsVersion, regionLimitsHash);
 
         return new DestinationSpecification(
-            tier, seed, generatorVersion, registryRevision, registryHash, grammarVersion, grammarHash, sourcePack, sourceManifestHash, descriptionVersion, suitVersion, suitHash, writer.ToArray(), writer.ToContentHash());
+            tier, seed, generatorVersion, registryRevision, registryHash, grammarVersion, grammarHash, sourcePack, sourceManifestHash, descriptionVersion, suitVersion, suitHash, tierProfileVersion, tierProfileHash, regionLimitsVersion, regionLimitsHash, writer.ToArray(), writer.ToContentHash());
     }
 
     /// <summary>Writes the fields without a header, into an enclosing destination record.</summary>
     internal void EncodeInline(CanonicalWriter writer) =>
-        Encode(writer, Tier, Seed, GeneratorVersion, RegistryRevision, RegistryHash, GrammarVersion, GrammarHash, SourcePack, SourceManifestHash, DescriptionVersion, SuitVersion, SuitHash);
+        Encode(writer, Tier, Seed, GeneratorVersion, RegistryRevision, RegistryHash, GrammarVersion, GrammarHash, SourcePack, SourceManifestHash, DescriptionVersion, SuitVersion, SuitHash, TierProfileVersion, TierProfileHash, RegionLimitsVersion, RegionLimitsHash);
 
     /// <summary>Reads the fields <see cref="EncodeInline"/> wrote and rebuilds the specification, recomputing its hash.</summary>
     internal static DestinationSpecification Read(CanonicalReader reader)
@@ -163,6 +204,10 @@ public sealed class DestinationSpecification
         uint descriptionVersion = reader.ReadUInt32();
         uint suitVersion = reader.ReadUInt32();
         ContentHash suitHash = reader.ReadContentHash();
+        uint tierProfileVersion = reader.ReadUInt32();
+        ContentHash tierProfileHash = reader.ReadContentHash();
+        uint regionLimitsVersion = reader.ReadUInt32();
+        ContentHash regionLimitsHash = reader.ReadContentHash();
 
         if (generatorVersion is <= 0 or > int.MaxValue)
         {
@@ -171,7 +216,7 @@ public sealed class DestinationSpecification
 
         try
         {
-            return Create(tier, seed, (int)generatorVersion, registryRevision, registryHash, grammarVersion, grammarHash, sourcePack, sourceManifestHash, descriptionVersion, suitVersion, suitHash);
+            return Create(tier, seed, (int)generatorVersion, registryRevision, registryHash, grammarVersion, grammarHash, sourcePack, sourceManifestHash, descriptionVersion, suitVersion, suitHash, tierProfileVersion, tierProfileHash, regionLimitsVersion, regionLimitsHash);
         }
         catch (ArgumentException exception)
         {
@@ -192,7 +237,11 @@ public sealed class DestinationSpecification
         ContentHash sourceManifestHash,
         uint descriptionVersion,
         uint suitVersion,
-        ContentHash suitHash)
+        ContentHash suitHash,
+        uint tierProfileVersion,
+        ContentHash tierProfileHash,
+        uint regionLimitsVersion,
+        ContentHash regionLimitsHash)
     {
         writer.WriteUInt8((byte)tier);
         writer.WriteUInt64(seed);
@@ -206,6 +255,10 @@ public sealed class DestinationSpecification
         writer.WriteUInt32(descriptionVersion);
         writer.WriteUInt32(suitVersion);
         writer.WriteContentHash(suitHash);
+        writer.WriteUInt32(tierProfileVersion);
+        writer.WriteContentHash(tierProfileHash);
+        writer.WriteUInt32(regionLimitsVersion);
+        writer.WriteContentHash(regionLimitsHash);
     }
 }
 
@@ -281,12 +334,12 @@ public sealed class DestinationRecord
     }
 
     /// <summary>The record for a destination just composed, over the set, grammar, registry, and suit it was composed under.</summary>
-    public static DestinationRecord Of(Destination destination, PrimitiveSet set, CompositionGrammar grammar, CategoryRegistry registry, SuitProfile suit)
+    public static DestinationRecord Of(Destination destination, PrimitiveSet set, CompositionGrammar grammar, CategoryRegistry registry, SuitProfile suit, TierProfile tiers, RegionLimits regions)
     {
         ArgumentNullException.ThrowIfNull(destination);
 
         return Create(
-            DestinationSpecification.For(destination.Tier, destination.Seed, set, grammar, registry, suit),
+            DestinationSpecification.For(destination.Tier, destination.Seed, set, grammar, registry, suit, tiers, regions),
             destination.Attempt,
             destination.CompositionSeed,
             destination.Graph.Pack,

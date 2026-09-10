@@ -1,0 +1,42 @@
+# 0059. The minimum landable radius is a region-limits record, and the description that prints it is version 3
+
+Date: 2026-09-10. Status: Proposed. Source: the owner's choice of 2026-09-10, on [review finding 51](../review.md#51-the-minimum-landable-radius-decides-a-verdict-from-a-code-constant), of the recommended option — a numeric table of its own rather than a second version of the suit profile. Clears [finding 51](../review.md#51-the-minimum-landable-radius-decides-a-verdict-from-a-code-constant). Completes the sequence [decision 0049](0049-suit-profile-and-system-description-version-1-and-derivation-rules-as-named-implementations.md) began and [decision 0058](0058-tier-rules-are-a-pinned-record.md) continued: every number a destination's verdict rests on is now a record the destination pins.
+
+## Context
+
+A landing candidate turns on four numbers. Three are the suit profile's gravity, pressure, and temperature limits, a canonical record pinned by version and hash since [decision 0049](0049-suit-profile-and-system-description-version-1-and-derivation-rules-as-named-implementations.md). The fourth was `CategoryRegistryRevision1.MinimumLandableRadius`, a `const` that is not a category parameter and therefore not in the registry record's canonical bytes, consulted by the description before the suit profile was consulted at all. Changing it silently reinterpreted every stored destination's verdict, and no record could tell that it had changed — the failure decision 0049 exists to prevent for the other three, and [decision 0058](0058-tier-rules-are-a-pinned-record.md) prevents for the counts that read them.
+
+Where it belongs was the question the finding put. The value is not a suit limit: [decision 0041](0041-planet-fields-tangent-regions-minimum-radius-and-far-field.md) derives 524,288 m from the geometry of a maximal region on a sphere — the radius at which the true horizon from a 2 m eye height clears every corner — so it says what a body's shape allows, not what a person survives. And it will not stay alone: [decision 0044](0044-tiered-system-composition-one-star-and-explorability-by-validation.md) defers a per-tier count of regions per explorable planet to the numeric tables, and the landing-candidate flag itself becomes that decision's validation outcome when regions exist.
+
+## Decision
+
+**Region limits are a numeric table of their own** under [decision 0049](0049-suit-profile-and-system-description-version-1-and-derivation-rules-as-named-implementations.md), not a second version of the suit profile: one canonical record with domain label `region-limits/1`, encoded under [decision 0020](0020-canonical-encoding-and-content-hash.md) and identified exactly by its content hash, defined in code as version 1 and moving to `content/` on the trigger that moves the category registry and the composition grammar. It is another frozen content format before the P0 exit record, under [decision 0022](0022-p0-gates-the-first-frozen-content-format.md). A suit profile says what a suited person survives; this says what a body's shape allows; the region rules decision 0044 defers grow here rather than inside the suit.
+
+**Version 1 holds one value, the minimum landable radius,** in the planet-fixed unit of [decision 0036](0036-frames-and-transforms-typed-by-connector-kind.md): decision 0041's 524,288 m, unchanged. A record is refused at version zero and at a radius that is not positive; decoding refuses trailing bytes and a non-canonical encoding, as every canonical record does. The record answers one question — whether a body of a given reference radius may carry a region — so a consumer asks it rather than comparing against a constant of its own.
+
+**The description states it, and is therefore version 3.** The `pinned` line names the region limits' version and hash beside the suit profile's, because a reader of a description must be able to see every limit the verdicts in it were given under. The wording is part of the version ([decision 0049](0049-suit-profile-and-system-description-version-1-and-derivation-rules-as-named-implementations.md)), so this is system description version 3.
+
+**A destination pins it,** version and hash, after the tier profile's pair, refusing a zero version or an unset hash. A destination therefore now names all four numbers its landing verdict used and the counts that read them.
+
+## Consequences
+
+**This is the record that moves the description vector.** [Decision 0058](0058-tier-rules-are-a-pinned-record.md) states that the description's wording and version are untouched and its recorded fixed-seed vector does not move; that was true of the tier profile, which the description does not print, and it stays true. This record is what moves it: the `pinned` line gains a field, so the text changes, the version becomes 3, and the frozen vector is re-recorded from `d27a9e43…` to `8b367b936d85406e9e540486ca6bf1ebd19b19c19a90da77b8a941ae34c3347a`. The vector's test says when it last moved and why, so the next reader of a changed digest can tell a deliberate version change from a regression. The two records do not disagree; they move different things.
+
+**Destination identity moves for the second time today, and content still does not.** Over set `aba608e6` the starter tier at seed 21 named pack `ab0596fb…`, then `15114b2f…` under decision 0058, and now `5673639ff69b873371eef86df1ea1964` — three identities, one system, on the same winning attempt 3, the same composition seed, and the same graph `8fdad8bb`. No set, graph, definition, manifest, registry, grammar, or vocabulary hash has moved through any of it. Taking both moves in one day, while a destination published during the iterations is disposable output ([decision 0047](0047-usable-storage-and-structure-generation-then-solar-system-iterations.md)), is the whole reason for taking them now.
+
+**Iterations 1 to 4 were read under description version 2, which their rows already pin,** so no iteration verdict is reopened and no sample is re-read: the version each row names is what it was judged under, and a row from here on names version 3 and the region limits' version and hash beside the suit profile's.
+
+Easier: the last of the four numbers a landing verdict rests on is a record, so a retuned minimum is a new version visible in everything it produced, and decision 0044's region counts have a home to arrive in rather than a constant to be edited beside. Harder: one more version to pin, one more field in the `pinned` line, and a description vector that has now moved once — which is the price [decision 0049](0049-suit-profile-and-system-description-version-1-and-derivation-rules-as-named-implementations.md) already named for improving a column.
+
+**What must be verified.** The Destination validity and Determinism checks of the [development plan](../development-plan.md#verification-and-performance-targets), on the evidence [progress](../progress.md#verification-and-performance-targets) records: that version 1 is decision 0041's minimum and round-trips; that a body is admitted by its radius and a tuned limit is a different hash; that a destination pins the limits its verdict used and a different limit gives a different pack; that a zero version, a zero radius, and a negative radius are refused; and that the re-recorded description vector holds on `ubuntu-latest` and `windows-latest`.
+
+**Outstanding.** `CategoryRegistryRevision1.MinimumLandableRadius` is now read only to seed `RegionLimits.Version1`, so the registry class is no longer its home: it belongs inside the region-limits record with decision 0041's derivation in its comment, and the constant is trimmed under [decision 0024](0024-tests-comments-index-and-scaffolding-trimmed.md). Separately, decision 0058's outstanding clause stands: `iterate`'s `pins` block names the suit profile and now the region limits, and still not the tier profile.
+
+## Applied to
+
+- `src/SpaceExplorer.Core/Description/RegionLimits.cs`, `SystemDescription.cs`, `DestinationRecord.cs`, their callers, and the matching tests
+- [Progress: M0b, solar-system iterations, verification, design documentation](../progress.md#solar-system-iterations)
+- [Glossary: region limits, destination specification, system description](../glossary.md#worlds-and-destinations)
+- [Technical design: generation lifecycle](../technical-design.md#generation-lifecycle)
+- [Review finding 51](../review.md#51-the-minimum-landable-radius-decides-a-verdict-from-a-code-constant)
+- [docs/tools.md](../tools.md#dotnet)

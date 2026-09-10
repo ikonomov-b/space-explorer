@@ -33,12 +33,24 @@ public static class DestinationComposer
 
     /// <summary>Composes the destination <paramref name="tier"/> and <paramref name="seed"/> name.</summary>
     /// <exception cref="GenerationException">No attempt satisfied the tier's rules within <see cref="MaxAttempts"/>.</exception>
-    public static Destination Compose(DistanceTier tier, ulong seed, PrimitiveSet set, CompositionGrammar grammar, CategoryRegistry registry, SuitProfile suit)
+    public static Destination Compose(DistanceTier tier, ulong seed, PrimitiveSet set, CompositionGrammar grammar, CategoryRegistry registry, SuitProfile suit, TierProfile tiers, RegionLimits regions)
     {
         ArgumentNullException.ThrowIfNull(set);
         ArgumentNullException.ThrowIfNull(grammar);
         ArgumentNullException.ThrowIfNull(registry);
         ArgumentNullException.ThrowIfNull(suit);
+        ArgumentNullException.ThrowIfNull(tiers);
+        ArgumentNullException.ThrowIfNull(regions);
+
+        // A tier the content cannot satisfy at all is refused before the first draw rather than after
+        // sixty-four identical ones: no registry revision defines a life category, so a body can never
+        // bear life and a tier that requires it has no system to find (review finding 52). The bounded
+        // retry of decision 0052 is for a tier the content can satisfy but this seed did not.
+        if (tiers.For(tier).MinimumLifeBearing > 0 && registry.TryFindByLabel(SystemDescription.LifeCategoryLabel) is null)
+        {
+            throw new GenerationException(
+                $"The {TierRules.Label(tier)} tier requires at least {tiers.For(tier).MinimumLifeBearing} life-bearing body, and category-registry revision {registry.Revision} defines no '{SystemDescription.LifeCategoryLabel}' category, so no seed can satisfy it.");
+        }
 
         IReadOnlyList<string> lastFailures = [];
         for (uint attempt = 0; attempt < MaxAttempts; attempt++)
@@ -47,8 +59,8 @@ public static class DestinationComposer
             GraphSpecification specification = GraphSpecification.Create(
                 registry.Revision, registry.Hash, GeneratorVersion.Current, grammar.Version, grammar.Hash, composition, set.Manifest.Pack, set.Manifest.Hash, CompositionDomain.SolarSystem);
 
-            var description = SystemDescription.Derive(CompositionGenerator.Generate(specification, set, grammar, registry), registry, suit);
-            lastFailures = TierRules.Check(description, tier);
+            var description = SystemDescription.Derive(CompositionGenerator.Generate(specification, set, grammar, registry), registry, suit, regions);
+            lastFailures = TierRules.Check(description, tier, tiers);
             if (lastFailures.Count == 0)
             {
                 return new Destination(tier, seed, attempt, composition, description.Graph, description);

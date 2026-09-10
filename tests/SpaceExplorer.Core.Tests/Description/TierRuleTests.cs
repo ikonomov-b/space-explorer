@@ -12,15 +12,16 @@ public class TierRuleTests
         SystemDescription.Derive(
             CompositionGenerator.Generate(CompositionFixture.Specification(seed, CompositionDomain.SolarSystem), CompositionFixture.Set, CompositionFixture.Grammar, CompositionFixture.Registry),
             CompositionFixture.Registry,
-            SuitProfile.Version1);
+            SuitProfile.Version1,
+            RegionLimits.Version1);
 
     [Fact]
     public void The_starter_tier_wants_exactly_one_explorable_planet_and_no_life()
     {
         // One Earth passes; two Earths are one planet too many; no planet at all is one too few.
-        Assert.Empty(TierRules.Check(EarthlikeFixture.Describe(planets: 1), DistanceTier.Starter));
+        Assert.Empty(TierRules.Check(EarthlikeFixture.Describe(planets: 1), DistanceTier.Starter, TierProfile.Version1));
 
-        IReadOnlyList<string> two = TierRules.Check(EarthlikeFixture.Describe(planets: 2), DistanceTier.Starter);
+        IReadOnlyList<string> two = TierRules.Check(EarthlikeFixture.Describe(planets: 2), DistanceTier.Starter, TierProfile.Version1);
         Assert.Contains("this system has 2", Assert.Single(two), StringComparison.Ordinal);
     }
 
@@ -37,7 +38,7 @@ public class TierRuleTests
         Assert.Equal(1, description.LandingCandidateCount);
         Assert.Equal(BodyRole.Moon, Assert.Single(description.Bodies, body => body.LandingCandidate).Role);
 
-        Assert.Contains("this system has 0", Assert.Single(TierRules.Check(description, DistanceTier.Starter)), StringComparison.Ordinal);
+        Assert.Contains("this system has 0", Assert.Single(TierRules.Check(description, DistanceTier.Starter, TierProfile.Version1)), StringComparison.Ordinal);
     }
 
     [Fact]
@@ -46,9 +47,9 @@ public class TierRuleTests
         // Nothing this build composes can bear life, so the second tier's rules always fail and the
         // failure names each one; that is what decision 0047 means by an iteration judged on the starter
         // tier and the structural rules alone.
-        IReadOnlyList<string> failures = TierRules.Check(Describe(9), DistanceTier.Second);
+        IReadOnlyList<string> failures = TierRules.Check(Describe(9), DistanceTier.Second, TierProfile.Version1);
 
-        Assert.Contains(failures, failure => failure.Contains("life-bearing planet", StringComparison.Ordinal));
+        Assert.Contains(failures, failure => failure.Contains("life-bearing body", StringComparison.Ordinal));
     }
 
     [Fact]

@@ -18,13 +18,16 @@ public enum DistanceTier : byte
 /// </summary>
 public static class TierRules
 {
-    /// <summary>The star classes a tier that requires life may draw from (decision 0044).</summary>
-    private static readonly string[] LifeBearingClasses = ["F", "G", "K", "M"];
-
-    /// <summary>The rules <paramref name="description"/> breaks at <paramref name="tier"/>, in a fixed order; empty when it passes.</summary>
-    public static IReadOnlyList<string> Check(SystemDescription description, DistanceTier tier)
+    /// <summary>
+    /// The rules <paramref name="description"/> breaks at <paramref name="tier"/> under
+    /// <paramref name="profile"/>, in a fixed order; empty when it passes. The counts come from the
+    /// profile rather than from here, so what a tier demands is a record a destination can pin
+    /// (decision 0058).
+    /// </summary>
+    public static IReadOnlyList<string> Check(SystemDescription description, DistanceTier tier, TierProfile profile)
     {
         ArgumentNullException.ThrowIfNull(description);
+        ArgumentNullException.ThrowIfNull(profile);
 
         // Decision 0044 counts moons separately from planets, so only a planet of the star or of a
         // barycentre counts towards a tier's explorable-planet rule, however landable a moon is. Registry
@@ -32,45 +35,50 @@ public static class TierRules
         int candidates = description.Bodies.Count(body => body.Role == BodyRole.Planet && body.LandingCandidate);
         var failures = new List<string>();
 
-        switch (tier)
+        if (!Enum.IsDefined(tier))
         {
-            case DistanceTier.Starter:
-                if (candidates != 1)
-                {
-                    failures.Add($"the starter tier has exactly one explorable planet; this system has {candidates.ToString(CultureInfo.InvariantCulture)}");
-                }
+            return [$"unknown distance tier {((byte)tier).ToString(CultureInfo.InvariantCulture)}"];
+        }
 
-                if (description.LifeBearingCount != 0)
-                {
-                    failures.Add($"the starter tier bears no life; this system has {description.LifeBearingCount.ToString(CultureInfo.InvariantCulture)} life-bearing bodies");
-                }
+        TierDemand demand = profile.For(tier);
 
-                break;
+        if (candidates < demand.MinimumExplorable || candidates > demand.MaximumExplorable)
+        {
+            failures.Add($"the {Label(tier)} tier has {Count(demand.MinimumExplorable, demand.MaximumExplorable, "explorable planet")}; this system has {candidates.ToString(CultureInfo.InvariantCulture)}");
+        }
 
-            case DistanceTier.Second:
-                if (candidates < 2)
-                {
-                    failures.Add($"a tier above the starter has at least two explorable planets; this system has {candidates.ToString(CultureInfo.InvariantCulture)}");
-                }
+        if (description.LifeBearingCount < demand.MinimumLifeBearing || description.LifeBearingCount > demand.MaximumLifeBearing)
+        {
+            failures.Add($"the {Label(tier)} tier has {Count(demand.MinimumLifeBearing, demand.MaximumLifeBearing, "life-bearing body")}; this system has {description.LifeBearingCount.ToString(CultureInfo.InvariantCulture)}");
+        }
 
-                if (description.LifeBearingCount < 1)
-                {
-                    failures.Add("a tier above the starter has at least one life-bearing planet; this system has none");
-                }
-
-                if (!LifeBearingClasses.Contains(description.Star.Type))
-                {
-                    failures.Add($"a tier that requires life draws its star from {string.Join(", ", LifeBearingClasses)}; this one is class {description.Star.Type}");
-                }
-
-                break;
-
-            default:
-                failures.Add($"unknown distance tier {((byte)tier).ToString(CultureInfo.InvariantCulture)}");
-                break;
+        // Only a tier that requires life constrains the star, because the class is what makes life
+        // possible at all (decision 0044).
+        if (demand.MinimumLifeBearing > 0 && demand.LifeBearingClasses.Count > 0 && !demand.LifeBearingClasses.Contains(description.Star.Type))
+        {
+            failures.Add($"a tier that requires life draws its star from {string.Join(", ", demand.LifeBearingClasses)}; this one is class {description.Star.Type}");
         }
 
         return failures;
+    }
+
+    /// <summary>How a demand reads in a failure: exactly, at least, at most, or between.</summary>
+    private static string Count(uint minimum, uint maximum, string what)
+    {
+        string plural = what + "s";
+        if (minimum == maximum)
+        {
+            return $"exactly {minimum.ToString(CultureInfo.InvariantCulture)} {(minimum == 1 ? what : plural)}";
+        }
+
+        if (maximum == TierDemand.Unbounded)
+        {
+            return $"at least {minimum.ToString(CultureInfo.InvariantCulture)} {(minimum == 1 ? what : plural)}";
+        }
+
+        return minimum == 0
+            ? $"at most {maximum.ToString(CultureInfo.InvariantCulture)} {plural}"
+            : $"between {minimum.ToString(CultureInfo.InvariantCulture)} and {maximum.ToString(CultureInfo.InvariantCulture)} {plural}";
     }
 
     /// <summary>The tier <paramref name="label"/> names, or null.</summary>

@@ -18,6 +18,8 @@ public sealed class DestinationStoreTests : IDisposable
     private static readonly CategoryRegistries Registries = CategoryRegistries.Supported;
     private static readonly CompositionGrammar Grammar = ZoneFixture.Grammar(moonsInherit: false, moons: 0);
     private static readonly SuitProfile Suit = SuitProfile.Version1;
+    private static readonly TierProfile Tiers = TierProfile.Version1;
+    private static readonly RegionLimits Regions = RegionLimits.Version1;
 
     private readonly string _directory = Path.Combine(Path.GetTempPath(), "space-explorer-tests", Guid.NewGuid().ToString("n"));
     private readonly DataRoot _root;
@@ -36,7 +38,7 @@ public sealed class DestinationStoreTests : IDisposable
         Destination destination = Compose(DistanceTier.Starter, 21);
         GraphPublisher.Publish(_root, destination.Graph);
 
-        DestinationRecord record = DestinationRecord.Of(destination, _set, Grammar, Registry, Suit);
+        DestinationRecord record = DestinationRecord.Of(destination, _set, Grammar, Registry, Suit, Tiers, Regions);
         DestinationPublishResult result = DestinationStore.Publish(_root, record);
 
         Assert.False(result.AlreadyPublished);
@@ -44,7 +46,7 @@ public sealed class DestinationStoreTests : IDisposable
         Assert.True(File.Exists(_root.RecordPath(record.Pack, record.Hash)));
 
         // The levers alone find it: no composing, no search, one address.
-        DestinationRecord found = Assert.IsType<DestinationRecord>(DestinationStore.Find(_root, DestinationSpecification.For(DistanceTier.Starter, 21, _set, Grammar, Registry, Suit)));
+        DestinationRecord found = Assert.IsType<DestinationRecord>(DestinationStore.Find(_root, DestinationSpecification.For(DistanceTier.Starter, 21, _set, Grammar, Registry, Suit, Tiers, Regions)));
         Assert.Equal(record.Hash, found.Hash);
         Assert.Equal(destination.Graph.Pack, found.GraphPack);
         Assert.Equal(destination.Attempt, found.Attempt);
@@ -52,7 +54,7 @@ public sealed class DestinationStoreTests : IDisposable
         // And what it points at still describes the same system, derived rather than stored.
         CompositionGraph loaded = GraphLoader.Load(_root, found.GraphPack, Registries, Grammar);
         Assert.Equal(destination.Graph.Hash, loaded.Hash);
-        Assert.Equal(destination.Description.Hash, SystemDescription.Derive(loaded, Registry, Suit).Hash);
+        Assert.Equal(destination.Description.Hash, SystemDescription.Derive(loaded, Registry, Suit, RegionLimits.Version1).Hash);
 
         DestinationEntry entry = Assert.Single(DestinationStore.List(_root));
         Assert.Equal(record.Pack, entry.Pack);
@@ -67,8 +69,8 @@ public sealed class DestinationStoreTests : IDisposable
     {
         SetPublisher.Publish(_root, _set);
 
-        Assert.Null(DestinationStore.Find(_root, DestinationSpecification.For(DistanceTier.Starter, 21, _set, Grammar, Registry, Suit)));
-        Assert.Throws<PackageNotFoundException>(() => DestinationStore.Load(_root, DestinationSpecification.For(DistanceTier.Starter, 21, _set, Grammar, Registry, Suit).PackId));
+        Assert.Null(DestinationStore.Find(_root, DestinationSpecification.For(DistanceTier.Starter, 21, _set, Grammar, Registry, Suit, Tiers, Regions)));
+        Assert.Throws<PackageNotFoundException>(() => DestinationStore.Load(_root, DestinationSpecification.For(DistanceTier.Starter, 21, _set, Grammar, Registry, Suit, Tiers, Regions).PackId));
     }
 
     [Fact]
@@ -76,7 +78,7 @@ public sealed class DestinationStoreTests : IDisposable
     {
         SetPublisher.Publish(_root, _set);
         Destination destination = Compose(DistanceTier.Starter, 21);
-        DestinationRecord record = DestinationRecord.Of(destination, _set, Grammar, Registry, Suit);
+        DestinationRecord record = DestinationRecord.Of(destination, _set, Grammar, Registry, Suit, Tiers, Regions);
 
         Assert.Throws<PackageNotFoundException>(() => DestinationStore.Publish(_root, record));
         Assert.False(File.Exists(_root.RecordPath(record.Pack, record.Hash)));
@@ -96,7 +98,7 @@ public sealed class DestinationStoreTests : IDisposable
         SetPublisher.Publish(_root, _set);
         Destination destination = Compose(DistanceTier.Starter, 21);
         GraphPublisher.Publish(_root, destination.Graph);
-        DestinationRecord record = DestinationRecord.Of(destination, _set, Grammar, Registry, Suit);
+        DestinationRecord record = DestinationRecord.Of(destination, _set, Grammar, Registry, Suit, Tiers, Regions);
         DestinationStore.Publish(_root, record);
 
         uint other = destination.Attempt + 1;
@@ -115,7 +117,7 @@ public sealed class DestinationStoreTests : IDisposable
         SetPublisher.Publish(_root, _set);
         Destination destination = Compose(DistanceTier.Starter, 21);
         GraphPublisher.Publish(_root, destination.Graph);
-        DestinationRecord record = DestinationRecord.Of(destination, _set, Grammar, Registry, Suit);
+        DestinationRecord record = DestinationRecord.Of(destination, _set, Grammar, Registry, Suit, Tiers, Regions);
         DestinationStore.Publish(_root, record);
 
         string path = _root.RecordPath(record.Pack, record.Hash);
@@ -126,7 +128,7 @@ public sealed class DestinationStoreTests : IDisposable
         Assert.Throws<PackageIntegrityException>(() => DestinationStore.Load(_root, record.Pack));
     }
 
-    private Destination Compose(DistanceTier tier, ulong seed) => DestinationComposer.Compose(tier, seed, _set, Grammar, Registry, Suit);
+    private Destination Compose(DistanceTier tier, ulong seed) => DestinationComposer.Compose(tier, seed, _set, Grammar, Registry, Suit, Tiers, Regions);
 
     public void Dispose()
     {

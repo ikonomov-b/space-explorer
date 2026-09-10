@@ -642,7 +642,7 @@ public partial class SystemView : Node3D
 
     private string Verdict()
     {
-        IReadOnlyList<string> failures = TierRules.Check(_destination.Description, _destination.Tier);
+        IReadOnlyList<string> failures = TierRules.Check(_destination.Description, _destination.Tier, TierProfile.Version1);
         return failures.Count == 0
             ? $"tier          pass ({TierRules.Label(_destination.Tier)})"
             : $"tier          fail ({TierRules.Label(_destination.Tier)}): {string.Join("; ", failures)}";

@@ -200,7 +200,7 @@ static int Describe(string packText, string[] options)
     DistanceTier tier = Tier(options);
     CompositionGraph graph = LoadGraph(packText, options);
     CategoryRegistry registry = CategoryRegistries.Supported.Find(graph.Specification.RegistryRevision);
-    SystemDescription description = SystemDescription.Derive(graph, registry, SuitProfile.Version1);
+    SystemDescription description = SystemDescription.Derive(graph, registry, SuitProfile.Version1, RegionLimits.Version1);
 
     Console.Write(description.Text);
     Console.WriteLine(Verdict(description, tier));
@@ -215,6 +215,8 @@ static int Iterate(string[] options)
 
     DataRoot root = Root(options);
     SuitProfile suit = SuitProfile.Version1;
+    TierProfile tiers = TierProfile.Version1;
+    RegionLimits regions = RegionLimits.Version1;
     PrimitiveSet source = SetLoader.Load(root, set, CategoryRegistries.Supported);
     CategoryRegistry registry = CategoryRegistries.Supported.Find(source.Manifest.RegistryRevision);
     CompositionGrammar grammar = GrammarFor(registry);
@@ -237,7 +239,7 @@ static int Iterate(string[] options)
     {
         GraphSpecification specification = GraphSpecification.Create(
             registry.Revision, registry.Hash, GeneratorVersion.Current, grammar.Version, grammar.Hash, seed, source.Manifest.Pack, source.Manifest.Hash, CompositionDomain.SolarSystem);
-        SystemDescription description = SystemDescription.Derive(CompositionGenerator.Generate(specification, source, grammar, registry), registry, suit);
+        SystemDescription description = SystemDescription.Derive(CompositionGenerator.Generate(specification, source, grammar, registry), registry, suit, RegionLimits.Version1);
 
         Console.WriteLine();
         Console.Write(description.Text);
@@ -272,10 +274,12 @@ static int Destination(string[] options)
     CategoryRegistry registry = CategoryRegistries.Supported.Find(source.Manifest.RegistryRevision);
     CompositionGrammar grammar = GrammarFor(registry);
     SuitProfile suit = SuitProfile.Version1;
+    TierProfile tiers = TierProfile.Version1;
+    RegionLimits regions = RegionLimits.Version1;
 
     // The two levers name their destination's pack before anything is composed, so a destination already
     // stored is read rather than drawn again, and its bounded retry is paid once (decision 0053).
-    DestinationSpecification specification = DestinationSpecification.For(tier, seed, source, grammar, registry, suit);
+    DestinationSpecification specification = DestinationSpecification.For(tier, seed, source, grammar, registry, suit, tiers, regions);
     DestinationRecord? stored = DestinationStore.Find(root, specification);
 
     string status;
@@ -283,12 +287,12 @@ static int Destination(string[] options)
     if (stored is not null)
     {
         CompositionGraph graph = GraphLoader.Load(root, stored.GraphPack, CategoryRegistries.Supported, grammar);
-        destination = new Destination(tier, seed, stored.Attempt, stored.CompositionSeed, graph, SystemDescription.Derive(graph, registry, suit));
+        destination = new Destination(tier, seed, stored.Attempt, stored.CompositionSeed, graph, SystemDescription.Derive(graph, registry, suit, RegionLimits.Version1));
         status = "loaded from the data root; nothing composed";
     }
     else
     {
-        destination = DestinationComposer.Compose(tier, seed, source, grammar, registry, suit);
+        destination = DestinationComposer.Compose(tier, seed, source, grammar, registry, suit, tiers, regions);
         if (Array.IndexOf(options, "--no-publish") >= 0)
         {
             status = "composed; not published";
@@ -296,7 +300,7 @@ static int Destination(string[] options)
         else
         {
             GraphPublisher.Publish(root, destination.Graph);
-            DestinationPublishResult published = DestinationStore.Publish(root, DestinationRecord.Of(destination, source, grammar, registry, suit));
+            DestinationPublishResult published = DestinationStore.Publish(root, DestinationRecord.Of(destination, source, grammar, registry, suit, tiers, regions));
             status = published.AlreadyPublished ? "composed; already published" : "composed and published";
         }
     }
@@ -329,7 +333,7 @@ static PrimitiveSet SourceSet(DataRoot root, string[] options)
 
 static string Verdict(SystemDescription description, DistanceTier tier)
 {
-    IReadOnlyList<string> failures = TierRules.Check(description, tier);
+    IReadOnlyList<string> failures = TierRules.Check(description, tier, TierProfile.Version1);
     return failures.Count == 0
         ? $"tier          pass ({TierRules.Label(tier)})"
         : $"tier          fail ({TierRules.Label(tier)}): {string.Join("; ", failures)}";
