@@ -64,4 +64,5 @@ File name: `NNNN-short-title.md`. Use [0000-template.md](0000-template.md). A re
 | [0053](0053-a-destination-is-a-stored-record-addressed-by-its-levers.md) | A destination is a stored record addressed by its levers, and the view draws what is stored | Accepted |
 | [0054](0054-the-review-panel-carries-the-summary-while-the-system-is-framed.md) | The review panel carries the summary while the system is framed and the whole table at a body, and a key hides it | Accepted |
 | [0055](0055-definition-level-tags-and-tagged-references.md) | A definition carries tags of its own, a reference may require them, and registry revision 3 gives a planet its surface | Accepted |
+| [0056](0056-surface-raster-rule-and-the-boundary-of-stream-derivation.md) | A texture recipe becomes pixels in the core, by the versioned rule `derive-surface-raster/1` | Accepted |
 <!-- generated:end decisions -->

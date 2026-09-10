@@ -37,6 +37,8 @@ The unmoved hashes are the substantive result: [decision 0050](decisions/0050-re
 | 9 | [`ConnectorDeclaration.MaxTags` is a dead alias](#9-connectordeclarationmaxtags-is-a-dead-alias) | Process | Applying [decision 0024](decisions/0024-tests-comments-index-and-scaffolding-trimmed.md) |
 | 10 | [Decision 0055 claims a section that did not change](#10-decision-0055-claims-a-section-that-did-not-change) | Inconsistency | Applying [decision 0055](decisions/0055-definition-level-tags-and-tagged-references.md) |
 
+What has been done about each since, which is not part of what was found, is in [what the documents pass cleared](#what-the-documents-pass-cleared).
+
 ### 1. progress.md describes the state before the commit
 
 Affects: [implementation progress](progress.md).
@@ -160,3 +162,22 @@ New record: the core rasterizer — where a texture recipe becomes pixels, under
 Decision 0021 left Core with one hashing construction on purpose, and `SurfaceAppearance` has added a second, a SplitMix-style integer mixer, as the source of every generated body's face. The documents' position is [finding 20](review.md#20-two-hashing-primitives-where-one-would-do)'s: two hashing primitives where one would do is a fault, and the core "freezes one published hash rather than a construction of its own".
 
 The recommendation is to keep the mixer and record it rather than force per-pixel SHA-256: a new decision that names the raster a versioned rule in the `derive-<name>/<k>` manner of [decision 0037](decisions/0037-derivation-rules-integer-periods-and-orbit-hierarchy.md), freezes `surface-appearance/1` and the mixer's constants as that rule's implementation, states that this is the one exception to decision 0021 and why, and adds the rule's version to what an iteration row pins. The alternative, deriving the lattice from `RandomStream`, keeps one primitive but costs a SHA-256 per lattice cell per pixel, which the review view is unlikely to afford. The choice is the owner's.
+
+## What the documents pass cleared
+
+Added 2026-09-10, after the documents pass this inspection asked for. Every finding above stands as it was written at `ef14630`, because it records what was found; this section records only what has since been done about it, and no finding is cleared by editing it away ([decisions](decisions/README.md)).
+
+| # | State after the pass |
+| --- | --- |
+| 1 | **Cleared.** M0a exit criteria 1 and 11 describe the built state, criterion 11 staying **Partial** because no geometry, collision, or parameter primitive reaches the adapter; the iteration 4 row carries its pins, its figures, and its reading; and completed step 25 records `ef14630`, run `34491083126`, and the 284 tests ([progress](progress.md#m0a-exit-criteria)). |
+| 2 | **Cleared** by [decision 0056](decisions/0056-surface-raster-rule-and-the-boundary-of-stream-derivation.md), which names the image a versioned rule, `derive-surface-raster/1`, freezes `surface-appearance/1` and the mixer's constants as that rule's implementation, states that the pixels are computed in the core against [architecture and ownership](technical-design.md#architecture-and-ownership), and makes a picture-read iteration row pin the rule's version. It is framed as the boundary of [decision 0021](decisions/0021-sha256-stream-derivation.md) — stream derivation and identity-bearing hashing — and not as the exception [the open question](#the-open-question) below proposed, because an exception is a precedent the next per-pixel construction claims where a boundary is a rule its author applies. |
+| 3 | **Open.** Authored content, untouched by a documents pass; the fault is recorded against the pins it reproduces from ([progress](progress.md#solar-system-iterations)). |
+| 4 | **Cleared.** [src/README.md](../src/README.md) names `CategoryRegistryRevision3`, the fourth grammar version, `TagList`, `Appearance/`, `PrimitiveResources`, and the `Appearance/` test suite. |
+| 5 | **Open.** A change to `SystemView.Legend`, which is code. |
+| 6 | **Cleared.** The Native platform support row states 284 tests, 253 in Core, 25 in Persistence, and 6 in the command-line suite, and cites the run that evidences them ([progress](progress.md#verification-and-performance-targets)). |
+| 7 | **Open.** Code. |
+| 8 | **Open.** Code. |
+| 9 | **Open.** Code. |
+| 10 | **Open, and a question for the owner rather than a fix.** Either [composition validation](technical-design.md#composition-validation) gains a sentence saying that a reference's tag demand is a generation-time check which the published vocabulary record leaves re-verifiable, and that pack admission does not repeat it, or decision 0055's claim on that section is loose. Decision 0055 is accepted and therefore immutable, so only the first is available as an edit, and it settles a design question that is the owner's. |
+
+Two points of the review state above are carried too: [finding 48](review.md#48-every-randomization-level-is-to-be-judged-graphically-and-nothing-says-which-view-in-what-order-or-against-what-vector)'s status row now carries the partial answer its body records and stays open, and [finding 20](review.md#20-two-hashing-primitives-where-one-would-do)'s status records why the new mixer does not reopen it.
