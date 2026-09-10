@@ -16,6 +16,7 @@ Every command runs from the repository root unless stated otherwise.
 | `godot` | `godot --path src/SpaceExplorer.Game --editor` | [below](#godot) |
 | Smoke scripts | `tests/SpaceExplorer.Game.Smoke/smoke.sh` | [below](#exported-build-smoke-scripts) |
 | Docs tool | `dotnet run tools/docs.cs -- --check` | [below](#the-documentation-tool-toolsdocscs) |
+| Stats tool | `dotnet run tools/stats.cs` | [below](#the-statistics-tool-toolsstatscs) |
 | `git` | `git ls-files -z -- '*.md'` (used by the docs tool) | [below](#git) |
 | `gh` | `gh run list --branch main --limit 5` | [below](#gh-continuous-integration-status) |
 | CI | `.github/workflows/ci.yml` | [below](#github-actions) |
@@ -183,6 +184,19 @@ A clean `--check` prints one line — the document, link, and record counts foll
 `--check` verifies internal links and anchors, decision-record numbering and headings, that each record is referenced from a document other than an index, and that the generated decision table is current. CI runs it on Ubuntu only. `--external` is never run in CI; it needs the network, and Epic's Unreal Engine licence page answers automated requests with HTTP 403 and has to be opened in a browser.
 
 One rule that surprises people: the tool indexes **only Markdown files tracked by git**. A new document is invisible to the checker and absent from the generated tables until it is at least `git add`ed. If a link to a new page reports "link target not found", stage the page.
+
+## The statistics tool (`tools/stats.cs`)
+
+A file-based C# program like the docs tool, needing only the pinned SDK. It reports what the data root of [decision 0018](decisions/0018-data-root-region-encoding-and-save-integrity.md) currently holds: the store's bytes by record kind, each set pack's definitions by category with their record sizes and the templates they were drawn from, every composed structure with its bodies, instances, depth and the bytes it owns beside the set it shares, and the destinations with the attempts each tier needed.
+
+```sh
+dotnet run tools/stats.cs                       # the data root the tool would use
+dotnet run tools/stats.cs -- --data-root <dir>   # another one, as the command-line tool takes it
+```
+
+It builds `src/SpaceExplorer.Cli` once and then calls that assembly per pack, because a report over every pack makes one call per pack and `dotnet run --project` per call costs minutes. Every count therefore comes from the tool's own verified reload path — [`list`, `inspect`, `inspect-graph`](#dotnet) — and every size from the record file on disk; nothing is decoded a second time and nothing is regenerated. Where a count parsed from that output and the tool's own count disagree, the run fails naming the pack rather than reporting the difference, so a change to the tool's output cannot quietly become a wrong number.
+
+It reads and measures only. It writes nothing, publishes nothing, and needs no network.
 
 ## `git`
 

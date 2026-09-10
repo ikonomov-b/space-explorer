@@ -176,6 +176,53 @@ if (structures.Count > 0)
 }
 Console.WriteLine();
 
+foreach (IGrouping<string, Structure> domain in structures.GroupBy(s => s.Domain).OrderBy(g => g.Key, StringComparer.Ordinal))
+{
+    Console.WriteLine($"== EVERY STRUCTURE IN DOMAIN {domain.Key}: {domain.Count()}");
+    Dictionary<string, Destination> named = destinations
+        .Where(d => domain.Any(s => s.Pack == d.Graph))
+        .ToDictionary(d => d.Graph, d => d, StringComparer.Ordinal);
+
+    foreach (IGrouping<(string Set, int Registry, int Grammar), Structure> generation in domain
+        .GroupBy(s => (s.Set, s.Registry, s.Grammar))
+        .OrderBy(g => g.Key.Registry).ThenBy(g => g.Key.Grammar))
+    {
+        SetPack? source = sets.Find(s => s.Pack == generation.Key.Set);
+        long own = generation.Sum(s => s.Bytes) + generation.Sum(s => named.TryGetValue(s.Pack, out Destination? d) ? d.Bytes : 0);
+        Console.WriteLine();
+        Console.WriteLine($"  set {generation.Key.Set[..8]}, registry {generation.Key.Registry}, grammar {generation.Key.Grammar}: "
+            + $"{generation.Count()} structures owning {own:#,##0} B, "
+            + $"over a set of {source?.Bytes ?? 0:#,##0} B shared between them ({(source?.Bytes ?? 0) / (double)generation.Count():#,##0.0} B each amortized)");
+        Console.WriteLine($"  {"seed",6}{"att",5}{"planets",9}{"moons",7}{"bary",6}{"atmos",7}{"inst",6}{"depth",7}{"graph B",10}{"dest B",8}{"own B",8}   graph     destination");
+
+        foreach (Structure structure in generation
+            .OrderBy(s => named.TryGetValue(s.Pack, out Destination? d) ? d.Seed : int.MaxValue)
+            .ThenBy(s => s.Pack, StringComparer.Ordinal))
+        {
+            Bodies bodies = Count(structure.Instances);
+            named.TryGetValue(structure.Pack, out Destination? destination);
+            long dest = destination?.Bytes ?? 0;
+            Console.WriteLine($"  {destination?.Seed.ToString(CultureInfo.InvariantCulture) ?? "-",6}"
+                + $"{destination?.Attempt.ToString(CultureInfo.InvariantCulture) ?? "-",5}"
+                + $"{bodies.Planets,9}{bodies.Moons,7}{bodies.Barycentres,6}{bodies.Atmospheres,7}"
+                + $"{structure.Instances.Count,6}{structure.Depth,7}{structure.Bytes,10:#,##0}{dest,8:#,##0}{structure.Bytes + dest,8:#,##0}"
+                + $"   {structure.Pack[..8]}  {destination?.Pack[..8] ?? "-"}");
+        }
+
+        Bodies totals = Count(generation.SelectMany(s => s.Instances).ToList());
+        Console.WriteLine($"  {"total",6}{"",5}{totals.Planets,9}{totals.Moons,7}{totals.Barycentres,6}{totals.Atmospheres,7}"
+            + $"{generation.Sum(s => s.Instances.Count),6}{"",7}{generation.Sum(s => s.Bytes),10:#,##0}"
+            + $"{generation.Sum(s => named.TryGetValue(s.Pack, out Destination? d) ? d.Bytes : 0),8:#,##0}{own,8:#,##0}");
+    }
+
+    List<long> owned = domain.Select(s => s.Bytes + (named.TryGetValue(s.Pack, out Destination? d) ? d.Bytes : 0)).Order().ToList();
+    Console.WriteLine();
+    Console.WriteLine($"  bytes owned per structure   min {owned[0]:#,##0}, median {owned[owned.Count / 2]:#,##0}, mean {owned.Average():#,##0}, max {owned[^1]:#,##0}");
+    Console.WriteLine($"  every {domain.Key} in this data root costs {owned.Sum():#,##0} B of its own, "
+        + $"beside {sets.Sum(s => s.Bytes):#,##0} B of definitions they draw on");
+    Console.WriteLine();
+}
+
 Console.WriteLine($"== DESTINATIONS: {destinations.Count} record(s), {Bytes(destinationBytes)}");
 if (destinations.Count > 0)
 {
@@ -196,6 +243,44 @@ if (destinations.Count > 0)
 }
 
 return 0;
+
+// A `planet` whose parent is a planet is a moon; under the star or a barycentre it is a planet,
+// which is how the derived system description labels the same instances.
+static Bodies Count(List<Instance> instances)
+{
+    Dictionary<string, string> categories = new(StringComparer.Ordinal);
+    foreach (Instance instance in instances)
+    {
+        categories[instance.Path] = instance.Category;
+    }
+    int planets = 0;
+    int moons = 0;
+    foreach (Instance instance in instances.Where(i => i.Category == "planet"))
+    {
+        if (categories.TryGetValue(Parent(instance.Path), out string? parent) && parent == "planet")
+        {
+            moons++;
+        }
+        else
+        {
+            planets++;
+        }
+    }
+    return new Bodies(instances.Count(i => i.Category == "star"), planets, moons,
+        instances.Count(i => i.Category == "barycentre"), instances.Count(i => i.Category == "atmosphere"));
+}
+
+// One instance path up: the connector segment and the index below it both belong to the child.
+static string Parent(string path)
+{
+    int last = path.LastIndexOf('/');
+    if (last < 0)
+    {
+        return path;
+    }
+    int connector = path.LastIndexOf('/', last - 1);
+    return connector < 0 ? path[..last] : path[..connector];
+}
 
 static string Bytes(long value) => value >= 1024
     ? $"{value.ToString("#,##0", CultureInfo.InvariantCulture)} B ({value / 1024.0:0.0} KiB)"
@@ -302,5 +387,7 @@ sealed record SetPack(string Pack, string Manifest, int Registry, List<Definitio
 sealed record Instance(string Path, string Category, int Definition);
 
 sealed record Structure(string Pack, string Domain, string Set, int Registry, int Grammar, int Depth, List<Instance> Instances, long Bytes);
+
+sealed record Bodies(int Stars, int Planets, int Moons, int Barycentres, int Atmospheres);
 
 sealed record Destination(string Pack, string Tier, int Seed, int Attempt, string Graph, long Bytes);
