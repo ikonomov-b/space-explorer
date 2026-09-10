@@ -115,7 +115,9 @@ godot --path src/SpaceExplorer.Game -- --system --tier starter --seed 7
 # description; --destination <pack-id> draws a stored destination instead, straight from the data root
 # --set <pack-id> when more than one set is published; --data-root <dir> to read another root
 # tab and shift-tab cycle bodies, 1-9 choose one, 0 frames the system, w a s d q e move, shift is
-# faster, drag turns, the wheel closes in, escape quits
+# faster, drag turns, the wheel closes in, p hides and shows the panel, escape quits
+# the panel carries the summary while the whole system is framed and the whole table at a body
+# (decision 0054); --no-panel opens without it, for a picture of the system alone
 
 godot --path src/SpaceExplorer.Game --resolution 1600x900 -- --system --tier starter --seed 7 \
   --focus 2 --screenshot /tmp/system.png

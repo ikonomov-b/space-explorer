@@ -56,17 +56,21 @@ public partial class SystemView : Node3D
     private float _distance = 34f;
     private int _focused = -1;
     private bool _dragging;
+    private bool _panelShown = true;
+    private bool _tableShown;
 
     private readonly string? _screenshot;
     private readonly string? _openOn;
+    private readonly bool _openWithPanel;
     private int _framesDrawn;
 
-    public SystemView(Destination destination, CategoryRegistry registry, string? screenshot = null, string? openOn = null)
+    public SystemView(Destination destination, CategoryRegistry registry, string? screenshot = null, string? openOn = null, bool panel = true)
     {
         _destination = destination;
         _registry = registry;
         _screenshot = screenshot;
         _openOn = openOn;
+        _openWithPanel = panel;
     }
 
     public override void _Ready()
@@ -120,6 +124,10 @@ public partial class SystemView : Node3D
         // A review can open straight at a body, so a picture of one can be taken without a hand on the keys.
         int opening = _openOn is null ? -1 : _targets.FindIndex(target => target.Name.StartsWith(_openOn + " ", StringComparison.Ordinal) || target.Name.StartsWith(_openOn + ",", StringComparison.Ordinal));
         Focus(_openOn is null ? -1 : Math.Max(opening, 0));
+
+        // A picture of the system alone can be asked for from the command line, as the panel key asks for
+        // it at the window.
+        ShowPanel(_openWithPanel);
     }
 
     public override void _Process(double delta)
@@ -178,7 +186,11 @@ public partial class SystemView : Node3D
 
         // The panel's own text and the key line at the foot of the screen are places a caption may not
         // take: text over text is unreadable whichever of the two the reader wanted.
-        List<Rect2> taken = [new Rect2(_description.Position, _description.GetMinimumSize()).Grow(6f), new Rect2(0f, viewport.Y - 40f, viewport.X, 40f)];
+        List<Rect2> taken = [new Rect2(0f, viewport.Y - 40f, viewport.X, 40f)];
+        if (_panelShown)
+        {
+            taken.Add(new Rect2(_description.Position, _description.GetMinimumSize()).Grow(6f));
+        }
 
         foreach (Caption caption in _captions.OrderBy(entry => eye.DistanceSquaredTo(entry.Body.GlobalPosition)))
         {
@@ -191,6 +203,18 @@ public partial class SystemView : Node3D
             }
 
             float distance = eye.DistanceTo(caption.Body.GlobalPosition);
+
+            // The panel and the captions divide the work by distance. While the panel carries the whole
+            // table, a body too far to be read closely is already listed there, so it wears nothing and
+            // the near ones are legible; while the panel carries the summary alone, every body wears its
+            // own row, which is the only place it appears (decision 0054).
+            if (_tableShown && distance >= ReadingDistance)
+            {
+                caption.Label.Visible = false;
+                caption.Leader.Visible = false;
+                continue;
+            }
+
             caption.Label.Text = distance < ReadingDistance ? caption.Full : caption.Brief;
             Vector2 size = caption.Label.GetMinimumSize();
             Vector2 anchor = _camera.UnprojectPosition(top);
@@ -314,6 +338,9 @@ public partial class SystemView : Node3D
             case >= Key.Key1 and <= Key.Key9:
                 Focus(Math.Min((int)(keycode - Key.Key1), _targets.Count - 1));
                 break;
+            case Key.P:
+                ShowPanel(!_panelShown);
+                break;
         }
     }
 
@@ -349,6 +376,15 @@ public partial class SystemView : Node3D
         float horizontal = _distance * Mathf.Cos(_pitch);
         _camera.Position = _focus + new Vector3(horizontal * Mathf.Sin(_yaw), _distance * Mathf.Sin(_pitch), horizontal * Mathf.Cos(_yaw));
         _camera.LookAt(_focus, Vector3.Up);
+
+        // The panel changes form only when the view crosses between a body and the whole system, not on
+        // every frame of a drag.
+        if (_focused >= 0 != _tableShown)
+        {
+            _tableShown = _focused >= 0;
+            _description.Text = PanelText();
+        }
+
         _hud.Text = Status();
     }
 
@@ -361,7 +397,7 @@ public partial class SystemView : Node3D
             _ => _targets[_focused].Name,
         };
 
-        return $"at {where}    tab/shift-tab body, 1-9 body, 0 whole system, w a s d q e move, shift faster, drag turn, wheel closer, esc quit";
+        return $"at {where}    tab/shift-tab body, 1-9 body, 0 whole system, w a s d q e move, shift faster, drag turn, wheel closer, p {(_panelShown ? "hide" : "show")} panel, esc quit";
     }
 
     private static WorldEnvironment Environment() => new()
@@ -518,7 +554,7 @@ public partial class SystemView : Node3D
         SystemFont font = CaptionFont;
         _description = new Label
         {
-            Text = $"{Heading()}\n{_destination.Description.Text}{Verdict()}\n{Legend()}",
+            Text = PanelText(),
             Position = new Vector2(16f, 12f),
         };
 
@@ -528,7 +564,7 @@ public partial class SystemView : Node3D
 
         // The text the system is judged by is read over whatever the view draws behind it, so it keeps its
         // own ground rather than competing with an orbit ring for the same pixels.
-        _behind = new ColorRect { Color = new Color(0.02f, 0.02f, 0.05f, 0.55f), Position = new Vector2(8f, 6f), MouseFilter = Control.MouseFilterEnum.Ignore };
+        _behind = new ColorRect { Color = new Color(0.02f, 0.02f, 0.05f, 0.93f), Position = new Vector2(8f, 6f), MouseFilter = Control.MouseFilterEnum.Ignore };
 
         _hud = new Label { Position = new Vector2(16f, 8f), GrowVertical = Control.GrowDirection.Begin, AnchorTop = 1f, AnchorBottom = 1f, OffsetTop = -34f };
         _hud.AddThemeFontOverride("font", font);
@@ -540,6 +576,31 @@ public partial class SystemView : Node3D
         layer.AddChild(_description);
         layer.AddChild(_hud);
         return layer;
+    }
+
+    /// <summary>
+    /// What the panel says, which follows where the view is (decision 0054). While the whole system is
+    /// framed it carries the summary alone — what was asked for, what it is pinned to, the star, the
+    /// totals, and the verdict — because every body already wears its own row of the table; at a body the
+    /// whole table appears, where one row is what matters and the system is out of frame anyway.
+    /// </summary>
+    private string PanelText()
+    {
+        string description = _tableShown ? _destination.Description.Text : Summary(_destination.Description.Text);
+        return $"{Heading()}\n{description}{Verdict()}\n{Legend()}";
+    }
+
+    /// <summary>The description without its body rows: those are indented and the summary rows are not.</summary>
+    private static string Summary(string text) =>
+        string.Concat(text.Split('\n').Where(line => !line.StartsWith("  ", StringComparison.Ordinal)).Select(line => line + "\n"));
+
+    /// <summary>Hides or shows the panel, so a picture can be taken of the system alone.</summary>
+    private void ShowPanel(bool shown)
+    {
+        _panelShown = shown;
+        _behind.Visible = shown;
+        _description.Visible = shown;
+        _hud.Text = Status();
     }
 
     private string Heading() =>

@@ -95,7 +95,7 @@ public partial class Main : Node
                 child.QueueFree();
             }
 
-            AddChild(new SystemView(destination, registry, Option(arguments, "--screenshot"), Option(arguments, "--focus")));
+            AddChild(new SystemView(destination, registry, Option(arguments, "--screenshot"), Option(arguments, "--focus"), !arguments.Contains("--no-panel")));
         }
         catch (Exception e)
         {
