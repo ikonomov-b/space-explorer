@@ -118,6 +118,8 @@ godot --path src/SpaceExplorer.Game -- --system --tier starter --seed 7
 # faster, drag turns, the wheel closes in, p hides and shows the panel, escape quits
 # the panel carries the summary while the whole system is framed and the whole table at a body
 # (decision 0054); --no-panel opens without it, for a picture of the system alone
+# what the picture shows is read from the records: a body's size, material, pole, orbit shape and air,
+# and the star's colour from its temperature ([decision 0057](decisions/0057-the-view-draws-what-the-content-stores.md))
 
 godot --path src/SpaceExplorer.Game --resolution 1600x900 -- --system --tier starter --seed 7 \
   --focus 2 --screenshot /tmp/system.png

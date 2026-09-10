@@ -28,6 +28,9 @@ public static class DerivationRules
     /// <summary>The generator revision identifier of <see cref="OrbitScale"/> (decision 0035).</summary>
     public const string OrbitScaleRevision = "derive-orbit-scale/1";
 
+    /// <summary>The generator revision identifier of <see cref="StarColour"/> (decision 0035).</summary>
+    public const string StarColourRevision = "derive-star-colour/1";
+
     /// <summary>The unit of <see cref="OrbitScale"/>: a scale of one.</summary>
     public const long OrbitScaleUnit = 1_024;
 
@@ -44,6 +47,26 @@ public static class DerivationRules
     private static readonly (long Kelvin, string Class)[] SpectralClasses =
     [
         (33_000, "O"), (10_000, "B"), (7_500, "A"), (6_000, "F"), (5_200, "G"), (3_700, "K"), (0, "M"),
+    ];
+
+    /// <summary>
+    /// The colour of a black body at each anchor temperature, as a viewer sees a star of that class: deep
+    /// orange at the cool end, white where the Sun sits, and blue-white above it. They approximate the
+    /// black-body locus rather than reproduce a published table, and <see cref="StarColour"/> reads
+    /// between them, which is enough for a star to be recognisably its own class in a picture.
+    /// </summary>
+    private static readonly (long Kelvin, byte Red, byte Green, byte Blue)[] StarColours =
+    [
+        (2_000, 255, 137, 14),
+        (3_000, 255, 180, 107),
+        (4_000, 255, 209, 163),
+        (5_000, 255, 228, 206),
+        (5_772, 255, 241, 235),
+        (6_500, 255, 249, 251),
+        (8_000, 235, 238, 255),
+        (12_000, 202, 216, 255),
+        (20_000, 181, 205, 255),
+        (50_000, 155, 188, 255),
     ];
 
     /// <summary>
@@ -148,6 +171,43 @@ public static class DerivationRules
         UInt128 scaled = Divide((UInt128)luminosity * (UInt128)OrbitScaleUnit * (UInt128)OrbitScaleUnit, (UInt128)CategoryRegistryRevision1.SolarLuminosity);
         return (long)Sqrt(scaled);
     }
+
+    /// <summary>
+    /// The colour of a star of <paramref name="temperatureKelvin"/>, interpolated in integers between the
+    /// anchors of <see cref="StarColours"/> and clamped to the ends. It is derived from what the star
+    /// stores, so a view draws the class the content gives it rather than a palette of its own
+    /// ([decision 0057](../../../docs/decisions/0057-the-view-draws-what-the-content-stores.md)).
+    /// </summary>
+    /// <exception cref="ArgumentOutOfRangeException">The temperature is not positive.</exception>
+    public static (byte Red, byte Green, byte Blue) StarColour(long temperatureKelvin)
+    {
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(temperatureKelvin);
+
+        (long kelvin, byte red, byte green, byte blue) = StarColours[0];
+        if (temperatureKelvin <= kelvin)
+        {
+            return (red, green, blue);
+        }
+
+        for (int index = 1; index < StarColours.Length; index++)
+        {
+            (long upper, byte upperRed, byte upperGreen, byte upperBlue) = StarColours[index];
+            (long lower, byte lowerRed, byte lowerGreen, byte lowerBlue) = StarColours[index - 1];
+            if (temperatureKelvin <= upper)
+            {
+                long span = upper - lower;
+                long over = temperatureKelvin - lower;
+                return (Between(lowerRed, upperRed, over, span), Between(lowerGreen, upperGreen, over, span), Between(lowerBlue, upperBlue, over, span));
+            }
+        }
+
+        (_, byte hotRed, byte hotGreen, byte hotBlue) = StarColours[^1];
+        return (hotRed, hotGreen, hotBlue);
+    }
+
+    /// <summary>One channel <paramref name="over"/> parts of <paramref name="span"/> from <paramref name="from"/> to <paramref name="to"/>.</summary>
+    private static byte Between(byte from, byte to, long over, long span) =>
+        (byte)(from + (((to - from) * over) / span));
 
     /// <summary>The Morgan-Keenan class of a star of <paramref name="temperatureKelvin"/>, by the conventional boundaries.</summary>
     public static string SpectralClass(long temperatureKelvin)

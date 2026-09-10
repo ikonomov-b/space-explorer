@@ -1,4 +1,5 @@
 using Godot;
+using SpaceExplorer.Core.Derivation;
 using SpaceExplorer.Core.Description;
 using SpaceExplorer.Core.Registry;
 using GraphNode = SpaceExplorer.Core.Registry.GraphNode;
@@ -21,9 +22,20 @@ public partial class SystemView : Node3D
 {
     private const float InnerRing = 6f;
     private const float OuterRing = 28f;
-    private const float SmallestBody = 0.5f;
-    private const float LargestBody = 1.8f;
-    private const float StarRadius = 2.4f;
+    /// <summary>The drawn radius of the largest object in the system, which every other is a share of.</summary>
+    private const float LargestDrawn = 3.0f;
+
+    /// <summary>
+    /// The exponent the drawn radius follows the stored one by. A logarithmic map flattened a star of
+    /// 1,058,024 km and a gas giant of 112,032 km to within a third of each other, where the truth is
+    /// nine times; at 0.4 the star reads two and a half times the giant and fourteen times a small moon,
+    /// which is understated but ordered, and a moon is still some ten pixels across when the whole system
+    /// is framed (decision 0057).
+    /// </summary>
+    private const double RadiusExponent = 0.4;
+
+    /// <summary>A barycentre marks a place rather than a body, and keeps the smallest mark on screen.</summary>
+    private const float BarycentreDrawn = 0.08f;
 
     /// <summary>How near the camera must be for a body to show its whole line rather than its name alone.</summary>
     private const float ReadingDistance = 14f;
@@ -86,11 +98,15 @@ public partial class SystemView : Node3D
         AddChild(_marks);
         _canvas = Panel();
         AddChild(_canvas);
-        AddChild(Star());
-        _targets.Add(new Target($"star, class {_destination.Description.Star.Type}", Vector3.Zero, StarRadius));
-
+        // The scale comes before anything is drawn on it, because the star is sized by what it stores
+        // like every other object (decision 0057).
         BodyDescription[] bodies = [.. _destination.Description.Bodies];
-        (double smallest, double largest) = RadiusSpan(bodies);
+        double largestRadius = LargestRadius(bodies);
+        float starRadius = Size(_destination.Description.Star.RadiusUnits, largestRadius);
+
+        AddChild(Star(starRadius));
+        _targets.Add(new Target($"star, class {_destination.Description.Star.Type}", Vector3.Zero, starRadius));
+
         (double inner, double outer) = OrbitSpan(bodies);
 
         var placed = new Dictionary<string, Vector3>(StringComparer.Ordinal);
@@ -100,9 +116,12 @@ public partial class SystemView : Node3D
             Vector3 position;
             if (dot < 0)
             {
-                float ring = Ring(body.DistanceMetres, inner, outer);
-                AddChild(OrbitRing(ring, Angle(body, "inclination")));
-                position = Place(ring, Angle(body, "mean-anomaly"), Angle(body, "inclination"));
+                // The orbit the stored elements describe, on a ring scaled from its semi-major axis: its
+                // shape, its tilt, and where the body stands on it are the content's, and only the size
+                // of the ring is the view's (decision 0057).
+                Orbit orbit = OrbitOf(body, Ring(body.DistanceMetres, inner, outer));
+                AddChild(OrbitRing(orbit));
+                position = orbit.At(orbit.TrueAnomaly());
             }
             else
             {
@@ -114,7 +133,7 @@ public partial class SystemView : Node3D
             }
 
             placed[body.Number] = position;
-            float radius = Size(body, smallest, largest);
+            float radius = body.Role == BodyRole.Barycentre ? BarycentreDrawn : Size(body.RadiusUnits, largestRadius);
             AddChild(Body(body, position, radius));
             _targets.Add(new Target($"{body.Number} {body.Type}{(body.LandingCandidate ? ", landable" : string.Empty)}", position, radius));
         }
@@ -418,12 +437,12 @@ public partial class SystemView : Node3D
 
     private static OmniLight3D Light() => new() { Position = Vector3.Zero, OmniRange = 400f, LightEnergy = 4.0f, OmniAttenuation = 0.35f };
 
-    private Node3D Star()
+    private Node3D Star(float radius)
     {
-        Color colour = StarColour(_destination.Description.Star.Type);
+        Color colour = StarColour();
         var star = new MeshInstance3D
         {
-            Mesh = new SphereMesh { Radius = StarRadius, Height = StarRadius * 2f },
+            Mesh = new SphereMesh { Radius = radius, Height = radius * 2f },
             MaterialOverride = new StandardMaterial3D { AlbedoColor = colour, EmissionEnabled = true, Emission = colour, EmissionEnergyMultiplier = 1.0f },
         };
 
@@ -433,7 +452,7 @@ public partial class SystemView : Node3D
             _destination.Description.StarLine,
             $"star, class {_destination.Description.Star.Type}, {_destination.Description.Star.TemperatureKelvin} K",
             colour.Lightened(0.3f),
-            StarRadius));
+            radius));
 
         return star;
     }
@@ -443,13 +462,15 @@ public partial class SystemView : Node3D
         // The material the body's own definition names, built from the stored record by the adapter
         // (decisions 0031, 0055); a stand-in coloured by body type only where the content has none, which
         // is every pack published before registry revision 3.
-        StandardMaterial3D? stored = Stored(body);
+        GraphNode? source = Source(body);
+        StandardMaterial3D? stored = source is null ? null : _resources.For(source.Definition);
         Color colour = stored?.AlbedoColor ?? BodyColour(body.Type);
         var node = new MeshInstance3D
         {
             Mesh = new SphereMesh { Radius = radius, Height = radius * 2f },
             MaterialOverride = stored ?? new StandardMaterial3D { AlbedoColor = colour, Roughness = 0.85f },
             Position = position,
+            Basis = source is null ? Basis.Identity : Orientation(source),
         };
 
         // Every body wears its own line of the description, the same one the panel lists, so what is read
@@ -458,6 +479,11 @@ public partial class SystemView : Node3D
         // The caption takes the body's own colour and stands on a leader line rising from it, so which
         // text belongs to which object is never in doubt even where two bodies sit close together.
         _captions.Add(Wear(node, SystemDescription.LineFor(body), SystemDescription.BriefFor(body), colour.Lightened(0.45f), radius));
+
+        if (source is not null && Air(source, radius) is { } air)
+        {
+            node.AddChild(air);
+        }
 
         if (body.LandingCandidate)
         {
@@ -533,14 +559,13 @@ public partial class SystemView : Node3D
         return string.Join("\n", rows);
     }
 
-    private static MeshInstance3D OrbitRing(float radius, float inclination)
+    private static MeshInstance3D OrbitRing(Orbit orbit)
     {
         var mesh = new ImmediateMesh();
         mesh.SurfaceBegin(Mesh.PrimitiveType.LineStrip);
-        for (int step = 0; step <= 96; step++)
+        for (int step = 0; step <= 128; step++)
         {
-            float angle = Mathf.Tau * step / 96f;
-            mesh.SurfaceAddVertex(Place(radius, angle, inclination));
+            mesh.SurfaceAddVertex(orbit.At(Mathf.Tau * step / 128f));
         }
 
         mesh.SurfaceEnd();
@@ -624,17 +649,79 @@ public partial class SystemView : Node3D
     }
 
     private static string Legend() =>
-        "\nview          not to scale: orbit radii and body radii are each placed logarithmically between\n" +
-        "              this system's own smallest and largest, so order and ratio are faithful and size is\n" +
-        "              not. A moon is offset beside its planet rather than on its own orbit.";
+        "\nview          not to scale. Orbit radii are placed logarithmically between this system's own\n" +
+        "              innermost and outermost. The star and every body share one scale, each drawn from\n" +
+        "              its own stored radius raised to the power 0.4, so order and rank read and true\n" +
+        "              proportion does not: a star nine times a gas giant is drawn two and a half times\n" +
+        "              it. A body stands on its own pole. A moon is offset beside its planet.";
 
     /// <summary>The angle of a body's named orbital element, from the binary turn the graph stores (decision 0036).</summary>
-    /// <summary>The material the graph node behind <paramref name="body"/> names, or null where it names none.</summary>
-    private StandardMaterial3D? Stored(BodyDescription body)
+    /// <summary>
+    /// The shell a body's atmosphere primitive describes, or null where it has none or is airless. Its
+    /// colour is the `scattering-tint` the record stores and its depth and opacity follow the surface
+    /// pressure, so the commonest reason a body is refused is visible rather than only written
+    /// (decision 0057).
+    /// </summary>
+    private Node3D? Air(GraphNode body, float radius)
     {
-        GraphNode? node = _destination.Graph.Nodes.FirstOrDefault(candidate => candidate.Path == body.Path);
-        return node is null ? null : _resources.For(node.Definition);
+        GraphNode? atmosphere = body.Children.SelectMany(children => children)
+            .FirstOrDefault(child => _registry.TryFind(child.Definition.Category)?.Label == "atmosphere");
+
+        if (atmosphere is null
+            || atmosphere.Definition.TryParameter(_registry, "model") is not { } model
+            || model.Descriptor.EnumLabels[(int)model.Value.AsEnumIndex] == "airless"
+            || atmosphere.Definition.TryParameter(_registry, "scattering-tint") is not { } tint
+            || atmosphere.Definition.TryParameter(_registry, "surface-pressure") is not { } pressure)
+        {
+            return null;
+        }
+
+        // Pressure spans five orders of magnitude, so its logarithm sets both how far the shell stands
+        // off the surface and how much of the body it hides.
+        double bar = Math.Max(1.0, pressure.Value.AsInteger / 100_000.0);
+        float thickness = (float)Math.Clamp(0.03 + (0.05 * Math.Log10(bar)), 0.03, 0.14);
+        float opacity = (float)Math.Clamp(0.16 + (0.18 * Math.Log10(bar)), 0.16, 0.62);
+
+        (byte red, byte green, byte blue, _) = tint.Value.AsColour;
+        return new MeshInstance3D
+        {
+            Mesh = new SphereMesh { Radius = radius * (1f + thickness), Height = 2f * radius * (1f + thickness) },
+            MaterialOverride = new StandardMaterial3D
+            {
+                AlbedoColor = new Color(Color.Color8(red, green, blue), opacity),
+                Transparency = BaseMaterial3D.TransparencyEnum.Alpha,
+                CullMode = BaseMaterial3D.CullModeEnum.Back,
+                ShadingMode = BaseMaterial3D.ShadingModeEnum.PerPixel,
+                Roughness = 1f,
+            },
+        };
     }
+
+    /// <summary>The graph node <paramref name="body"/> was described from.</summary>
+    private GraphNode? Source(BodyDescription body) =>
+        _destination.Graph.Nodes.FirstOrDefault(candidate => candidate.Path == body.Path);
+
+    /// <summary>
+    /// How a body stands: its pole where the content puts it, and its prime meridian turned to where the
+    /// content puts that. Every body was drawn upright before, so a banded surface was seen down its own
+    /// axis and read as a bullseye rather than as latitude bands (decision 0057).
+    /// </summary>
+    private Basis Orientation(GraphNode node)
+    {
+        float rightAscension = Turn(node, "pole-right-ascension");
+        float declination = Turn(node, "pole-declination");
+        float meridian = Turn(node, "prime-meridian-phase");
+
+        // The pole is the body's own up: swing it to its right ascension, tilt it by its declination, and
+        // spin the body about it to its prime meridian.
+        return new Basis(Vector3.Up, rightAscension) * new Basis(Vector3.Right, declination) * new Basis(Vector3.Up, meridian);
+    }
+
+    /// <summary>A binary-turn parameter of a node's definition, in radians; zero where the category has none (decision 0036).</summary>
+    private float Turn(GraphNode node, string label) =>
+        node.Definition.TryParameter(_registry, label) is { } parameter && parameter.Descriptor.Kind == ParameterKind.BinaryTurn
+            ? (float)(parameter.Value.AsBinaryTurn / 4294967296.0 * Mathf.Tau)
+            : 0f;
 
     private float Angle(BodyDescription body, string component)
     {
@@ -642,14 +729,79 @@ public partial class SystemView : Node3D
         return node?.Transform is { } transform ? (float)(transform.Component(component) / 4294967296.0 * Mathf.Tau) : 0f;
     }
 
-    private static Vector3 Place(float radius, float angle, float inclination) =>
-        new(radius * Mathf.Cos(angle), radius * Mathf.Sin(inclination) * Mathf.Cos(angle), radius * Mathf.Sin(angle));
+    /// <summary>
+    /// One orbit as the stored elements describe it, on a semi-major axis the view scaled: the ellipse of
+    /// its eccentricity with the star at a focus, turned by its argument of periapsis, tilted by its
+    /// inclination, and swung to its ascending node (decisions 0036, 0057).
+    /// </summary>
+    private readonly record struct Orbit(float SemiMajor, float Eccentricity, float Inclination, float AscendingNode, float Periapsis, float MeanAnomaly)
+    {
+        /// <summary>The point at true anomaly <paramref name="trueAnomaly"/>, measured from periapsis.</summary>
+        public Vector3 At(float trueAnomaly)
+        {
+            float radius = SemiMajor * (1f - (Eccentricity * Eccentricity)) / (1f + (Eccentricity * Mathf.Cos(trueAnomaly)));
+            var inPlane = new Vector3(radius * Mathf.Cos(trueAnomaly), 0f, radius * Mathf.Sin(trueAnomaly));
+
+            return new Basis(Vector3.Up, AscendingNode)
+                * new Basis(Vector3.Right, Inclination)
+                * new Basis(Vector3.Up, Periapsis)
+                * inPlane;
+        }
+
+        /// <summary>
+        /// The true anomaly the stored mean anomaly gives, by Kepler's equation. Newton's method from the
+        /// mean anomaly converges in a handful of steps at the eccentricities a grammar admits, and this
+        /// is presentation rather than a stored quantity, so it is floating point and no record depends
+        /// on it; the two-body propagation of decision 0037 is still not implemented and this does not
+        /// stand in for it, because nothing here moves with time.
+        /// </summary>
+        public float TrueAnomaly()
+        {
+            float eccentric = MeanAnomaly;
+            for (int step = 0; step < 8; step++)
+            {
+                float error = eccentric - (Eccentricity * Mathf.Sin(eccentric)) - MeanAnomaly;
+                float slope = 1f - (Eccentricity * Mathf.Cos(eccentric));
+                eccentric -= error / Mathf.Max(slope, 0.05f);
+            }
+
+            return Mathf.Atan2(
+                Mathf.Sqrt(1f - (Eccentricity * Eccentricity)) * Mathf.Sin(eccentric),
+                Mathf.Cos(eccentric) - Eccentricity);
+        }
+    }
+
+    /// <summary>The orbit <paramref name="body"/> stores, on a semi-major axis of <paramref name="ring"/> units.</summary>
+    private Orbit OrbitOf(BodyDescription body, float ring) => new(
+        ring,
+        // Eccentricity is a fraction of 2^32; a grammar bounds it well below one, and the clamp is only
+        // so that a record from outside this build cannot produce a parabola.
+        Math.Clamp(Fraction32(body, "eccentricity"), 0f, 0.9f),
+        Angle(body, "inclination"),
+        Angle(body, "ascending-node"),
+        Angle(body, "argument-of-periapsis"),
+        Angle(body, "mean-anomaly"));
+
+    /// <summary>A transform component stored as a fraction of 2^32 (decision 0036).</summary>
+    private float Fraction32(BodyDescription body, string component)
+    {
+        GraphNode? node = Source(body);
+        return node?.Transform is { } transform ? (float)(transform.Component(component) / 4294967296.0) : 0f;
+    }
 
     private static float Ring(long distanceMetres, double inner, double outer) =>
         InnerRing + ((OuterRing - InnerRing) * Fraction(distanceMetres, inner, outer));
 
-    private static float Size(BodyDescription body, double smallest, double largest) =>
-        body.Role == BodyRole.Barycentre ? 0.08f : SmallestBody + ((LargestBody - SmallestBody) * Fraction(body.RadiusUnits, smallest, largest));
+    /// <summary>
+    /// What a body of <paramref name="radiusUnits"/> is drawn at: the largest object in the system takes
+    /// <see cref="LargestDrawn"/> and everything else follows its own stored radius raised to
+    /// <see cref="RadiusExponent"/>, so the star is sized by what it stores like every other object and a
+    /// dwarf smaller than a gas giant is drawn smaller (decision 0057).
+    /// </summary>
+    private static float Size(long radiusUnits, double largestRadius) =>
+        radiusUnits <= 0 || largestRadius <= 0
+            ? BarycentreDrawn
+            : (float)Math.Max(BarycentreDrawn, LargestDrawn * Math.Pow(radiusUnits / largestRadius, RadiusExponent));
 
     /// <summary>Where <paramref name="value"/> falls between <paramref name="low"/> and <paramref name="high"/> on a logarithmic scale.</summary>
     private static float Fraction(long value, double low, double high)
@@ -669,22 +821,20 @@ public partial class SystemView : Node3D
         return distances.Length == 0 ? (1.0, 2.0) : (distances.Min(), Math.Max(distances.Max(), distances.Min() * 1.5));
     }
 
-    private static (double Smallest, double Largest) RadiusSpan(BodyDescription[] bodies)
-    {
-        long[] radii = [.. bodies.Select(body => body.RadiusUnits).Where(radius => radius > 0)];
-        return radii.Length == 0 ? (1.0, 2.0) : (radii.Min(), Math.Max(radii.Max(), radii.Min() * 1.5));
-    }
+    /// <summary>The largest stored radius in the system, star included, which sets the scale everything else is drawn on.</summary>
+    private double LargestRadius(BodyDescription[] bodies) =>
+        Math.Max(_destination.Description.Star.RadiusUnits, bodies.Select(body => body.RadiusUnits).DefaultIfEmpty(1L).Max());
 
-    private static Color StarColour(string spectralClass) => spectralClass switch
+    /// <summary>
+    /// The star's colour, from the effective temperature it stores, by the named rule
+    /// `derive-star-colour/1` in the core; the view held a palette keyed on spectral class before, which
+    /// was one more property it invented from content it had (decision 0057).
+    /// </summary>
+    private Color StarColour()
     {
-        "O" => new Color(0.61f, 0.69f, 1f),
-        "B" => new Color(0.67f, 0.75f, 1f),
-        "A" => new Color(0.79f, 0.84f, 1f),
-        "F" => new Color(0.97f, 0.97f, 1f),
-        "G" => new Color(1f, 0.96f, 0.92f),
-        "K" => new Color(1f, 0.82f, 0.63f),
-        _ => new Color(1f, 0.70f, 0.44f),
-    };
+        (byte red, byte green, byte blue) = DerivationRules.StarColour(_destination.Description.Star.TemperatureKelvin);
+        return Color.Color8(red, green, blue);
+    }
 
     private static Color BodyColour(string bodyType) => bodyType switch
     {
