@@ -1,0 +1,847 @@
+<title>Definition to Destination</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,600&family=Archivo:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+  :root {
+    --ground: #e9edf1;
+    --paper: #f8fafc;
+    --ink: #0e1620;
+    --ink-2: #3a4854;
+    --muted: #64717e;
+    --rule: #c6d0d9;
+    --rule-soft: #dbe3ea;
+    --set: #0f6b73;
+    --set-fill: rgba(15, 107, 115, 0.10);
+    --graph: #97570b;
+    --graph-fill: rgba(151, 87, 11, 0.10);
+    --pin: #454f9e;
+    --code-bg: #eef2f6;
+    --shadow: 0 1px 0 rgba(14, 22, 32, 0.05);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground: #0b1116;
+      --paper: #111a22;
+      --ink: #e3eaf1;
+      --ink-2: #b6c2ce;
+      --muted: #8494a2;
+      --rule: #26333e;
+      --rule-soft: #1a242d;
+      --set: #4ec8ce;
+      --set-fill: rgba(78, 200, 206, 0.13);
+      --graph: #e3a852;
+      --graph-fill: rgba(227, 168, 82, 0.13);
+      --pin: #98a3f0;
+      --code-bg: #0d151c;
+      --shadow: none;
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground: #0b1116;
+    --paper: #111a22;
+    --ink: #e3eaf1;
+    --ink-2: #b6c2ce;
+    --muted: #8494a2;
+    --rule: #26333e;
+    --rule-soft: #1a242d;
+    --set: #4ec8ce;
+    --set-fill: rgba(78, 200, 206, 0.13);
+    --graph: #e3a852;
+    --graph-fill: rgba(227, 168, 82, 0.13);
+    --pin: #98a3f0;
+    --code-bg: #0d151c;
+    --shadow: none;
+  }
+
+  body {
+    background: var(--ground);
+    color: var(--ink);
+    font-family: "Archivo", "Helvetica Neue", Arial, sans-serif;
+    font-size: 15px;
+    line-height: 1.65;
+    padding-inline: 20px;
+    padding-block: 0 64px;
+  }
+  .page { max-width: 1120px; margin: 0 auto; }
+  .prose { max-width: 68ch; }
+  h1, h2, h3 { font-family: "Newsreader", Georgia, serif; font-weight: 600; text-wrap: balance; margin: 0; }
+  h1 { font-size: clamp(2.1rem, 5vw, 3.1rem); line-height: 1.06; letter-spacing: -0.015em; }
+  h2 { font-size: clamp(1.5rem, 3vw, 1.95rem); line-height: 1.15; }
+  h3 { font-size: 1.1rem; line-height: 1.3; }
+  p { margin: 0; }
+  a { color: var(--set); }
+
+  .eyebrow {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .mono { font-family: "IBM Plex Mono", ui-monospace, monospace; font-variant-numeric: tabular-nums; }
+
+  /* Masthead */
+  header.masthead { padding-block: 56px 40px; display: flex; flex-direction: column; gap: 22px; }
+  .lede { max-width: 62ch; font-size: 1.18rem; color: var(--ink-2); }
+  .lede strong { color: var(--ink); font-weight: 500; }
+  .measured {
+    display: flex; flex-wrap: wrap; gap: 0 28px;
+    border-top: 1px solid var(--rule); border-bottom: 1px solid var(--rule);
+    padding-block: 12px; font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums;
+  }
+  .measured b { color: var(--ink); font-weight: 500; }
+
+  /* Sections */
+  section { padding-block: 44px 8px; border-top: 1px solid var(--rule-soft); }
+  section > .head { display: flex; flex-direction: column; gap: 6px; margin-bottom: 20px; }
+  section > .prose + .prose, section > .head + .prose { margin-top: 0; }
+  .stack { display: flex; flex-direction: column; gap: 18px; }
+
+  /* Figures */
+  figure { margin: 30px 0 0; }
+  .frame {
+    background: var(--paper); border: 1px solid var(--rule); border-radius: 3px;
+    padding: 18px; overflow-x: auto; box-shadow: var(--shadow);
+  }
+  .frame svg { display: block; max-width: 100%; height: auto; min-width: 620px; color: var(--ink); }
+  figcaption {
+    margin-top: 10px; font-size: 13px; color: var(--muted); max-width: 74ch;
+  }
+  figcaption b { color: var(--ink-2); font-weight: 500; }
+
+  /* SVG classes */
+  .bx { fill: none; stroke: var(--rule); stroke-width: 1.25; }
+  .bx-dash { fill: none; stroke: var(--muted); stroke-width: 1.25; stroke-dasharray: 5 4; }
+  .bx-store { fill: var(--set-fill); stroke: var(--set); stroke-width: 1.25; }
+  .bx-graph { fill: var(--graph-fill); stroke: var(--graph); stroke-width: 1.25; }
+  .bx-soft { fill: none; stroke: var(--rule); stroke-width: 1; }
+  .ln { stroke: var(--ink); stroke-width: 1.4; fill: none; }
+  .ln-dot { stroke: var(--muted); stroke-width: 1.2; fill: none; stroke-dasharray: 2 3; }
+  .ln-pin { stroke: var(--pin); stroke-width: 1.4; fill: none; stroke-dasharray: 6 4; }
+  .ln-soft { stroke: var(--rule); stroke-width: 1; fill: none; }
+  .t { fill: var(--ink); font-family: "Archivo", sans-serif; font-size: 12px; }
+  .tm { fill: var(--ink); font-family: "IBM Plex Mono", monospace; font-size: 11.5px; }
+  .tm-s { fill: var(--muted); font-family: "IBM Plex Mono", monospace; font-size: 10px; letter-spacing: 0.08em; }
+  .tl { fill: var(--ink-2); font-family: "IBM Plex Mono", monospace; font-size: 10px; }
+  .tn { fill: var(--muted); font-family: "Archivo", sans-serif; font-size: 11px; }
+  .set-t { fill: var(--set); }
+  .graph-t { fill: var(--graph); }
+  .pin-t { fill: var(--pin); }
+  .mk { fill: var(--ink); }
+  .mk-soft { fill: var(--muted); }
+  .mk-pin { fill: var(--pin); }
+  .swatch { stroke: var(--rule); stroke-width: 1; }
+
+  /* Code + tables */
+  pre {
+    margin: 22px 0 0; background: var(--code-bg); border: 1px solid var(--rule-soft);
+    border-left: 2px solid var(--set); border-radius: 2px;
+    padding: 14px 16px; overflow-x: auto;
+    font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 12px; line-height: 1.55;
+    color: var(--ink-2); font-variant-numeric: tabular-nums;
+  }
+  pre b { color: var(--ink); font-weight: 500; }
+  pre .c { color: var(--muted); }
+  .tbl-wrap { overflow-x: auto; margin-top: 24px; }
+  table { border-collapse: collapse; width: 100%; min-width: 560px; font-size: 13px; }
+  caption {
+    text-align: left; font-family: "IBM Plex Mono", monospace; font-size: 11px;
+    letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted);
+    padding-bottom: 8px;
+  }
+  th, td { text-align: left; padding: 7px 12px 7px 0; border-bottom: 1px solid var(--rule-soft); vertical-align: top; }
+  th { font-weight: 600; font-size: 11.5px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+  td.num, th.num { text-align: right; font-family: "IBM Plex Mono", monospace; font-variant-numeric: tabular-nums; padding-right: 0; }
+  td .cat { font-family: "IBM Plex Mono", monospace; font-size: 12px; }
+
+  .note {
+    border-left: 2px solid var(--graph); padding: 2px 0 2px 14px; color: var(--ink-2);
+    max-width: 68ch; margin-top: 22px;
+  }
+  ul.plain { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 10px; max-width: 70ch; }
+  ul.plain li { padding-left: 18px; position: relative; color: var(--ink-2); }
+  ul.plain li::before { content: ""; position: absolute; left: 0; top: 0.62em; width: 8px; height: 1px; background: var(--rule); }
+  ul.plain li b { color: var(--ink); font-weight: 500; }
+
+  footer { border-top: 1px solid var(--rule); margin-top: 48px; padding-top: 22px; color: var(--muted); font-size: 13px; max-width: 74ch; }
+  footer code { font-family: "IBM Plex Mono", monospace; font-size: 12px; color: var(--ink-2); }
+
+  @media (max-width: 620px) {
+    body { font-size: 14.5px; }
+    header.masthead { padding-block: 34px 26px; }
+    .measured { gap: 0 18px; font-size: 11px; }
+  }
+  @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+</style>
+
+<div class="page">
+  <header class="masthead">
+    <span class="eyebrow">Space Explorer &middot; the universal base</span>
+    <h1>Definition to Destination</h1>
+    <p class="lede">Every generated thing in the game rests on two ideas: <strong>a primitive</strong> is one exact revision of a data-only definition, and <strong>a structure</strong> is a bounded ordered graph of instances that name those revisions. Drawn here as it actually stands, with every number read out of the live data root rather than the plan.</p>
+    <div class="measured">
+      <span><b>registry 3</b> 81883cec</span>
+      <span><b>grammar 4</b> 53314489</span>
+      <span><b>generator 2</b></span>
+      <span><b>98</b> packs</span>
+      <span><b>308</b> records</span>
+      <span><b>75,187</b> bytes</span>
+      <span>measured 2026-09-10, Debian 13 x86_64</span>
+    </div>
+  </header>
+
+  <section>
+    <div class="head">
+      <span class="eyebrow">01 &middot; the chain</span>
+      <h2>One generator, one store, one reader</h2>
+    </div>
+    <div class="prose stack">
+      <p>Authored content enters as templates and constraints, never as set members. The generator draws exact definitions from them and publishes a pack once; a versioned grammar composes those definitions into a graph; two player levers address one composed system. A new randomization level needs a vocabulary, a grammar and a presentation &mdash; no new storage, no new identity scheme, no new determinism argument.</p>
+    </div>
+
+    <figure>
+      <div class="frame">
+        <svg viewBox="0 0 1080 866" role="img" aria-label="A vertical pipeline: an authored vocabulary feeds the set generator, which publishes a pack of 117 content-addressed records; the composition generator reads that pack under grammar 4 and produces one 764-byte graph record; a destination record names the graph by its levers. The category registry and the grammar enter from the left; index.db on the right receives a row for each stored record, committed last.">
+          <defs>
+            <marker id="f1a" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><polygon points="0,0 8,4 0,8" class="mk"/></marker>
+            <marker id="f1b" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><polygon points="0,0 8,4 0,8" class="mk-soft"/></marker>
+          </defs>
+
+          <!-- S1 vocabulary -->
+          <rect class="bx-dash" x="280" y="24" width="560" height="88" rx="2"/>
+          <text class="tm-s" x="298" y="44">AUTHORED INPUT &middot; NEVER A RECORD</text>
+          <text class="tm" x="298" y="67">content/templates/basic/vocabulary.json</text>
+          <text class="tn" x="298" y="86">30 templates: a category, a label, a range per parameter, the tags it carries and the tags it demands</text>
+          <text class="tn" x="298" y="103">plus how many definitions of each template the set should hold</text>
+
+          <line class="ln" x1="560" y1="118" x2="560" y2="154" marker-end="url(#f1a)"/>
+          <text class="tl" x="572" y="141">reads templates, ranges, tags</text>
+
+          <!-- S2 SetGenerator -->
+          <rect class="bx-dash" x="280" y="164" width="560" height="88" rx="2"/>
+          <text class="tm-s" x="298" y="184">CODE &middot; GENERATOR 2</text>
+          <text class="tm" x="298" y="207">SetGenerator + ParameterSampler</text>
+          <text class="tn" x="298" y="226">one random stream per definition; duplicate content rejected within a retry budget;</text>
+          <text class="tn" x="298" y="243">a reference filled only from definitions already allocated whose own tags satisfy the demand</text>
+
+          <line class="ln" x1="560" y1="258" x2="560" y2="294" marker-end="url(#f1a)"/>
+          <text class="tl" x="572" y="281">publishes exactly one pack, ids 1..n in generation order</text>
+
+          <!-- S3 set pack -->
+          <rect class="bx-store" x="280" y="304" width="560" height="88" rx="2"/>
+          <text class="tm-s" x="298" y="324">PACK aba608e6bb0302a184d2c82ebdda526c</text>
+          <text class="tm set-t" x="298" y="347">1 set manifest + 116 definition records</text>
+          <text class="tn" x="298" y="366">24,075 bytes, mean 205 B per record &middot; every file named by its own SHA-256</text>
+          <text class="tn" x="298" y="383">this is where the variety lives, and every system below shares it</text>
+
+          <line class="ln" x1="560" y1="398" x2="560" y2="434" marker-end="url(#f1a)"/>
+          <text class="tl" x="572" y="421">verified, then every definition with its hash</text>
+
+          <!-- S4 CompositionGenerator -->
+          <rect class="bx-dash" x="280" y="444" width="560" height="88" rx="2"/>
+          <text class="tm-s" x="298" y="464">CODE &middot; GRAMMAR 4 OVER REGISTRY 3</text>
+          <text class="tm" x="298" y="487">CompositionGenerator + DestinationComposer</text>
+          <text class="tn" x="298" y="506">bounded before it recurses: depth 3, 1,024 instances, 8 retries. An optional child that</text>
+          <text class="tn" x="298" y="523">would not fit is not placed; a required one that cannot be placed fails by name</text>
+
+          <line class="ln" x1="560" y1="538" x2="560" y2="574" marker-end="url(#f1a)"/>
+          <text class="tl" x="572" y="561">composes a bounded, ordered tree of instances</text>
+
+          <!-- S5 graph record -->
+          <rect class="bx-graph" x="280" y="584" width="560" height="88" rx="2"/>
+          <text class="tm-s" x="298" y="604">PACK 8fdad8bb0c78e3c9fe92b23ae3ff8f4f</text>
+          <text class="tm graph-t" x="298" y="627">1 graph record &mdash; 27 instances, depth 3</text>
+          <text class="tn" x="298" y="646">764 bytes: per instance a variable-length integer naming the definition,</text>
+          <text class="tn" x="298" y="663">its transform, and its child counts &mdash; nothing the set already holds</text>
+
+          <line class="ln" x1="560" y1="678" x2="560" y2="714" marker-end="url(#f1a)"/>
+          <text class="tl" x="572" y="701">the winning attempt, kept under its levers</text>
+
+          <!-- S6 destination record -->
+          <rect class="bx-graph" x="280" y="724" width="560" height="88" rx="2"/>
+          <text class="tm-s" x="298" y="744">PACK ab0596fbb6150b2da811ccfc1f46f09b</text>
+          <text class="tm graph-t" x="298" y="767">1 destination record &mdash; 245 bytes</text>
+          <text class="tn" x="298" y="786">tier starter, seed 21, the third attempt, and the graph it accepted</text>
+          <text class="tn" x="298" y="803">found again by the pack identifier its two levers derive, never by re-composing</text>
+
+          <!-- left inputs -->
+          <rect class="bx" x="40" y="182" width="180" height="52" rx="2"/>
+          <text class="tm-s" x="54" y="203">CANONICAL RECORD</text>
+          <text class="tm" x="54" y="222">category-registry/3</text>
+          <line class="ln" x1="224" y1="208" x2="274" y2="208" marker-end="url(#f1a)"/>
+          <text class="tl" x="249" y="199" text-anchor="middle">lays out</text>
+
+          <rect class="bx" x="40" y="436" width="180" height="48" rx="2"/>
+          <text class="tm-s" x="54" y="455">CANONICAL RECORD</text>
+          <text class="tm" x="54" y="474">grammar 4</text>
+          <line class="ln" x1="224" y1="460" x2="274" y2="460" marker-end="url(#f1a)"/>
+          <text class="tl" x="249" y="451" text-anchor="middle">bounds</text>
+
+          <rect class="bx-dash" x="40" y="492" width="180" height="48" rx="2"/>
+          <text class="tm-s" x="54" y="511">PLAYER CONTROLS</text>
+          <text class="tm" x="54" y="530">tier + seed</text>
+          <line class="ln" x1="224" y1="516" x2="274" y2="516" marker-end="url(#f1a)"/>
+          <text class="tl" x="249" y="507" text-anchor="middle">seeds</text>
+
+          <!-- index -->
+          <rect class="bx" x="880" y="304" width="180" height="508" rx="2"/>
+          <text class="tm-s" x="896" y="330">SQLITE &middot; REBUILDABLE</text>
+          <text class="tm set-t" x="896" y="352">index.db</text>
+          <text class="tn" x="896" y="376">packages</text>
+          <text class="tn" x="896" y="393">records</text>
+          <text class="tn" x="896" y="410">graphs</text>
+          <text class="tn" x="896" y="427">destinations</text>
+          <text class="tn" x="896" y="444">dependants</text>
+          <text class="tn" x="896" y="474">Every row and every</text>
+          <text class="tn" x="896" y="491">reference edge is written</text>
+          <text class="tn" x="896" y="508">only after the record on</text>
+          <text class="tn" x="896" y="525">disk has been re-read and</text>
+          <text class="tn" x="896" y="542">verified against its hash.</text>
+          <text class="tn" x="896" y="572">Losing it costs a rescan</text>
+          <text class="tn" x="896" y="589">of the manifests, never</text>
+          <text class="tn" x="896" y="606">a stored world.</text>
+          <line class="ln-dot" x1="844" y1="348" x2="876" y2="348" marker-end="url(#f1b)"/>
+          <line class="ln-dot" x1="844" y1="628" x2="876" y2="628" marker-end="url(#f1b)"/>
+          <line class="ln-dot" x1="844" y1="768" x2="876" y2="768" marker-end="url(#f1b)"/>
+
+          <!-- legend -->
+          <line class="ln-soft" x1="20" y1="826" x2="1060" y2="826"/>
+          <rect class="bx-dash" x="20" y="840" width="22" height="14" rx="1"/>
+          <text class="tn" x="50" y="851">code or authored input</text>
+          <rect class="bx" x="250" y="840" width="22" height="14" rx="1"/>
+          <text class="tn" x="280" y="851">record shipped with the build</text>
+          <rect class="bx-store" x="530" y="840" width="22" height="14" rx="1"/>
+          <text class="tn" x="560" y="851">record in the data root</text>
+          <line class="ln-dot" x1="790" y1="847" x2="812" y2="847"/>
+          <text class="tn" x="820" y="851">index row, written last</text>
+        </svg>
+      </div>
+      <figcaption><b>The whole chain, top to bottom.</b> Nothing below the vocabulary knows that a person chose a tier and a seed: the levers name a composition seed and therefore a structure, and the same machinery serves the review view and the game. Sizes are the live files on this workstation.</figcaption>
+    </figure>
+  </section>
+
+  <section>
+    <div class="head">
+      <span class="eyebrow">02 &middot; primitive-definition/1/registry/3</span>
+      <h2>What one primitive is</h2>
+    </div>
+    <div class="prose">
+      <ul class="plain">
+        <li><b>Data, never an engine resource.</b> A definition holds numbers, choices, colours and references. A mesh, a material or a texture is built from it by the engine adapter and is never itself the definition &mdash; which is what keeps generation engine-independent, enforced by a test that the core assembly references no Godot assembly.</li>
+        <li><b>Its category declares its shape.</b> The category registry names every category and, per category, its parameters in order, its connector kinds, and the storage policies it permits. The registry is itself a canonical record with a version and a hash, so a definition is only ever read under the revision it was written for.</li>
+        <li><b>Its parameters are typed and exact.</b> A bool, a choice from named labels, an integer in a declared unit, a binary turn, a rotation, a three-vector, a colour, or a reference to another primitive of a named category. No floating-point value reaches a stored record, and a quantity that follows from others is not drawn at all &mdash; it is derived by a named rule.</li>
+        <li><b>Its identity is its content.</b> The SHA-256 of its canonical encoding is its name. Two definitions with the same bytes are the same primitive, and every reference carries both the pack-local id and the hash, so it either resolves to exactly what was meant or fails.</li>
+      </ul>
+    </div>
+
+    <figure>
+      <div class="frame">
+        <svg viewBox="0 0 1080 620" role="img" aria-label="Anatomy of one stored planet definition: nine typed parameters including a reference to a surface material, which itself references a texture recipe. Below, the values that are derived by named rules rather than stored, and the Godot resources the adapter builds from the same data.">
+          <defs>
+            <marker id="f3a" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><polygon points="0,0 8,4 0,8" class="mk"/></marker>
+          </defs>
+
+          <!-- A: the planet definition -->
+          <rect class="bx-store" x="20" y="60" width="430" height="320" rx="2"/>
+          <text class="tm-s" x="34" y="82">STORED RECORD &middot; CATEGORY 3</text>
+          <text class="tm set-t" x="34" y="104">planet &middot; definition 74 &middot; 0d1ae78f45ec</text>
+          <text class="tn" x="34" y="122">drawn from template 14, small-rocky-body</text>
+          <rect class="bx-soft" x="20" y="324" width="430" height="24"/>
+          <text class="tm" x="34" y="148">mass</text><text class="tm" x="180" y="148">709</text><text class="tn" x="262" y="148">&times;10^20 kg &rarr; 0.97 Moon</text>
+          <text class="tm" x="34" y="172">density</text><text class="tm" x="180" y="172">7879</text><text class="tn" x="262" y="172">kg/m3, just above iron</text>
+          <text class="tm" x="34" y="196">albedo</text><text class="tm" x="180" y="196">18112</text><text class="tn" x="262" y="196">/65535 &rarr; 0.276</text>
+          <text class="tm" x="34" y="220">pole-right-ascension</text><text class="tm" x="180" y="220">476682238t</text><text class="tn" x="262" y="220">binary turn &rarr; 39.96&deg;</text>
+          <text class="tm" x="34" y="244">pole-declination</text><text class="tm" x="180" y="244">90325993t</text><text class="tn" x="262" y="244">binary turn &rarr; +7.57&deg;</text>
+          <text class="tm" x="34" y="268">sidereal-period</text><text class="tm" x="180" y="268">78602612</text><text class="tn" x="262" y="268">50 ms ticks &rarr; 45.5 days</text>
+          <text class="tm" x="34" y="292">prime-meridian-phase</text><text class="tm" x="180" y="292">1765297919t</text><text class="tn" x="262" y="292">binary turn &rarr; 147.97&deg;</text>
+          <text class="tm" x="34" y="316">body-type</text><text class="tm" x="180" y="316">rocky</text><text class="tn" x="262" y="316">a choice of four labels</text>
+          <text class="tm set-t" x="34" y="340">surface</text><text class="tm set-t" x="180" y="340">&rarr; 10</text><text class="tn" x="262" y="340">reference: surface-material</text>
+          <text class="tn" x="34" y="368">and nothing else: no radius, no gravity, no pixels, no mesh</text>
+
+          <!-- B: the material -->
+          <rect class="bx-store" x="490" y="60" width="280" height="320" rx="2"/>
+          <text class="tm-s" x="504" y="82">STORED RECORD &middot; CATEGORY 5</text>
+          <text class="tm set-t" x="504" y="104">surface-material &middot; 10</text>
+          <text class="tm-s" x="504" y="122">ae5e626bc47a</text>
+          <text class="tm" x="504" y="152">shader</text><text class="tm" x="620" y="152">standard-opaque</text>
+          <rect class="swatch" x="504" y="166" width="16" height="14" fill="#81625bff"/>
+          <text class="tm" x="530" y="178">#81625bff</text><text class="tn" x="620" y="178">base colour</text>
+          <text class="tm" x="504" y="204">roughness</text><text class="tm" x="620" y="204">57850</text>
+          <text class="tm" x="504" y="228">metallic</text><text class="tm" x="620" y="228">1118</text>
+          <rect class="bx-soft" x="490" y="252" width="280" height="24"/>
+          <text class="tm set-t" x="504" y="268">texture</text><text class="tm set-t" x="620" y="268">&rarr; 1</text>
+          <text class="tn" x="504" y="300">what this body&rsquo;s surface is made of &mdash;</text>
+          <text class="tn" x="504" y="317">generated content, not a view&rsquo;s choice</text>
+
+          <!-- C: the texture recipe -->
+          <rect class="bx-store" x="810" y="60" width="250" height="320" rx="2"/>
+          <text class="tm-s" x="824" y="82">STORED RECORD &middot; CATEGORY 6</text>
+          <text class="tm set-t" x="824" y="104">texture-recipe &middot; 1</text>
+          <text class="tm-s" x="824" y="122">bc1d3c01af29</text>
+          <text class="tm" x="824" y="152">pattern</text><text class="tm" x="940" y="152">cells</text>
+          <text class="tm" x="824" y="176">scale</text><text class="tm" x="920" y="176">63144/2^16</text>
+          <rect class="swatch" x="824" y="192" width="16" height="14" fill="#443e3cff"/>
+          <text class="tm" x="850" y="204">#443e3cff</text>
+          <rect class="swatch" x="824" y="216" width="16" height="14" fill="#7c8552ff"/>
+          <text class="tm" x="850" y="228">#7c8552ff</text>
+          <text class="tm" x="824" y="252">contrast</text><text class="tm" x="940" y="252">17063</text>
+          <text class="tn" x="824" y="300">a rule and two colours.</text>
+          <text class="tn" x="824" y="317">Still no pixels.</text>
+
+          <line class="ln" x1="454" y1="336" x2="486" y2="336" marker-end="url(#f3a)"/>
+          <text class="tl" x="470" y="327" text-anchor="middle">&rarr;10</text>
+          <line class="ln" x1="774" y1="264" x2="806" y2="264" marker-end="url(#f3a)"/>
+          <text class="tl" x="790" y="255" text-anchor="middle">&rarr;1</text>
+
+          <!-- E: derived -->
+          <rect class="bx" x="20" y="440" width="500" height="160" rx="2"/>
+          <text class="tm-s" x="34" y="464">DERIVED BY A NAMED RULE &middot; NEVER STORED</text>
+          <text class="tm" x="34" y="492">radius</text><text class="tm" x="180" y="492">1,290 km</text><text class="tl" x="290" y="492">derive-radius/1</text>
+          <text class="tm" x="34" y="516">surface gravity</text><text class="tm" x="180" y="516">2.84 m/s2</text><text class="tl" x="290" y="516">derive-surface-gravity/1</text>
+          <text class="tm" x="34" y="540">equilibrium temp.</text><text class="tm" x="180" y="540">397 K</text><text class="tl" x="290" y="540">derive-equilibrium-temperature/1</text>
+          <text class="tn" x="34" y="572">A mass and a radius could contradict each other about density,</text>
+          <text class="tn" x="34" y="589">so the radius is not drawn: it follows, in integers, from the two.</text>
+
+          <!-- F: engine -->
+          <rect class="bx-dash" x="560" y="440" width="500" height="160" rx="2"/>
+          <text class="tm-s" x="574" y="464">BUILT BY THE ADAPTER &middot; NEVER STORED</text>
+          <text class="tm" x="574" y="492">albedo raster</text><text class="tm" x="720" y="492">128&times;128 RGBA</text><text class="tl" x="850" y="492">derive-surface-raster/1</text>
+          <text class="tm" x="574" y="516">ImageTexture</text><text class="tm" x="720" y="516">Godot</text><text class="tl" x="850" y="516">PrimitiveResources</text>
+          <text class="tm" x="574" y="540">StandardMaterial3D</text><text class="tm" x="720" y="540">Godot</text><text class="tl" x="850" y="540">PrimitiveResources</text>
+          <text class="tn" x="574" y="572">The rule computes the pixels by integer arithmetic over the</text>
+          <text class="tn" x="574" y="589">appearance record&rsquo;s own hash; the adapter only wraps them.</text>
+
+          <line class="ln" x1="215" y1="384" x2="215" y2="436" marker-end="url(#f3a)"/>
+          <text class="tl" x="223" y="412">mass + density</text>
+          <line class="ln" x1="615" y1="384" x2="615" y2="436" marker-end="url(#f3a)"/>
+          <text class="tl" x="623" y="404">shader + roughness</text>
+          <line class="ln" x1="935" y1="384" x2="935" y2="436" marker-end="url(#f3a)"/>
+          <text class="tl" x="927" y="424" text-anchor="end">pattern + colours</text>
+        </svg>
+      </div>
+      <figcaption><b>One real definition, and everything it does not hold.</b> Definition 74 is the 1,290 km moon in the system below. Each arrow is an exact reference &mdash; a pack-local id together with the content hash of what it names &mdash; so the appearance of a body is resolved from stored content down to the last colour, and a reference to the wrong revision cannot silently resolve.</figcaption>
+    </figure>
+
+    <div class="tbl-wrap">
+      <table>
+        <caption>category-registry/3 &middot; 81883cecb0f55908b7a7560d4b3c245042ed631dbd456c721a4464a7ec5fa8c7</caption>
+        <thead>
+          <tr><th class="num">#</th><th>Category</th><th>Composition domains</th><th class="num">Params</th><th>Connectors</th><th>Derived</th></tr>
+        </thead>
+        <tbody>
+          <tr><td class="num">1</td><td><span class="cat">star</span></td><td>solar system</td><td class="num">3</td><td class="cat">orbit</td><td>luminosity, spectral class</td></tr>
+          <tr><td class="num">2</td><td><span class="cat">barycentre</span></td><td>solar system</td><td class="num">0</td><td class="cat">orbit</td><td>&mdash;</td></tr>
+          <tr><td class="num">3</td><td><span class="cat">planet</span></td><td>solar system, planet</td><td class="num">9</td><td class="cat">atmosphere, orbit</td><td>radius</td></tr>
+          <tr><td class="num">4</td><td><span class="cat">atmosphere</span></td><td>planet</td><td class="num">4</td><td>&mdash;</td><td>&mdash;</td></tr>
+          <tr><td class="num">5</td><td><span class="cat">surface-material</span></td><td>surface, artifact</td><td class="num">5</td><td>&mdash;</td><td>&mdash;</td></tr>
+          <tr><td class="num">6</td><td><span class="cat">texture-recipe</span></td><td>surface, artifact</td><td class="num">5</td><td>&mdash;</td><td>&mdash;</td></tr>
+          <tr><td class="num">7</td><td><span class="cat">geometry-recipe</span></td><td>artifact</td><td class="num">4</td><td>&mdash;</td><td>&mdash;</td></tr>
+          <tr><td class="num">8</td><td><span class="cat">artifact-part</span></td><td>artifact</td><td class="num">3</td><td class="cat">attach</td><td>&mdash;</td></tr>
+          <tr><td class="num">9</td><td><span class="cat">artifact</span></td><td>artifact</td><td class="num">3</td><td>&mdash;</td><td>&mdash;</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="note">A revision may add to a category without invalidating the older one, and a record of an earlier revision keeps its bytes and therefore its hash. That is how these grew: revision 2 replaced the parameters that could contradict themselves with derived ones, and revision 3 gave a planet the material its surface is made of and let a definition carry tags of its own. This build loads all three revisions side by side; a pack published under revision 1 still reloads today. Every category currently permits one storage policy, <span class="mono">materialize</span>, of the three the model admits.</p>
+  </section>
+
+  <section>
+    <div class="head">
+      <span class="eyebrow">03 &middot; template-vocabulary/1</span>
+      <h2>Where definitions come from, and what a tag answers</h2>
+    </div>
+    <div class="prose">
+      <p>A vocabulary states templates &mdash; a category, a label, a range per parameter, the tags a definition carries, the tags a reference demands, and the tags a connector provides and requires &mdash; and how many definitions of each template a set should hold. Authored content enters here and nowhere else; in the core release a set holds generated definitions only.</p>
+    </div>
+    <pre><span class="c">// content/templates/basic/vocabulary.json, three of its thirty templates. Order matters:
+// a reference draws only from definitions already allocated, so surfaces precede bodies.</span>
+
+{ "id": 21, "label": "rock-texture", "category": "texture-recipe", <b>"tags": ["for-rocky"]</b>,
+  "parameters": { "pattern": ["cells", "noise"], "scale": [16384, 98304], <span class="c">/* colours, contrast */</span> } },
+
+{ "id": 25, "label": "rock-surface", "category": "surface-material", <b>"tags": ["for-rocky"]</b>,
+  "parameters": { "shader": ["standard-opaque"], "roughness": [45000, 65535],
+                  "metallic": [0, 4096], <b>"texture": ["for-rocky"]</b> } },
+
+{ "id": 14, "label": "small-rocky-body", "category": "planet",
+  "parameters": { "mass": [30, 2000], "density": [3300, 8000], "albedo": [3000, 45000],
+                  "body-type": ["rocky"], <b>"surface": ["for-rocky"]</b> },
+  "connectors": { "orbit": { <b>"provides"</b>: ["zone-hot", "zone-temperate", "zone-cold", "mass-small"],
+                             <b>"requires"</b>: ["mass-none"] } } }</pre>
+
+    <figure>
+      <div class="frame">
+        <svg viewBox="0 0 1080 340" role="img" aria-label="Two separate tag mechanisms. On the left, at generation time inside one pack, a template's reference demand for-rocky is answered by a definition's own tags, picking the rock surface over the ice and gas ones. On the right, at composition time, a grammar band's zone and mass requirements are answered by a child's like-labelled connector declaration.">
+          <defs>
+            <marker id="f4a" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><polygon points="0,0 8,4 0,8" class="mk"/></marker>
+          </defs>
+          <line class="ln-soft" x1="540" y1="20" x2="540" y2="320"/>
+
+          <!-- lane 1 -->
+          <text class="tm-s" x="20" y="34">AT GENERATION &middot; INSIDE ONE PACK</text>
+          <rect class="bx-dash" x="20" y="56" width="210" height="76" rx="2"/>
+          <text class="tm" x="34" y="78">template 14</text>
+          <text class="tn" x="34" y="96">small-rocky-body</text>
+          <text class="tm set-t" x="34" y="120">surface: [for-rocky]</text>
+
+          <rect class="bx-store" x="290" y="56" width="230" height="40" rx="2"/>
+          <text class="tm" x="302" y="72">rock-surface</text>
+          <text class="tl" x="302" y="88">tags [for-rocky]</text>
+          <text class="tm-s" x="508" y="80" text-anchor="end">DRAWN</text>
+
+          <rect class="bx" x="290" y="104" width="230" height="40" rx="2"/>
+          <text class="tm" x="302" y="120">ice-surface</text>
+          <text class="tl" x="302" y="136">tags [for-icy]</text>
+          <text class="tm-s" x="508" y="128" text-anchor="end">PASSED OVER</text>
+
+          <rect class="bx" x="290" y="152" width="230" height="40" rx="2"/>
+          <text class="tm" x="302" y="168">gas-surface</text>
+          <text class="tl" x="302" y="184">tags [for-gas-giant]</text>
+          <text class="tm-s" x="508" y="176" text-anchor="end">PASSED OVER</text>
+
+          <line class="ln" x1="234" y1="94" x2="284" y2="94" marker-end="url(#f4a)"/>
+          <text class="tl" x="259" y="85" text-anchor="middle">demands</text>
+          <polyline class="ln" points="286,76 255,76 255,218" marker-end="url(#f4a)"/>
+          <text class="tl" x="263" y="176">satisfies</text>
+
+          <rect class="bx-store" x="20" y="222" width="500" height="52" rx="2"/>
+          <text class="tm set-t" x="34" y="244">definition 74 &middot; surface &rarr; 10</text>
+          <text class="tn" x="34" y="263">the reference is filled with an exact revision, id and hash together</text>
+          <text class="tn" x="20" y="300">A demand that no definition in the category satisfies fails the run by</text>
+          <text class="tn" x="20" y="317">name, rather than filling the reference with something unsuitable.</text>
+
+          <!-- lane 2 -->
+          <text class="tm-s" x="560" y="34">AT COMPOSITION &middot; UNDER THE GRAMMAR</text>
+          <rect class="bx" x="560" y="56" width="210" height="76" rx="2"/>
+          <text class="tm" x="574" y="78">band star.orbit</text>
+          <text class="tn" x="574" y="96">[1, 8] OrbitalElements</text>
+          <text class="tm graph-t" x="574" y="120">requires zone + mass</text>
+
+          <rect class="bx-graph" x="830" y="56" width="230" height="40" rx="2"/>
+          <text class="tm" x="842" y="72">planet 110 &middot; orbit</text>
+          <text class="tl" x="842" y="88">provides zone-temperate, mass-small</text>
+          <text class="tm-s" x="1048" y="80" text-anchor="end">PLACED</text>
+
+          <rect class="bx" x="830" y="104" width="230" height="40" rx="2"/>
+          <text class="tm" x="842" y="120">a heavier body &middot; orbit</text>
+          <text class="tl" x="842" y="136">requires mass-large, band gives small</text>
+          <text class="tm-s" x="1048" y="128" text-anchor="end">REFUSED</text>
+
+          <rect class="bx" x="830" y="152" width="230" height="40" rx="2"/>
+          <text class="tm" x="842" y="168">an icy body &middot; orbit</text>
+          <text class="tl" x="842" y="184">provides zone-cold, band is hot</text>
+          <text class="tm-s" x="1048" y="176" text-anchor="end">REFUSED</text>
+
+          <line class="ln" x1="774" y1="94" x2="824" y2="94" marker-end="url(#f4a)"/>
+          <text class="tl" x="799" y="85" text-anchor="middle">asks</text>
+          <polyline class="ln" points="826,76 795,76 795,218" marker-end="url(#f4a)"/>
+          <text class="tl" x="803" y="176">provides</text>
+
+          <rect class="bx-graph" x="560" y="222" width="500" height="52" rx="2"/>
+          <text class="tm graph-t" x="574" y="244">instance at solar-system/orbit/0</text>
+          <text class="tn" x="574" y="263">its orbital elements drawn from the band, scaled to the star</text>
+          <text class="tn" x="560" y="300">A body takes only the orbit band whose zone it can occupy, and a moon</text>
+          <text class="tn" x="560" y="317">must be lighter than its planet. Tags make a system sensible, not just legal.</text>
+        </svg>
+      </div>
+      <figcaption><b>Two tag lists that are never compared with each other.</b> A definition&rsquo;s own tags answer a reference demand while the set is being generated; a connector&rsquo;s provides and requires answer the grammar while a graph is being composed. Definition-level tags exist so that a leaf category with no connector of its own &mdash; a material, a texture recipe &mdash; can still say what it suits.</figcaption>
+    </figure>
+  </section>
+
+  <section>
+    <div class="head">
+      <span class="eyebrow">04 &middot; composition-graph/1 &middot; grammar 4 over registry 3</span>
+      <h2>What a primitive-based structure is</h2>
+    </div>
+    <div class="prose stack">
+      <p>A structure is a composition graph: a bounded, ordered tree of instances. It is not set membership &mdash; an instance may repeat a definition, and order is meaningful. Each node names one exact definition revision, carries the transform that attaches it to its parent, and holds its children grouped by connector kind in the category&rsquo;s order. A transform&rsquo;s type follows from the connector it hangs on: <span class="mono">OrbitalElements</span> for a body orbiting a body or a barycentre, <span class="mono">Rigid</span> for a part bolted to a part, <span class="mono">SurfaceAnchor</span> for a region pinned to a planet.</p>
+      <p>Every instance has a stable canonical path, whose first segment is the domain and whose later segments name the connector it hangs on and its index among that connector&rsquo;s children. That path addresses the instance&rsquo;s random stream, its overlay records and its cache entries; it cannot drift, and the graph record refuses one that does.</p>
+    </div>
+
+    <pre><span class="c">$ dotnet run --project src/SpaceExplorer.Cli -- inspect-graph 8fdad8bb0c78e3c9fe92b23ae3ff8f4f</span>
+
+set           aba608e6bb0302a184d2c82ebdda526c 2f5ada325b240170f002976f6c94d51...
+registry      3 81883cecb0f55908b7a7560d4b3c2450...   grammar 4 5331448995b19a3d...
+seed          14342037084106923997; <b>instances 27; depth 3</b>
+
+  solar-system                             star <b>#56</b>
+    solar-system/orbit/0                   planet <b>#110</b>  [OrbitalElements: semi-major-axis=86112287942, ...]
+      solar-system/orbit/0/atmosphere/0    atmosphere #63  [Rigid: ]
+      solar-system/orbit/0/orbit/0         planet #74   [OrbitalElements: semi-major-axis=248313513, ...]
+        .../orbit/0/orbit/0/atmosphere/0   atmosphere #70  [Rigid: ]
+    solar-system/orbit/1                   barycentre #116 [OrbitalElements: semi-major-axis=132524522913, ...]
+      solar-system/orbit/1/orbit/0         planet #89   [OrbitalElements: ...]
+      solar-system/orbit/1/orbit/1         planet #75   [OrbitalElements: ...]
+    <span class="c">[ orbit/2 .. orbit/4, twelve instances ]</span>
+    solar-system/orbit/5                   planet <b>#110</b>  [OrbitalElements: semi-major-axis=651312081058, ...]
+      solar-system/orbit/5/orbit/0         planet #92   [OrbitalElements: ...]
+      solar-system/orbit/5/orbit/1         planet #76   [OrbitalElements: ...]</pre>
+    <p class="note">Definition <span class="mono">#110</span> appears at <span class="mono">orbit/0</span> and again at <span class="mono">orbit/5</span>, and barycentre <span class="mono">#116</span> twice more: the same primitive, two instances, two places, two random streams. A set is deduplicated membership; a graph is deliberately not.</p>
+
+    <div class="prose stack" style="margin-top:32px">
+      <h3>What a reader derives from those 764 bytes</h3>
+      <p>The description below is not stored anywhere. Every column is derived on demand from the definitions the graph names and the transforms it carries, by the named rules, in integers &mdash; which is what makes it the same on Linux and on Windows.</p>
+    </div>
+    <pre><span class="c">$ dotnet run --project src/SpaceExplorer.Cli -- describe 8fdad8bb0c78e3c9fe92b23ae3ff8f4f --tier starter</span>
+
+pinned    registry 3, grammar 4, generator 2, suit profile 1 02f7a6864524
+star      class F, 6625 K, 1.171 Msun, 727287 km, 1.897 Lsun
+  1     planet     gas-giant  0.576 AU  513.42 Me  96404 km   817 kg/m3  22.02 m/s^2   59.2 kPa  methane          324 K  no: gravity
+  <b>1.1   moon       rocky      0.576 AU    0.01 Me   1290 km  7879 kg/m3   2.84 m/s^2 4668.0 kPa  hydrogen-helium  397 K  no: pressure</b>
+  2     barycentre -          0.886 AU
+  2.1   planet     rocky      0.886 AU    4.23 Me   9781 km  6442 kg/m3  17.62 m/s^2 4668.0 kPa  hydrogen-helium  306 K  no: gravity pressure
+  <span class="c">[ 2.2 and 3 ]</span>
+  3.1   moon       rocky      1.130 AU    0.01 Me   1561 km  3392 kg/m3   1.48 m/s^2   59.2 kPa  methane          236 K  <b>landing candidate</b>
+  4     planet     rocky      2.359 AU    0.02 Me   1672 km  5270 kg/m3   2.46 m/s^2   89.1 kPa  carbon-dioxide   197 K  <b>landing candidate</b>
+  <span class="c">[ 5 .. 6.2, six more bodies ]</span>
+totals    8 planets, 4 moons, 2 barycentres; 2 landing candidates; no life
+tier      pass (starter)</pre>
+    <p class="note">Row <span class="mono">1.1</span> is definition 74 from the figure above: 1,290 km and 2.84 m/s&sup2; are its derived radius and gravity, and 397 K its equilibrium temperature under this star at this distance. The verdict column is the suit profile read against those derived values, not a property anything stored.</p>
+  </section>
+
+  <section>
+    <div class="head">
+      <span class="eyebrow">05 &middot; exact references</span>
+      <h2>What pins what</h2>
+    </div>
+    <div class="prose">
+      <p>An identifier alone cannot name usable content. Every reference carries a pack-local id <em>and</em> a content hash, and every record pins the exact revision of what it was built from, so a chain of four records either resolves to precisely the bytes that were meant or fails at the first mismatch.</p>
+    </div>
+
+    <figure>
+      <div class="frame">
+        <svg viewBox="0 0 1080 260" role="img" aria-label="A chain of four records: the destination record pins the graph hash, the graph record pins the set manifest hash, the manifest pins the category registry and version hashes. Loading runs the other way, verifying each dependency before the record that pins it.">
+          <defs>
+            <marker id="f2a" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><polygon points="0,0 8,4 0,8" class="mk-pin"/></marker>
+            <marker id="f2b" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><polygon points="0,0 8,4 0,8" class="mk-soft"/></marker>
+          </defs>
+
+          <rect class="bx-graph" x="20" y="56" width="200" height="84" rx="2"/>
+          <text class="tm-s" x="34" y="78">PACK ab0596fb</text>
+          <text class="tm graph-t" x="34" y="100">destination record</text>
+          <text class="tn" x="34" y="120">245 B</text>
+          <text class="tn" x="34" y="136">tier starter, seed 21</text>
+
+          <rect class="bx-graph" x="300" y="56" width="200" height="84" rx="2"/>
+          <text class="tm-s" x="314" y="78">PACK 8fdad8bb</text>
+          <text class="tm graph-t" x="314" y="100">graph record</text>
+          <text class="tn" x="314" y="120">764 B</text>
+          <text class="tn" x="314" y="136">27 instances, depth 3</text>
+
+          <rect class="bx-store" x="580" y="56" width="200" height="84" rx="2"/>
+          <text class="tm-s" x="594" y="78">PACK aba608e6</text>
+          <text class="tm set-t" x="594" y="100">set manifest</text>
+          <text class="tn" x="594" y="120">116 exact references</text>
+          <text class="tn" x="594" y="136">one manifest per pack id</text>
+
+          <rect class="bx" x="860" y="56" width="200" height="84" rx="2"/>
+          <text class="tm-s" x="874" y="78">SHIPPED WITH THE BUILD</text>
+          <text class="tm" x="874" y="100">category-registry/3</text>
+          <text class="tn" x="874" y="120">grammar 4, generator 2</text>
+          <text class="tn" x="874" y="136">and the derivation rules</text>
+
+          <line class="ln-pin" x1="224" y1="110" x2="294" y2="110" marker-end="url(#f2a)"/>
+          <text class="tl pin-t" x="259" y="86" text-anchor="middle">pins the</text>
+          <text class="tl pin-t" x="259" y="99" text-anchor="middle">graph hash</text>
+
+          <line class="ln-pin" x1="504" y1="110" x2="574" y2="110" marker-end="url(#f2a)"/>
+          <text class="tl pin-t" x="539" y="86" text-anchor="middle">pins the</text>
+          <text class="tl pin-t" x="539" y="99" text-anchor="middle">manifest hash</text>
+
+          <line class="ln-pin" x1="784" y1="110" x2="854" y2="110" marker-end="url(#f2a)"/>
+          <text class="tl pin-t" x="819" y="86" text-anchor="middle">pins the</text>
+          <text class="tl pin-t" x="819" y="99" text-anchor="middle">revision hashes</text>
+
+          <line class="ln-dot" x1="1040" y1="190" x2="24" y2="190" marker-end="url(#f2b)"/>
+          <text class="tn" x="532" y="178" text-anchor="middle">load order: each dependency reloaded and verified before the record that pins it</text>
+          <text class="tn" x="20" y="228">A load refuses at the first hash that does not match, and names it. A registry revision or grammar version this build</text>
+          <text class="tn" x="20" y="245">does not support is refused too &mdash; never reinterpreted, never resolved against &ldquo;latest&rdquo;, never substituted.</text>
+        </svg>
+      </div>
+      <figcaption><b>Reading back never regenerates.</b> The index names the record, the record is verified before it is decoded, and its set is reloaded and verified first. A pack identifier is itself derived from the leading 16 bytes of its specification&rsquo;s hash, so the same specification reproduces the same pack &mdash; and a differing record under an existing identifier is treated as a reproduction failure rather than an overwrite.</figcaption>
+    </figure>
+  </section>
+
+  <section>
+    <div class="head">
+      <span class="eyebrow">06 &middot; the data root</span>
+      <h2>Where it all lives</h2>
+    </div>
+    <div class="prose">
+      <p>Player data never lives in the repository or the install directory. Persistence owns one data root &mdash; <span class="mono">~/.local/share/SpaceExplorer</span> on Linux, <span class="mono">%LOCALAPPDATA%\SpaceExplorer</span> on Windows, overridable with <span class="mono">SPACE_EXPLORER_DATA_DIR</span> &mdash; holding content-addressed record files plus one SQLite index. Caches live elsewhere and deleting them never loses a discovery.</p>
+    </div>
+    <pre><span class="c">&lt;data root&gt;/</span>
+  index.db                                  <span class="c">SQLite: verified packages, graphs, destinations, and the edges of their dependants</span>
+  packs/&lt;pack-id&gt;/&lt;content-hash&gt;.bin        <span class="c">immutable records, shared by every campaign</span>
+  blobs/&lt;content-hash&gt;.bin                  <span class="c">immutable mesh, texture, and primitive-owned payload data</span>
+  campaigns/&lt;branch-id&gt;/campaign.db         <span class="c">campaign state, transaction ledger, destination index  (not built yet)</span>
+  campaigns/&lt;branch-id&gt;/worlds/&lt;spec-hash&gt;/ <span class="c">world package: manifest, root graph, chunks         (not built yet)</span>
+  backups/&lt;branch-id&gt;/                      <span class="c">rolling recoverable copies of campaign.db           (not built yet)</span>
+<span class="c">&lt;cache root&gt;/</span>
+  compositions/, meshes/, textures/, collision/  <span class="c">rebuildable, size-limited, fully evictable          (not built yet)</span>
+
+<span class="c">today, on this workstation:</span>  <b>98 pack directories, 308 records, 75,187 bytes, and a 100 KB index.db</b></pre>
+
+    <div class="tbl-wrap">
+      <table>
+        <caption>index.db &mdash; what the five tables hold, and what they are not</caption>
+        <thead><tr><th>Table</th><th>One row per</th><th class="num">Rows now</th><th>Keys and constraints that carry a rule</th></tr></thead>
+        <tbody>
+          <tr><td class="cat">packages</td><td>published set pack</td><td class="num">2</td><td><span class="mono">pack_id</span> primary key, 16-byte BLOB; <span class="mono">manifest_hash</span> unique &mdash; one manifest per pack identifier, enforced at the commit-last step</td></tr>
+          <tr><td class="cat">records</td><td>record inside a pack</td><td class="num">212</td><td><span class="mono">(pack_id, content_hash)</span> primary key; <span class="mono">local_id</span> constrained to 1..4,294,967,295, never zero</td></tr>
+          <tr><td class="cat">graphs</td><td>published graph</td><td class="num">48</td><td><span class="mono">source_pack_id</span> references <span class="mono">packages</span>; registry, generator, grammar and node count recorded</td></tr>
+          <tr><td class="cat">destinations</td><td>stored destination</td><td class="num">48</td><td><span class="mono">graph_pack_id</span> references <span class="mono">graphs</span>; tier, 8-byte lever seed, and winning attempt</td></tr>
+          <tr><td class="cat">dependants</td><td>dependency edge</td><td class="num">146</td><td>inserted in the publish-last transaction, rebuildable by scanning manifests, and the input of the explicit deletion sweep</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="note">The index holds identity and topology only &mdash; no parameters, no geometry, no environment properties. Canonical binary files stay authoritative, so losing <span class="mono">index.db</span> costs a rescan of the manifests, never a stored world.</p>
+
+    <figure>
+      <div class="frame">
+        <svg viewBox="0 0 1080 300" role="img" aria-label="The publish protocol as five ordered steps: check the dependency is already published with the hash this record pins, write a temporary file in the target filesystem, re-read and verify the hash and all bounds, atomically install without overwriting different content, and commit the index row and reference edges last. Any check failing refuses the publish.">
+          <defs>
+            <marker id="f6a" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><polygon points="0,0 8,4 0,8" class="mk"/></marker>
+            <marker id="f6b" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><polygon points="0,0 8,4 0,8" class="mk-soft"/></marker>
+          </defs>
+          <text class="tm-s" x="10" y="30">THE SAME PROTOCOL FOR A SET, A GRAPH, AND A DESTINATION</text>
+
+          <rect class="bx" x="10" y="56" width="176" height="100" rx="2"/>
+          <circle class="bx-store" cx="34" cy="80" r="13"/><text class="tm" x="34" y="84" text-anchor="middle">1</text>
+          <text class="tm" x="56" y="84">dependency</text>
+          <text class="tn" x="24" y="110">already published,</text>
+          <text class="tn" x="24" y="127">with exactly the hash</text>
+          <text class="tn" x="24" y="144">this record pins</text>
+
+          <rect class="bx" x="231" y="56" width="176" height="100" rx="2"/>
+          <circle class="bx-store" cx="255" cy="80" r="13"/><text class="tm" x="255" y="84" text-anchor="middle">2</text>
+          <text class="tm" x="277" y="84">temp file</text>
+          <text class="tn" x="245" y="110">written into the</text>
+          <text class="tn" x="245" y="127">target filesystem, so</text>
+          <text class="tn" x="245" y="144">the move is atomic</text>
+
+          <rect class="bx" x="452" y="56" width="176" height="100" rx="2"/>
+          <circle class="bx-store" cx="476" cy="80" r="13"/><text class="tm" x="476" y="84" text-anchor="middle">3</text>
+          <text class="tm" x="498" y="84">verify</text>
+          <text class="tn" x="466" y="110">re-read, hashed, and</text>
+          <text class="tn" x="466" y="127">checked against every</text>
+          <text class="tn" x="466" y="144">format and size bound</text>
+
+          <rect class="bx" x="673" y="56" width="176" height="100" rx="2"/>
+          <circle class="bx-store" cx="697" cy="80" r="13"/><text class="tm" x="697" y="84" text-anchor="middle">4</text>
+          <text class="tm" x="719" y="84">install</text>
+          <text class="tn" x="687" y="110">moved into place, and</text>
+          <text class="tn" x="687" y="127">never over different</text>
+          <text class="tn" x="687" y="144">content under one name</text>
+
+          <rect class="bx-store" x="894" y="56" width="176" height="100" rx="2"/>
+          <circle class="bx" cx="918" cy="80" r="13"/><text class="tm" x="918" y="84" text-anchor="middle">5</text>
+          <text class="tm set-t" x="940" y="84">index, last</text>
+          <text class="tn" x="908" y="110">the row and all its</text>
+          <text class="tn" x="908" y="127">reference edges, in one</text>
+          <text class="tn" x="908" y="144">transaction</text>
+
+          <line class="ln" x1="190" y1="106" x2="225" y2="106" marker-end="url(#f6a)"/>
+          <text class="tl" x="207" y="97" text-anchor="middle">then</text>
+          <line class="ln" x1="411" y1="106" x2="446" y2="106" marker-end="url(#f6a)"/>
+          <text class="tl" x="428" y="97" text-anchor="middle">then</text>
+          <line class="ln" x1="632" y1="106" x2="667" y2="106" marker-end="url(#f6a)"/>
+          <text class="tl" x="649" y="97" text-anchor="middle">then</text>
+          <line class="ln" x1="853" y1="106" x2="888" y2="106" marker-end="url(#f6a)"/>
+          <text class="tl" x="870" y="97" text-anchor="middle">then</text>
+
+          <line class="ln-dot" x1="98" y1="160" x2="98" y2="208" marker-end="url(#f6b)"/>
+          <line class="ln-dot" x1="540" y1="160" x2="540" y2="208" marker-end="url(#f6b)"/>
+          <line class="ln-dot" x1="761" y1="160" x2="761" y2="208" marker-end="url(#f6b)"/>
+          <rect class="bx-dash" x="10" y="214" width="1060" height="56" rx="2"/>
+          <text class="tm" x="26" y="238">refused, by name</text>
+          <text class="tn" x="26" y="258">A missing dependency, a hash that does not match, or a manifest already published under this pack identifier with different bytes: the publish is refused and both hashes reported. An incomplete temporary file is ignored or removed on restart, so an unverified record is never exposed.</text>
+        </svg>
+      </div>
+      <figcaption><b>The order is the guarantee.</b> A database transaction alone cannot atomically commit external files, so the record is made durable and verified first and the index reference is published last. Numbering here encodes a real dependency: no step may be reordered.</figcaption>
+    </figure>
+
+    <figure>
+      <div class="frame">
+        <svg viewBox="0 0 1080 300" role="img" aria-label="Bar chart of live record sizes: the 117-record set pack is 24,075 bytes and a second set pack 17,558 bytes, while all 48 graphs and 48 destinations together take 33,554 bytes; a single 27-body graph record is 764 bytes and one destination record 245 bytes.">
+          <text class="tm-s" x="20" y="24">AUTHORITATIVE BYTES IN THE DATA ROOT, DRAWN TO SCALE</text>
+          <line class="ln-soft" x1="320" y1="54" x2="1010" y2="54"/>
+          <line class="ln-soft" x1="320" y1="54" x2="320" y2="288"/>
+          <line class="ln-soft" x1="491" y1="54" x2="491" y2="288"/>
+          <line class="ln-soft" x1="663" y1="54" x2="663" y2="288"/>
+          <line class="ln-soft" x1="834" y1="54" x2="834" y2="288"/>
+          <line class="ln-soft" x1="1006" y1="54" x2="1006" y2="288"/>
+          <text class="tl" x="320" y="44" text-anchor="middle">0</text>
+          <text class="tl" x="491" y="44" text-anchor="middle">10 KB</text>
+          <text class="tl" x="663" y="44" text-anchor="middle">20 KB</text>
+          <text class="tl" x="834" y="44" text-anchor="middle">30 KB</text>
+          <text class="tl" x="1006" y="44" text-anchor="middle">40 KB</text>
+
+          <rect class="bx-store" x="320" y="70" width="413" height="22"/>
+          <text class="tm" x="20" y="85">set pack aba608e6</text>
+          <text class="tn" x="180" y="85">117 records</text>
+          <text class="tm" x="741" y="86">24,075 B</text>
+
+          <rect class="bx-store" x="320" y="114" width="301" height="22"/>
+          <text class="tm" x="20" y="129">set pack 808ef5b8</text>
+          <text class="tn" x="180" y="129">95 records</text>
+          <text class="tm" x="629" y="130">17,558 B</text>
+
+          <rect class="bx-graph" x="320" y="158" width="575" height="22"/>
+          <text class="tm" x="20" y="173">every structure</text>
+          <text class="tn" x="180" y="173">96 records</text>
+          <text class="tm" x="903" y="174">33,554 B</text>
+          <text class="tn" x="20" y="189">48 graphs + 48 destinations</text>
+
+          <rect class="bx-graph" x="320" y="212" width="13" height="22"/>
+          <text class="tm" x="20" y="227">one graph record</text>
+          <text class="tn" x="180" y="227">27 bodies</text>
+          <text class="tm" x="341" y="228">764 B</text>
+
+          <rect class="bx-graph" x="320" y="256" width="4" height="22"/>
+          <text class="tm" x="20" y="271">one destination record</text>
+          <text class="tn" x="180" y="271">two levers</text>
+          <text class="tm" x="332" y="272">245 B</text>
+        </svg>
+      </div>
+      <figcaption><b>A structure is small, because the variety lives in the set.</b> At this scale one 27-body system is 13 pixels wide and one destination 4 &mdash; three per cent of the set every system shares. That is the whole economic argument for the primitive: a campaign&rsquo;s worth of destinations costs less than the vocabulary they draw on.</figcaption>
+    </figure>
+  </section>
+
+  <section>
+    <div class="head">
+      <span class="eyebrow">07 &middot; the same machinery, waiting for its vocabulary</span>
+      <h2>What is drawn here, and what is not built</h2>
+    </div>
+    <div class="prose">
+      <p>The registry admits seven composition domains. Three carry the randomization levels the game needs, and the rest are the same generator, the same store and the same reader awaiting a vocabulary and a grammar &mdash; which is the point of resting everything on one primitive.</p>
+    </div>
+    <div class="tbl-wrap">
+      <table>
+        <caption>the seven domains, and how far each one is carried today</caption>
+        <thead><tr><th>Domain</th><th>Root</th><th>Attaches by</th><th>State on 2026-09-10</th></tr></thead>
+        <tbody>
+          <tr><td class="cat">solar system</td><td class="cat">star</td><td class="cat">OrbitalElements</td><td>Generated, composed, stored, described and drawn; four grammar versions of iteration behind it</td></tr>
+          <tr><td class="cat">planet</td><td class="cat">planet</td><td class="cat">Rigid, SurfaceAnchor</td><td>Partial: a body carries its atmosphere and its surface material; regions and fields are specified only</td></tr>
+          <tr><td class="cat">artifact</td><td class="cat">artifact-part</td><td class="cat">Rigid</td><td>Partial: the categories and the attach band exist; the content gate&rsquo;s rendered sample does not</td></tr>
+          <tr><td class="cat">surface</td><td>a region under a planet</td><td class="cat">SurfaceAnchor</td><td>Vocabulary and grammar not written. How a surface is judged graphically is still an open finding</td></tr>
+          <tr><td class="cat">cave</td><td>&mdash;</td><td>&mdash;</td><td>Domain reserved in the registry; nothing composed</td></tr>
+          <tr><td class="cat">life form</td><td>&mdash;</td><td>&mdash;</td><td>Domain reserved in the registry; nothing composed</td></tr>
+          <tr><td class="cat">site</td><td>&mdash;</td><td>&mdash;</td><td>Domain reserved in the registry; nothing composed</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="prose" style="margin-top:26px">
+      <ul class="plain">
+        <li><b>World packages, overlays and caches are specified, not built.</b> The composition chunk, the primitive-state overlay keyed by instance path, the eviction rules and the deletion sweep all have their contracts written and no code behind them yet.</li>
+        <li><b>Cross-package set algebra is deliberately unimplemented.</b> Union, intersection and difference over exact references are specified, and the interface sits in the core unimplemented until a feature consumes them.</li>
+        <li><b>One storage policy is in use.</b> Every category currently permits <span class="mono">materialize</span> only. <span class="mono">regenerate</span> and <span class="mono">hybrid</span> wait on measured throughput, and the choice is pinned by a manifest so that measuring never changes a definition&rsquo;s hash.</li>
+        <li><b>No performance target has been measured.</b> Everything above is correctness and size, not speed.</li>
+      </ul>
+    </div>
+  </section>
+
+  <footer>
+    <p>Drawn from the repository on 2026-09-10 and measured against the live data root on a Debian 13 x86_64 workstation, with the commands single-sourced in <code>docs/tools.md</code>. The orientation this page follows is <code>docs/primitives.md</code>; the field-by-field contract is <code>docs/technical-design.md</code>; the normative terms are in <code>docs/glossary.md</code>; what is actually built is <code>docs/progress.md</code>. Each claim rests on an accepted decision record in <code>docs/decisions/</code> &mdash; 0002, 0006, 0008, 0010, 0018, 0020, 0031, 0033 to 0042, 0048, 0050 to 0057. Where this page and a record disagree, the record is right.</p>
+    <p style="margin-top:12px">Page source: <code>docs/diagrams/primitives-and-storage.html</code>.</p>
+  </footer>
+</div>

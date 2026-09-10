@@ -8,6 +8,8 @@ It is not the origin of the idea and not its contract. The idea is the concept o
 
 The mechanism in one sentence: **an authored vocabulary generates exact primitive definitions into a content-addressed pack, and a versioned grammar composes those definitions into a bounded ordered graph whose every instance names one exact definition revision and the transform that attaches it to its parent.**
 
+The same mechanism drawn, one figure per claim and every number measured against the data root rather than restated from a plan: [primitives-and-storage.html](diagrams/primitives-and-storage.html). It is a presentation of this document and the records it cites, holds no status and settles nothing, and is republished from its own source in `docs/diagrams/`.
+
 The invariant that makes it universal is normative and worth reading twice: every rendered, simulated, physical, biological, environmental and collectable property originates in an exact primitive revision, its generated instance parameters, or a primitive-based state overlay. Structural records carry identity, topology, versioning, storage and integrity only ([technical design](technical-design.md#primitive-registry-and-composition)). Anything a player can see or touch that has no primitive behind it is a bug in the design, not a shortcut.
 
 ## Part 1: the primitive
