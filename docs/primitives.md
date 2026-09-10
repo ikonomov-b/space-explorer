@@ -1,0 +1,87 @@
+# Primitives and primitive-based structures: the universal base
+
+Written 2026-09-10, on the owner's statement that a primitive database and the ability to combine primitives into randomly generated primitive-based structures is the basic capability the solar systems, the planet surfaces, and the artifacts all rest on.
+
+This document is the orientation: what a primitive is, what a structure is, how both are stored and read back, and why the same two ideas carry every generated thing in the game. It states no status — [progress.md](progress.md) is the single source for what is built ([decision 0011](decisions/0011-requirements-single-source.md)) — and it settles nothing on its own: every claim below points at the decision record that fixed it, and where this document and a record disagree, the record is right.
+
+The mechanism in one sentence: **an authored vocabulary generates exact primitive definitions into a content-addressed pack, and a versioned grammar composes those definitions into a bounded ordered graph whose every instance names one exact definition revision and the transform that attaches it to its parent.**
+
+## Part 1: the primitive
+
+A primitive is one **exact revision of a data-only definition**. Four properties make it what it is.
+
+**It is data, never an engine resource.** A definition holds numbers, choices, colours, and references; a mesh, a material, or a texture is *built* from it by the engine adapter and is never itself the definition ([decision 0031](decisions/0031-primitive-complete-composition-and-storage.md)). This is what keeps generation engine-independent: the core assembly references no Godot assembly, and a structural test enforces that ([src/README.md](../src/README.md)).
+
+**Its category declares its shape.** The category registry names every category and, per category, its parameters in order, its connector kinds, and the storage policies it permits ([decision 0035](decisions/0035-category-registry-record-and-generator-revision-identifiers.md)). The registry is itself a canonical record with a version and a hash, so a definition can only be read under the revision it was written for, and a build states which revisions it supports rather than assuming one ([decision 0042](decisions/0042-category-registry-revision-1-first-content-records-generator-and-publish-protocol.md)). A revision may add to a category without invalidating the old one, which is how the revisions grew: revision 2 replaced the parameters that could contradict themselves with derived ones ([decision 0050](decisions/0050-registry-revision-2-grammar-version-2-and-versioned-record-growth.md)).
+
+**Its parameters are typed and exact.** A parameter is a bool, a choice from named labels, an integer in a fixed-point unit, a binary turn, a rotation, a three-vector, a colour, or a **reference to another primitive of a named category**. Every length is an integer in a declared unit — 1/256 m for planet-fixed radial lengths, 1/65,536 m for artifact-local ones — and no floating-point value reaches a stored record ([decision 0010](decisions/0010-units-coordinates-and-region-bounds.md), [decision 0020](decisions/0020-canonical-encoding-and-content-hash.md), [decision 0036](decisions/0036-frames-and-transforms-typed-by-connector-kind.md)). A quantity that follows from others is not drawn at all but **derived** by a named rule, which is what stopped a planet's mass and radius from disagreeing about its density ([decision 0037](decisions/0037-derivation-rules-integer-periods-and-orbit-hierarchy.md), [decision 0050](decisions/0050-registry-revision-2-grammar-version-2-and-versioned-record-growth.md)).
+
+**Its identity is its content.** A definition is encoded canonically and its SHA-256 content hash is its name; a pack identifier is the leading 16 bytes of its specification's hash ([decision 0020](decisions/0020-canonical-encoding-and-content-hash.md), [decision 0006](decisions/0006-pack-identity-and-allocation.md)). Two definitions with the same bytes are the same primitive, and a reference names both an identifier and a hash, so a reference either resolves to exactly what was meant or fails ([decision 0042](decisions/0042-category-registry-revision-1-first-content-records-generator-and-publish-protocol.md)). A generated definition has one revision and never a second ([decision 0033](decisions/0033-generated-definitions-have-one-revision.md)).
+
+**Where definitions come from.** An authored **vocabulary** states templates — a category, a label, a range per parameter, and the tags its connectors provide and require — and how many definitions of each template a set should hold. The generator draws each definition on its own random stream, rejects duplicate content within a retry budget, fills a reference parameter from the definitions already allocated, and publishes the result as a pack ([decision 0042](decisions/0042-category-registry-revision-1-first-content-records-generator-and-publish-protocol.md)). Authored content therefore enters as templates and constraints, never as set members, and sets hold generated definitions only in the core release ([decision 0002](decisions/0002-primitive-set-content-gate.md)).
+
+The categories registry revision 2 declares, with the domains each may be composed in:
+
+| Category | Domains | What it carries |
+| --- | --- | --- |
+| `star` | solar system | mass, radius, effective temperature; class and luminosity are derived |
+| `barycentre` | solar system | nothing of its own; it is a place two bodies orbit |
+| `planet` | solar system, planet | mass, mean density, albedo, pole, rotation, body type; radius is derived |
+| `atmosphere` | planet | model, surface pressure, composition, scattering tint |
+| `surface-material` | surface, artifact | shader, base colour, roughness, metallic, and a texture reference |
+| `texture-recipe` | surface, artifact | pattern, scale, two colours, contrast |
+| `geometry-recipe` | artifact | shape, size, segment count, displacement |
+| `artifact-part` | artifact | a geometry reference, a material reference, mass |
+| `artifact` | artifact | family, tier, and its root part |
+
+## Part 2: the primitive-based structure
+
+A structure is a **composition graph**: a bounded, ordered tree of instances. It is not set membership — an instance may repeat a definition, and order is meaningful ([decision 0031](decisions/0031-primitive-complete-composition-and-storage.md)).
+
+**An instance is a definition plus a place.** Each node names one exact definition revision, carries the transform that attaches it to its parent, and holds its children grouped by connector kind in the category's order. A transform's type follows from the connector kind it hangs on — `Rigid` for a part bolted to a part, `OrbitalElements` for a body orbiting a body or barycentre, `SurfaceAnchor` for a region pinned to a planet — and each admits exactly one field list ([decision 0036](decisions/0036-frames-and-transforms-typed-by-connector-kind.md)).
+
+**Every instance has a stable path.** A node is addressed by a canonical path whose first segment is the domain — `solar-system/orbit/1/orbit/0` for a moon, `solar-system/orbit/1/atmosphere/0` for its planet's air, `artifact/attach/1/attach/0` for a part on a part — and that path addresses its random stream, its overlay records, and its cache entries. A path cannot drift, and the graph record refuses one that does ([decision 0031](decisions/0031-primitive-complete-composition-and-storage.md), [decision 0008](decisions/0008-random-stream-derivation.md)).
+
+**A grammar decides what may be composed.** A versioned composition grammar states, per domain, the root category, and per category the connector rules: how many children of which categories may attach, the ranges their transforms are drawn from, and the tags a child must provide for a parent to accept it. Composition is bounded before it recurses — a grammar states the least depth and instance count each category costs, an optional child that would not fit is not placed, and a required child that cannot be placed fails by name with nothing substituted ([decision 0048](decisions/0048-composition-grammar-version-1-graph-records-and-graph-publication.md)). Tags are what make a structure sensible rather than merely legal: a body takes only the orbit band whose zone it can occupy, and a moon must be lighter than its planet ([decision 0051](decisions/0051-grammar-version-3-orbits-scaled-to-the-star-and-bodies-suited-to-their-zone.md)).
+
+**A structure is small, because the variety lives in the set.** A graph record holds, per instance, a variable-length integer naming the definition, its transform, and its child counts — a 27-body solar system is 764 bytes over a 94-definition set of 17.5 KB that every other system shares ([decision 0053](decisions/0053-a-destination-is-a-stored-record-addressed-by-its-levers.md)).
+
+**What a node does not store, it derives.** A scatter of thousands of items is one node with one stream and a bounded derived set, addressed by extending the node's path, not thousands of nodes ([decision 0038](decisions/0038-derived-instances.md)). Whether a derived thing is kept or recomputed is the category's storage policy — `regenerate`, `materialize`, or `hybrid` — pinned by a manifest rather than baked into the definition, and chosen from measurement ([decision 0034](decisions/0034-storage-policy-pinned-by-manifests.md)).
+
+## Part 3: storing and reading back
+
+The database is a data root of content-addressed record files plus an index ([decision 0018](decisions/0018-data-root-region-encoding-and-save-integrity.md)):
+
+| What is stored | The record | Found by |
+| --- | --- | --- |
+| A set of definitions | one manifest and one record per definition, in a pack | its pack identifier |
+| A structure | one graph record, its specification inline | its pack identifier |
+| A destination | one record naming the levers, the winning attempt, and the graph | the pack its two levers derive |
+
+The publish protocol is the same for each: the dependency must already be published with the hash the new record pins, the record is written to a temporary file, verified against its hash, and moved into place, and the index row and its reference-index edges are committed last. One manifest per pack identifier is enforced, and a differing record under an existing identifier is a reproduction failure rather than an overwrite ([decision 0039](decisions/0039-one-manifest-per-pack-identifier.md), [decision 0040](decisions/0040-reference-index-and-deletion-sweep.md), [decision 0042](decisions/0042-category-registry-revision-1-first-content-records-generator-and-publish-protocol.md)).
+
+Reading back never regenerates: the index names the record, the record is verified before it is decoded, the set it depends on is reloaded and verified first, and a revision or grammar the build does not support is refused by name rather than reinterpreted ([decision 0035](decisions/0035-category-registry-record-and-generator-revision-identifiers.md)). The commands that do this are in [tools.md](tools.md#dotnet).
+
+## Part 4: why this is the universal base
+
+The same two ideas carry every generated thing in the game, and only the vocabulary, the grammar, and the presentation differ:
+
+| Level | Root category | Attaches by | Judged by |
+| --- | --- | --- | --- |
+| Solar system | `star` | orbital elements | its derived description and the review view ([decision 0045](decisions/0045-close-views-only-in-the-surface-sky-and-a-derived-system-description.md), [decision 0052](decisions/0052-the-two-levers-compose-a-destination-and-a-review-view-shows-it.md), [decision 0054](decisions/0054-the-review-panel-carries-the-summary-while-the-system-is-framed.md)) |
+| Planet surface | a region under a planet | surface anchor | not yet decided ([finding 48](review.md#48-every-randomization-level-is-to-be-judged-graphically-and-nothing-says-which-view-in-what-order-or-against-what-vector)) |
+| Artifact | `artifact` | rigid | the content gate's rendered sample and silhouette comparison ([decision 0002](decisions/0002-primitive-set-content-gate.md)) |
+
+What follows from that, and is worth stating because it is easy to forget:
+
+- **One generator, one store, one reader.** A new level needs a vocabulary, a grammar over a registry revision, and a presentation. It needs no new storage, no new identity scheme, and no new determinism argument, because those are properties of the primitive and the graph, not of the level.
+- **One engine adapter.** Whatever the level, the engine builds its resources from the same data-only definitions through the same adapter, and the same rule holds: the engine resource is never the definition ([decision 0031](decisions/0031-primitive-complete-composition-and-storage.md)). A category that declares no appearance is drawn by a stand-in, and a view that stands in says so.
+- **One determinism vector.** The same specification yields the same manifest hash, the same graph specification the same graph hash, on Linux and on Windows, in separate processes; that is what every level's reproduction claim rests on ([decision 0008](decisions/0008-random-stream-derivation.md), [decision 0021](decisions/0021-sha256-stream-derivation.md), [decision 0020](decisions/0020-canonical-encoding-and-content-hash.md)).
+- **One review loop.** A level is iterated: a version of its content or grammar, a fixed sample, a mechanical check against the rules, and the owner's reading of the sample; the record of each iteration pins what reproduces it ([decision 0047](decisions/0047-usable-storage-and-structure-generation-then-solar-system-iterations.md)).
+- **A player's controls are inputs to the same machinery.** The two destination levers, a distance tier and a seed, name a composition seed and therefore a structure; nothing else in the chain knows they came from a player ([decision 0043](decisions/0043-destination-controls-distance-tier-and-seed-lever.md), [decision 0052](decisions/0052-the-two-levers-compose-a-destination-and-a-review-view-shows-it.md)).
+
+Where the levels genuinely differ is presentation, not machinery. A solar system cannot be drawn to scale, so its review view places orbit and body radii logarithmically and says so on screen; an artifact is metre-scale and is drawn as it is. That difference is a presentation decision, recorded as one, and it changes nothing below it.
+
+## Terms
+
+The [glossary](glossary.md) is normative for every term used here, among them primitive definition, exact primitive reference, primitive instance, derived instance, primitive category, category registry, composition domain, pack, template / vocabulary, primitive set, set manifest, storage policy, content hash, stream path, and destination specification. Where this document's prose and the glossary differ, the glossary is right.

@@ -14,6 +14,7 @@ The scaffold, the core's deterministic random foundation, the primitive-set foun
 - [Development plan](docs/development-plan.md): proposed release scope, milestones, usability requirements, verification targets, and production decisions.
 - [Implementation progress](docs/progress.md): what is built, what is verified and how, what is not, and the open items.
 - [External tools](docs/tools.md): the exact call for every external program the project drives, where it runs from, and what success looks like.
+- [Primitives and primitive-based structures](docs/primitives.md): the universal base — what a primitive is, what a structure is, how both are stored and read back, and why every generated level rests on the same two ideas.
 - [Technical design](docs/technical-design.md): generation, primitive versions, persistence, artifact valuation, and multiplayer ownership.
 - [Technology decision](docs/technology-stack.md): selected platform/libraries, alternatives, native-platform validation, and numbered decisions for confirmation.
 - [Design review](docs/review.md): foundational decisions that would be costly to reverse, gaps, inconsistencies, proposed solutions, and their status.
