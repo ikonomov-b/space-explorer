@@ -180,13 +180,14 @@
     <h1>Definition to Destination</h1>
     <p class="lede">Every generated thing in the game rests on two ideas: <strong>a primitive</strong> is one exact revision of a data-only definition, and <strong>a structure</strong> is a bounded ordered graph of instances that name those revisions. Drawn here as it actually stands, with every number read out of the live data root rather than the plan.</p>
     <div class="measured">
-      <span><b>registry 3</b> 81883cec</span>
-      <span><b>grammar 4</b> 53314489</span>
+      <span><b>registry 1&ndash;4</b> newest 397849f6</span>
+      <span><b>grammar 1&ndash;5</b> newest 34ae8ca8</span>
       <span><b>generator 2</b></span>
       <span><b>98</b> packs</span>
       <span><b>308</b> records</span>
       <span><b>75,187</b> bytes</span>
-      <span>measured 2026-09-10, Debian 13 x86_64</span>
+      <span>stored under registries 2 and 3</span>
+      <span>measured 2026-09-10 by tools/stats.cs</span>
     </div>
   </header>
 
@@ -419,18 +420,18 @@
           <text class="tl" x="927" y="424" text-anchor="end">pattern + colours</text>
         </svg>
       </div>
-      <figcaption><b>One real definition, and everything it does not hold.</b> Definition 74 is the 1,290 km moon in the system below. Each arrow is an exact reference &mdash; a pack-local id together with the content hash of what it names &mdash; so the appearance of a body is resolved from stored content down to the last colour, and a reference to the wrong revision cannot silently resolve.</figcaption>
+      <figcaption><b>One real definition, and everything it does not hold.</b> Definition 74 is the 1,290 km moon in the system below. Each arrow is an exact reference &mdash; a pack-local id together with the content hash of what it names &mdash; so the appearance of a body is resolved from stored content down to the last colour, and a reference to the wrong revision cannot silently resolve. The unit notes in the right-hand column are this page&rsquo;s: under revision 3 a stored 709 carries no unit at all. Registry revision 4 moves exactly those &mdash; the unit, the default, the bounds &mdash; into the registry record.</figcaption>
     </figure>
 
     <div class="tbl-wrap">
       <table>
-        <caption>category-registry/3 &middot; 81883cecb0f55908b7a7560d4b3c245042ed631dbd456c721a4464a7ec5fa8c7</caption>
+        <caption>category-registry/4 &middot; 397849f68ae7fd5ddbf60a89046c140b3ffaf726dc2c4075558b4540ccb727eb &middot; the newest of the four this build loads</caption>
         <thead>
           <tr><th class="num">#</th><th>Category</th><th>Composition domains</th><th class="num">Params</th><th>Connectors</th><th>Derived</th></tr>
         </thead>
         <tbody>
           <tr><td class="num">1</td><td><span class="cat">star</span></td><td>solar system</td><td class="num">3</td><td class="cat">orbit</td><td>luminosity, spectral class</td></tr>
-          <tr><td class="num">2</td><td><span class="cat">barycentre</span></td><td>solar system</td><td class="num">0</td><td class="cat">orbit</td><td>&mdash;</td></tr>
+          <tr><td class="num">2</td><td><span class="cat">barycentre</span></td><td>solar system</td><td class="num">0</td><td class="cat">orbit</td><td>mass, by <span class="mono">aggregate-sum/1</span></td></tr>
           <tr><td class="num">3</td><td><span class="cat">planet</span></td><td>solar system, planet</td><td class="num">9</td><td class="cat">atmosphere, orbit</td><td>radius</td></tr>
           <tr><td class="num">4</td><td><span class="cat">atmosphere</span></td><td>planet</td><td class="num">4</td><td>&mdash;</td><td>&mdash;</td></tr>
           <tr><td class="num">5</td><td><span class="cat">surface-material</span></td><td>surface, artifact</td><td class="num">5</td><td>&mdash;</td><td>&mdash;</td></tr>
@@ -441,7 +442,7 @@
         </tbody>
       </table>
     </div>
-    <p class="note">A revision may add to a category without invalidating the older one, and a record of an earlier revision keeps its bytes and therefore its hash. That is how these grew: revision 2 replaced the parameters that could contradict themselves with derived ones, and revision 3 gave a planet the material its surface is made of and let a definition carry tags of its own. This build loads all three revisions side by side; a pack published under revision 1 still reloads today. Every category currently permits one storage policy, <span class="mono">materialize</span>, of the three the model admits.</p>
+    <p class="note">A revision may add to a category without invalidating the older one, and a record of an earlier revision keeps its bytes and therefore its hash. That is how these grew: revision 2 replaced the parameters that could contradict themselves with derived ones; revision 3 gave a planet the material its surface is made of and let a definition carry tags of its own; and revision 4 puts what a stored quantity <em>means</em> into the record &mdash; a unit as a base symbol and a decimal exponent, a default wherever the kind admits one, the decoder&rsquo;s validation bounds, a full descriptor on a derived parameter, and a barycentre&rsquo;s mass as the first aggregation rule. The fault it answers is inside revision 3: <span class="mono">mass</span> appears on three categories in two different units, and nothing in the bytes said which. This build loads all four revisions side by side, a pack published under revision 1 still reloads today, and the two packs in this data root remain revision 2 and revision 3 records. Every category permits one storage policy so far, <span class="mono">materialize</span>, of the three the model admits.</p>
   </section>
 
   <section>
@@ -835,13 +836,16 @@ tier      pass (starter)</pre>
         <li><b>World packages, overlays and caches are specified, not built.</b> The composition chunk, the primitive-state overlay keyed by instance path, the eviction rules and the deletion sweep all have their contracts written and no code behind them yet.</li>
         <li><b>Cross-package set algebra is deliberately unimplemented.</b> Union, intersection and difference over exact references are specified, and the interface sits in the core unimplemented until a feature consumes them.</li>
         <li><b>One storage policy is in use.</b> Every category currently permits <span class="mono">materialize</span> only. <span class="mono">regenerate</span> and <span class="mono">hybrid</span> wait on measured throughput, and the choice is pinned by a manifest so that measuring never changes a definition&rsquo;s hash.</li>
+        <li><b>A pair still contradicts its own masses.</b> Registry revision 4 gives a barycentre the derived mass it always implied; placing the two companions by their mass ratio is a grammar&rsquo;s work, and grammar 5 so far only restates grammar 4&rsquo;s rules over the new registry. Nothing in this data root is composed under either yet.</li>
+        <li><b>The registry, the grammars and the numeric tables are code where the vocabulary is content.</b> A template vocabulary is authored JSON that the generator reads; the registry and the grammars are C#. That asymmetry is a recorded, open finding, not a settled design.</li>
+        <li><b>Life is a structural absence.</b> No category carries it, so the tier that requires it cannot be composed at all.</li>
         <li><b>No performance target has been measured.</b> Everything above is correctness and size, not speed.</li>
       </ul>
     </div>
   </section>
 
   <footer>
-    <p>Drawn from the repository on 2026-09-10 and measured against the live data root on a Debian 13 x86_64 workstation, with the commands single-sourced in <code>docs/tools.md</code>. The orientation this page follows is <code>docs/primitives.md</code>; the field-by-field contract is <code>docs/technical-design.md</code>; the normative terms are in <code>docs/glossary.md</code>; what is actually built is <code>docs/progress.md</code>. Each claim rests on an accepted decision record in <code>docs/decisions/</code> &mdash; 0002, 0006, 0008, 0010, 0018, 0020, 0031, 0033 to 0042, 0048, 0050 to 0057. Where this page and a record disagree, the record is right.</p>
+    <p>Drawn from the repository on 2026-09-10 and measured against the live data root on a Debian 13 x86_64 workstation, with the commands single-sourced in <code>docs/tools.md</code>; every count and size here is what <code>dotnet run tools/stats.cs</code> reports. The orientation this page follows is <code>docs/primitives.md</code>; the field-by-field contract is <code>docs/technical-design.md</code>; the normative terms are in <code>docs/glossary.md</code>; what is actually built is <code>docs/progress.md</code>. Each claim rests on an accepted decision record in <code>docs/decisions/</code> &mdash; 0002, 0006, 0008, 0010, 0018, 0020, 0031, 0033 to 0042, 0048, 0050 to 0060. Where this page and a record disagree, the record is right.</p>
     <p style="margin-top:12px">Page source: <code>docs/diagrams/primitives-and-storage.html</code>.</p>
   </footer>
 </div>
