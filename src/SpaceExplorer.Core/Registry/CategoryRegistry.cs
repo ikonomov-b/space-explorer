@@ -42,6 +42,30 @@ public sealed class CategoryRegistry
     /// </summary>
     public bool CarriesTags => Revision >= 3;
 
+    /// <summary>
+    /// Whether this revision's records carry a unit and a default per parameter, a descriptor per derived
+    /// parameter, a fan-out bound per category, and the decoder's own bounds in the header. Revision 4
+    /// and later do; earlier ones encode exactly what they always did (decision 0060).
+    /// </summary>
+    public bool CarriesUnits => Revision >= CategoryDefinition.FirstRevisionWithUnits;
+
+    /// <summary>
+    /// The bounds a decoder must know before it allocates, which revision 4 and later carry in the record
+    /// header rather than leaving to the build that opens it: the greatest number of categories, of
+    /// parameters and of connectors per category, of domains, of generator revisions, of enum labels, and
+    /// of tags in one list (decision 0060).
+    /// </summary>
+    public static IReadOnlyList<int> DecoderBounds =>
+    [
+        MaxCategories,
+        CategoryDefinition.MaxParameters,
+        CategoryDefinition.MaxConnectors,
+        CategoryDefinition.MaxDomains,
+        CategoryDefinition.MaxGeneratorRevisions,
+        ParameterDescriptor.MaxEnumLabels,
+        TagList.MaxTags,
+    ];
+
     /// <summary>The domain label a definition record laid out under this revision carries.</summary>
     public string DefinitionDomain => $"primitive-definition/1/registry/{Revision}";
 
@@ -129,6 +153,21 @@ public sealed class CategoryRegistry
     public static CategoryRegistry Decode(byte[] bytes, uint expectedRevision)
     {
         var reader = new CanonicalReader(bytes, DomainFor(expectedRevision));
+
+        if (expectedRevision >= CategoryDefinition.FirstRevisionWithUnits)
+        {
+            // A bound this build does not recognise is refused rather than reinterpreted: the record and
+            // the reader must agree about what they are allowed to allocate (decision 0060).
+            for (int index = 0; index < DecoderBounds.Count; index++)
+            {
+                int declared = reader.ReadCount();
+                if (declared != DecoderBounds[index])
+                {
+                    throw new FormatException($"The registry declares decoder bound {index} as {declared}; this build holds {DecoderBounds[index]}.");
+                }
+            }
+        }
+
         int count = reader.ReadCount();
         if (count > MaxCategories)
         {
@@ -202,6 +241,16 @@ public sealed class CategoryRegistry
     private CanonicalWriter Write()
     {
         var writer = new CanonicalWriter(Domain);
+
+        // The header first, so a decoder applies the record's own bounds to everything after it.
+        if (CarriesUnits)
+        {
+            foreach (int bound in DecoderBounds)
+            {
+                writer.WriteCount(bound);
+            }
+        }
+
         writer.WriteCount(_categories.Length);
         foreach (CategoryDefinition category in _categories)
         {

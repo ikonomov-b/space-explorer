@@ -66,7 +66,7 @@ File name: `NNNN-short-title.md`. Use [0000-template.md](0000-template.md). A re
 | [0055](0055-definition-level-tags-and-tagged-references.md) | A definition carries tags of its own, a reference may require them, and registry revision 3 gives a planet its surface | Accepted |
 | [0056](0056-surface-raster-rule-and-the-boundary-of-stream-derivation.md) | A texture recipe becomes pixels in the core, by the versioned rule `derive-surface-raster/1` | Accepted |
 | [0057](0057-the-view-draws-what-the-content-stores.md) | The review view draws what the content stores: one size scale, the stored pole, the stored orbit, the stored air, and a star's colour from its temperature | Accepted |
-| [0058](0058-tier-rules-are-a-pinned-record.md) | The tier rules are a versioned record a destination pins | Proposed |
-| [0059](0059-region-limits-are-a-pinned-record.md) | The minimum landable radius is a region-limits record, and the description that prints it is version 3 | Proposed |
-| [0060](0060-registry-revision-4-units-defaults-and-validation-limits.md) | Category registry revision 4: a unit and a default on every parameter, the validation limits in the record, and a barycentre's derived mass | Proposed |
+| [0058](0058-tier-rules-are-a-pinned-record.md) | The tier rules are a versioned record a destination pins | Accepted |
+| [0059](0059-region-limits-are-a-pinned-record.md) | The minimum landable radius is a region-limits record, and the description that prints it is version 3 | Accepted |
+| [0060](0060-registry-revision-4-units-defaults-and-validation-limits.md) | Category registry revision 4: a unit and a default on every parameter, the validation limits in the record, and a barycentre's derived mass | Accepted |
 <!-- generated:end decisions -->

@@ -1,6 +1,6 @@
 # 0059. The minimum landable radius is a region-limits record, and the description that prints it is version 3
 
-Date: 2026-09-10. Status: Proposed. Source: the owner's choice of 2026-09-10, on [review finding 51](../review.md#51-the-minimum-landable-radius-decides-a-verdict-from-a-code-constant), of the recommended option — a numeric table of its own rather than a second version of the suit profile. Clears [finding 51](../review.md#51-the-minimum-landable-radius-decides-a-verdict-from-a-code-constant). Completes the sequence [decision 0049](0049-suit-profile-and-system-description-version-1-and-derivation-rules-as-named-implementations.md) began and [decision 0058](0058-tier-rules-are-a-pinned-record.md) continued: every number a destination's verdict rests on is now a record the destination pins.
+Date: 2026-09-10. Status: Accepted. Source: the owner's choice of 2026-09-10, on [review finding 51](../review.md#51-the-minimum-landable-radius-decides-a-verdict-from-a-code-constant), of the recommended option — a numeric table of its own rather than a second version of the suit profile. Clears [finding 51](../review.md#51-the-minimum-landable-radius-decides-a-verdict-from-a-code-constant). Completes the sequence [decision 0049](0049-suit-profile-and-system-description-version-1-and-derivation-rules-as-named-implementations.md) began and [decision 0058](0058-tier-rules-are-a-pinned-record.md) continued: every number a destination's verdict rests on is now a record the destination pins.
 
 ## Context
 

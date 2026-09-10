@@ -33,7 +33,12 @@ internal sealed record VocabularyFile(TemplateVocabulary Vocabulary, IReadOnlyLi
             {
                 JsonElement rangeElement = default;
                 bool given = parameters.ValueKind == JsonValueKind.Object && parameters.TryGetProperty(descriptor.Label, out rangeElement) && rangeElement.ValueKind != JsonValueKind.Null;
-                ranges.Add(given ? ParseRange(rangeElement, descriptor, label) : FullRange(descriptor));
+                // From registry revision 4 a template that ranges nothing for a parameter pins it to the
+                // category's default; before it, silence widened to the whole range, which was a policy
+                // in this tool behind no record (decision 0060).
+                ranges.Add(given
+                    ? ParseRange(rangeElement, descriptor, label)
+                    : registry.CarriesUnits ? Pinned(descriptor, label) : FullRange(descriptor));
             }
 
             JsonElement connectors = element.TryGetProperty("connectors", out JsonElement c) ? c : default;
@@ -133,6 +138,49 @@ internal sealed record VocabularyFile(TemplateVocabulary Vocabulary, IReadOnlyLi
             default:
                 throw Invalid($"'{template}/{descriptor.Label}' has an unknown kind");
         }
+    }
+
+    /// <summary>The range that admits only the descriptor's default, which is what silence now means.</summary>
+    private static ParameterRange Pinned(ParameterDescriptor descriptor, string template)
+    {
+        if (descriptor.Kind == ParameterKind.PrimitiveRef)
+        {
+            // A reference has no default and keeps drawing from every definition of its category.
+            return ParameterRange.Ref();
+        }
+
+        ParameterValue standard = descriptor.Default
+            ?? throw Invalid($"'{template}/{descriptor.Label}' states no range and the category declares no default");
+
+        return descriptor.Kind switch
+        {
+            ParameterKind.Bool => ParameterRange.Bool(!standard.AsBool, standard.AsBool),
+            ParameterKind.Enum => ParameterRange.Enum(standard.AsEnumIndex),
+            ParameterKind.Integer => ParameterRange.Integer(standard.AsInteger, standard.AsInteger),
+            ParameterKind.BinaryTurn => ParameterRange.BinaryTurn(standard.AsBinaryTurn, standard.AsBinaryTurn),
+            ParameterKind.Rotation => Rotation(standard),
+            ParameterKind.Vector3 => Vector(standard),
+            ParameterKind.Colour => Channels(standard),
+            _ => throw Invalid($"'{template}/{descriptor.Label}' has an unknown kind"),
+        };
+    }
+
+    private static ParameterRange Rotation(ParameterValue standard)
+    {
+        (int yaw, int pitch, int roll) = standard.AsRotation;
+        return ParameterRange.Rotation((yaw, yaw), (pitch, pitch), (roll, roll));
+    }
+
+    private static ParameterRange Vector(ParameterValue standard)
+    {
+        (long x, long y, long z) = standard.AsVector3;
+        return ParameterRange.Vector3((x, x), (y, y), (z, z));
+    }
+
+    private static ParameterRange Channels(ParameterValue standard)
+    {
+        (byte red, byte green, byte blue, byte alpha) = standard.AsColour;
+        return ParameterRange.Colour((red, red), (green, green), (blue, blue), (alpha, alpha));
     }
 
     private static ParameterRange FullRange(ParameterDescriptor descriptor) => descriptor.Kind switch

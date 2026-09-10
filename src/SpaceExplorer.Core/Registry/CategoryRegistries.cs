@@ -12,7 +12,7 @@ public sealed class CategoryRegistries
     private CategoryRegistries(CategoryRegistry[] registries) => _registries = registries;
 
     /// <summary>The revisions this build supports. An earlier one is retained so the content published under it still loads (decision 0035).</summary>
-    public static CategoryRegistries Supported { get; } = Of(CategoryRegistryRevision1.Registry, CategoryRegistryRevision2.Registry, CategoryRegistryRevision3.Registry);
+    public static CategoryRegistries Supported { get; } = Of(CategoryRegistryRevision1.Registry, CategoryRegistryRevision2.Registry, CategoryRegistryRevision3.Registry, CategoryRegistryRevision4.Registry);
 
     /// <summary>The supported revisions in ascending revision order.</summary>
     public IReadOnlyList<CategoryRegistry> Registries => _registries;

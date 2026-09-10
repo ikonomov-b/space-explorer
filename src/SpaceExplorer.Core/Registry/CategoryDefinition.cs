@@ -7,7 +7,16 @@ namespace SpaceExplorer.Core.Registry;
 /// generator revision identifier of the rule, which is decision 0037's computed derived parameter and
 /// the pin decision 0035 requires. A registry revision that carries one is the first to encode them.
 /// </summary>
-public sealed record DerivedParameter(string Label, string Rule);
+public sealed record DerivedParameter(string Label, string Rule, ParameterDescriptor? Descriptor = null)
+{
+    /// <summary>
+    /// From registry revision 4 a derived parameter carries the descriptor a stored one carries, minus
+    /// the default nothing supplies, so a computed quantity is as readable as a stored one and
+    /// `spectral-class` keeps its labels in the record rather than in the rule
+    /// ([decision 0060](../../../docs/decisions/0060-registry-revision-4-units-defaults-and-validation-limits.md)).
+    /// </summary>
+    public ParameterDescriptor? Descriptor { get; } = Descriptor;
+}
 
 /// <summary>
 /// One category of the registry: a stable numeric ID with zero reserved, a label, the domains its
@@ -26,6 +35,13 @@ public sealed record CategoryDefinition
     /// <summary>The first registry revision whose record encodes derived parameters.</summary>
     public const uint FirstRevisionWithDerived = 2;
 
+    /// <summary>
+    /// The first revision whose records carry a unit and a default per parameter, the decoder's bounds in
+    /// the registry header, a total fan-out bound per category, and a descriptor per derived parameter
+    /// (decision 0060).
+    /// </summary>
+    public const uint FirstRevisionWithUnits = 4;
+
     public CategoryDefinition(
         uint id,
         string label,
@@ -35,7 +51,8 @@ public sealed record CategoryDefinition
         StoragePolicies permittedPolicies,
         uint maxDerivedInstances,
         IReadOnlyList<string> generatorRevisions,
-        IReadOnlyList<DerivedParameter>? derivedParameters = null)
+        IReadOnlyList<DerivedParameter>? derivedParameters = null,
+        int? maxChildrenTotal = null)
     {
         StreamPath.Validate(label);
         ArgumentNullException.ThrowIfNull(domains);
@@ -129,6 +146,10 @@ public sealed record CategoryDefinition
         Connectors = [.. connectors];
         PermittedPolicies = permittedPolicies;
         MaxDerivedInstances = maxDerivedInstances;
+
+        // Its default is the sum of what the connectors already admit, which is what a decoder had to
+        // compute for itself before the field existed (decision 0060).
+        MaxChildrenTotal = maxChildrenTotal ?? Connectors.Sum(connector => (int)connector.MaxCount);
         GeneratorRevisions = [.. generatorRevisions];
     }
 
@@ -139,6 +160,13 @@ public sealed record CategoryDefinition
     public IReadOnlyList<ConnectorKind> Connectors { get; }
     public StoragePolicies PermittedPolicies { get; }
     public uint MaxDerivedInstances { get; }
+
+    /// <summary>
+    /// The greatest number of children a node of this category may hold across all its connectors: the
+    /// fan-out bound a decoder allocates against, which was the implicit sum of the connector maxima and
+    /// is explicit from registry revision 4 (decision 0060).
+    /// </summary>
+    public int MaxChildrenTotal { get; }
     public IReadOnlyList<string> GeneratorRevisions { get; }
 
     /// <summary>Finds a parameter by label, or null.</summary>
@@ -178,7 +206,7 @@ public sealed record CategoryDefinition
         writer.WriteCount(Parameters.Count);
         foreach (ParameterDescriptor parameter in Parameters)
         {
-            parameter.Encode(writer);
+            parameter.Encode(writer, revision >= FirstRevisionWithUnits);
         }
 
         writer.WriteCount(Connectors.Count);
@@ -204,7 +232,19 @@ public sealed record CategoryDefinition
             {
                 writer.WriteText(parameter.Label);
                 writer.WritePath(parameter.Rule);
+                if (revision >= FirstRevisionWithUnits)
+                {
+                    (parameter.Descriptor ?? throw new ArgumentException($"Derived parameter '{parameter.Label}' carries no descriptor, which registry revision 4 and later require (decision 0060)."))
+                        .Encode(writer, carriesUnits: true, withDefault: false);
+                }
             }
+        }
+
+        // The greatest fan-out a decoder must allocate for, explicit from revision 4 where it was the
+        // implicit sum of the connector maxima (decision 0060).
+        if (revision >= FirstRevisionWithUnits)
+        {
+            writer.WriteCount(MaxChildrenTotal);
         }
     }
 
@@ -234,7 +274,7 @@ public sealed record CategoryDefinition
         var parameters = new ParameterDescriptor[parameterCount];
         for (int index = 0; index < parameterCount; index++)
         {
-            parameters[index] = ParameterDescriptor.Decode(reader);
+            parameters[index] = ParameterDescriptor.Decode(reader, revision >= FirstRevisionWithUnits);
         }
 
         int connectorCount = reader.ReadCount();
@@ -275,13 +315,19 @@ public sealed record CategoryDefinition
 
             for (int index = 0; index < derivedCount; index++)
             {
-                derived.Add(new DerivedParameter(reader.ReadText(), reader.ReadPath()));
+                string derivedLabel = reader.ReadText();
+                string rule = reader.ReadPath();
+                derived.Add(revision >= FirstRevisionWithUnits
+                    ? new DerivedParameter(derivedLabel, rule, ParameterDescriptor.Decode(reader, carriesUnits: true, withDefault: false))
+                    : new DerivedParameter(derivedLabel, rule));
             }
         }
 
+        int? maxChildrenTotal = revision >= FirstRevisionWithUnits ? reader.ReadCount() : null;
+
         try
         {
-            return new CategoryDefinition(id, label, domains, parameters, connectors, policies, maxDerived, revisions, derived);
+            return new CategoryDefinition(id, label, domains, parameters, connectors, policies, maxDerived, revisions, derived, maxChildrenTotal);
         }
         catch (ArgumentException exception)
         {

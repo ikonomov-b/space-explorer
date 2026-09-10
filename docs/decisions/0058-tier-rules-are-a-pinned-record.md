@@ -1,6 +1,6 @@
 # 0058. The tier rules are a versioned record a destination pins
 
-Date: 2026-09-10. Status: Proposed. Source: the solar-system storage audit of 2026-09-10, which found that a destination pins everything that decides its verdict except the rules that gave it. Applies the numeric-table rule of [decision 0049](0049-suit-profile-and-system-description-version-1-and-derivation-rules-as-named-implementations.md) to the per-tier rules of [decision 0044](0044-tiered-system-composition-one-star-and-explorability-by-validation.md). It clears no review finding: the audit deliberately raised none, because the work was already in flight when it read the code.
+Date: 2026-09-10. Status: Accepted. Source: the solar-system storage audit of 2026-09-10, which found that a destination pins everything that decides its verdict except the rules that gave it. Applies the numeric-table rule of [decision 0049](0049-suit-profile-and-system-description-version-1-and-derivation-rules-as-named-implementations.md) to the per-tier rules of [decision 0044](0044-tiered-system-composition-one-star-and-explorability-by-validation.md). It clears no review finding: the audit deliberately raised none, because the work was already in flight when it read the code.
 
 ## Context
 

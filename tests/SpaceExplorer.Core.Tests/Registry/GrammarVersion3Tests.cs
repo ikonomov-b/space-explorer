@@ -20,7 +20,7 @@ public class GrammarVersion3Tests
 
         Assert.Equal(version3.Hash, CompositionGrammar.Decode(version3.Bytes, CategoryRegistryRevision2.Registry, 3).Hash);
         Assert.Throws<FormatException>(() => CompositionGrammar.Decode(version3.Bytes, CategoryRegistryRevision2.Registry, 2));
-        Assert.Equal(4, CompositionGrammars.Supported.Grammars.Count);
+        Assert.Equal(5, CompositionGrammars.Supported.Grammars.Count);
         Assert.Equal(3u, CompositionGrammars.Supported.Newest(2)!.Version);
         Assert.Equal(1u, CompositionGrammars.Supported.Newest(1)!.Version);
     }
