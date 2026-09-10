@@ -25,6 +25,8 @@ It verifies every internal link and anchor, and that decision-record numbering i
 
 The [`software-architect`](.claude/agents/software-architect.md) agent carries that process: delegate a design question, a check of the code against the documents, or the drafting of a record and its application to every affected document. It does not implement, commit, or accept — acceptance stays with Boyan.
 
+Two more agents carry the chores that recur around it. [`run-recorder`](.claude/agents/run-recorder.md) watches a pushed run, reads both the Linux and the Windows leg, and writes what the verification tables cite into the row that claims it. [`iteration-runner`](.claude/agents/iteration-runner.md) runs one solar-system iteration of [decision 0047](docs/decisions/0047-usable-storage-and-structure-generation-then-solar-system-iterations.md), captures its graphic sample, names the faults it found and on which seed, and drafts the row with the pins that reproduce it. Neither commits, and neither rules: a run is what CI did, and an iteration's verdict is Boyan's.
+
 ## This repo is edited by concurrent sessions
 
 Boyan and other Claude Code sessions can be working the same checkout at the same time, coordinating over `SendMessage` when visible as peers. Decision numbers are contiguous only among *git-tracked* files, so a peer's in-flight, uncommitted decision is invisible until it lands — claiming its number produces a collision. Re-check `git status` and `ls docs/decisions/` immediately before writing, not just at the start of a turn; prefer `git add <specific paths>` over `git add -A`; announce what you're about to touch before you start, not only when asked.
