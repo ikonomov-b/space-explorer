@@ -9,13 +9,14 @@ namespace SpaceExplorer.Core.Registry;
 /// </summary>
 public sealed record ParameterRange
 {
-    private ParameterRange(ParameterKind kind, long[] min, long[] max, uint[] enumAllowed, byte boolMask)
+    private ParameterRange(ParameterKind kind, long[] min, long[] max, uint[] enumAllowed, byte boolMask, string[]? requiredTags = null)
     {
         Kind = kind;
         Min = min;
         Max = max;
         EnumAllowed = enumAllowed;
         BoolMask = boolMask;
+        RequiredTags = requiredTags ?? [];
     }
 
     public ParameterKind Kind { get; }
@@ -31,6 +32,14 @@ public sealed record ParameterRange
 
     /// <summary>Bit 0 allows false, bit 1 allows true.</summary>
     public byte BoolMask { get; }
+
+    /// <summary>
+    /// For a reference, the tags a candidate definition must carry: the generator draws only from
+    /// definitions whose own tags satisfy these, so a body takes a material that suits it rather than any
+    /// material of the category (decision 0055). Empty for every other kind, and empty for a reference
+    /// that accepts any definition of its category.
+    /// </summary>
+    public IReadOnlyList<string> RequiredTags { get; }
 
     public static ParameterRange Bool(bool allowFalse, bool allowTrue)
     {
@@ -68,7 +77,8 @@ public sealed record ParameterRange
         Components(ParameterKind.Vector3, [x.Min, y.Min, z.Min], [x.Max, y.Max, z.Max]);
     public static ParameterRange Colour((byte Min, byte Max) red, (byte Min, byte Max) green, (byte Min, byte Max) blue, (byte Min, byte Max) alpha) =>
         Components(ParameterKind.Colour, [red.Min, green.Min, blue.Min, alpha.Min], [red.Max, green.Max, blue.Max, alpha.Max]);
-    public static ParameterRange Ref() => new(ParameterKind.PrimitiveRef, [], [], [], 0);
+    /// <summary>A reference to any earlier definition of the descriptor's category carrying every tag in <paramref name="requiredTags"/>.</summary>
+    public static ParameterRange Ref(params string[] requiredTags) => new(ParameterKind.PrimitiveRef, [], [], [], 0, TagList.Validate(requiredTags, nameof(requiredTags)));
 
     private static ParameterRange Components(ParameterKind kind, long[] min, long[] max)
     {
@@ -159,9 +169,15 @@ public sealed record ParameterRange
         };
     }
 
-    internal void Encode(CanonicalWriter writer, ParameterDescriptor descriptor)
+    /// <param name="carriesTags">Whether the enclosing record's registry revision carries tags (decision 0055).</param>
+    internal void Encode(CanonicalWriter writer, ParameterDescriptor descriptor, bool carriesTags)
     {
         Validate(descriptor);
+
+        if (Kind == ParameterKind.PrimitiveRef && RequiredTags.Count > 0 && !carriesTags)
+        {
+            throw new ArgumentException($"Parameter '{descriptor.Label}' requires tags of what it references, which a registry revision before 3 does not carry (decision 0055).", nameof(descriptor));
+        }
 
         switch (Kind)
         {
@@ -203,11 +219,17 @@ public sealed record ParameterRange
 
                 break;
             case ParameterKind.PrimitiveRef:
+                if (carriesTags)
+                {
+                    TagList.Encode(writer, RequiredTags);
+                }
+
                 break;
         }
     }
 
-    internal static ParameterRange Decode(CanonicalReader reader, ParameterDescriptor descriptor)
+    /// <param name="carriesTags">Whether the enclosing record's registry revision carries tags (decision 0055).</param>
+    internal static ParameterRange Decode(CanonicalReader reader, ParameterDescriptor descriptor, bool carriesTags)
     {
         try
         {
@@ -218,7 +240,7 @@ public sealed record ParameterRange
                 ParameterKind.BinaryTurn or ParameterKind.Rotation => DecodeComponents(reader, descriptor, r => r.ReadInt32()),
                 ParameterKind.Colour => DecodeComponents(reader, descriptor, r => r.ReadUInt8()),
                 ParameterKind.Integer or ParameterKind.Vector3 => DecodeComponents(reader, descriptor, r => r.ReadVarInt()),
-                ParameterKind.PrimitiveRef => Ref(),
+                ParameterKind.PrimitiveRef => Ref(carriesTags ? TagList.Decode(reader) : []),
                 _ => throw new FormatException($"Parameter '{descriptor.Label}' has unknown kind {(byte)descriptor.Kind}."),
             };
             range.Validate(descriptor);

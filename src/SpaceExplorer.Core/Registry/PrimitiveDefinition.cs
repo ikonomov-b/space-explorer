@@ -18,6 +18,7 @@ public sealed class PrimitiveDefinition
         ParameterValue[] parameters,
         ConnectorDeclaration[] connectors,
         string generatorRevision,
+        string[] tags,
         byte[] bytes,
         ContentHash hash)
     {
@@ -27,6 +28,7 @@ public sealed class PrimitiveDefinition
         Parameters = parameters;
         Connectors = connectors;
         GeneratorRevision = generatorRevision;
+        Tags = tags;
         _bytes = bytes;
         Hash = hash;
     }
@@ -38,6 +40,13 @@ public sealed class PrimitiveDefinition
     public Provenance Provenance { get; }
     public IReadOnlyList<ParameterValue> Parameters { get; }
     public IReadOnlyList<ConnectorDeclaration> Connectors { get; }
+
+    /// <summary>
+    /// What this definition suits, as its template declared: the tags a reference elsewhere may require
+    /// of what it draws, so a body takes a material made for its kind (decision 0055). Empty under a
+    /// registry revision that carries no tags.
+    /// </summary>
+    public IReadOnlyList<string> Tags { get; }
 
     /// <summary>The generator revision identifier of a regenerate or hybrid recipe, or empty for none (decision 0035).</summary>
     public string GeneratorRevision { get; }
@@ -84,7 +93,8 @@ public sealed class PrimitiveDefinition
         Provenance provenance,
         IReadOnlyList<ParameterValue> parameters,
         IReadOnlyList<ConnectorDeclaration> connectors,
-        string generatorRevision)
+        string generatorRevision,
+        IReadOnlyList<string>? tags = null)
     {
         ArgumentNullException.ThrowIfNull(registry);
         ArgumentNullException.ThrowIfNull(provenance);
@@ -120,6 +130,12 @@ public sealed class PrimitiveDefinition
             throw new ArgumentException($"Category '{schema.Label}' does not list generator revision '{generatorRevision}'.", nameof(generatorRevision));
         }
 
+        string[] declared = TagList.Validate(tags ?? [], nameof(tags));
+        if (declared.Length > 0 && !registry.CarriesTags)
+        {
+            throw new ArgumentException($"A definition of category '{schema.Label}' carries tags, which registry revision {registry.Revision} does not (decision 0055).", nameof(tags));
+        }
+
         var writer = new CanonicalWriter(registry.DefinitionDomain);
         writer.WriteUInt32(category);
         provenance.Encode(writer);
@@ -133,6 +149,11 @@ public sealed class PrimitiveDefinition
             connector.Encode(writer);
         }
 
+        if (registry.CarriesTags)
+        {
+            TagList.Encode(writer, declared);
+        }
+
         // Empty means no recipe produced this definition; anything else is a path-form identifier.
         if (generatorRevision.Length == 0)
         {
@@ -143,7 +164,7 @@ public sealed class PrimitiveDefinition
             writer.WritePath(generatorRevision);
         }
 
-        return new PrimitiveDefinition(id, category, provenance, [.. parameters], [.. connectors], generatorRevision, writer.ToArray(), writer.ToContentHash());
+        return new PrimitiveDefinition(id, category, provenance, [.. parameters], [.. connectors], generatorRevision, declared, writer.ToArray(), writer.ToContentHash());
     }
 
     /// <summary>Decodes a record laid out under <paramref name="registry"/> as the definition the manifest lists under <paramref name="id"/>, rejecting trailing bytes and a non-canonical encoding.</summary>
@@ -171,6 +192,8 @@ public sealed class PrimitiveDefinition
             connectors[index] = ConnectorDeclaration.Decode(reader);
         }
 
+        string[] tags = registry.CarriesTags ? TagList.Decode(reader) : [];
+
         byte[] revisionBytes = reader.ReadBytes();
         string generatorRevision = System.Text.Encoding.UTF8.GetString(revisionBytes);
         if (generatorRevision.Length != 0)
@@ -193,7 +216,7 @@ public sealed class PrimitiveDefinition
         PrimitiveDefinition definition;
         try
         {
-            definition = Create(registry, id, category, provenance, parameters, connectors, generatorRevision);
+            definition = Create(registry, id, category, provenance, parameters, connectors, generatorRevision, tags);
         }
         catch (ArgumentException exception)
         {

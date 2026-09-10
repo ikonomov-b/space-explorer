@@ -44,7 +44,7 @@ public static class SetGenerator
         PackId pack = specification.PackId;
         var definitions = new List<PrimitiveDefinition>();
         var hashes = new HashSet<ContentHash>();
-        var poolsByCategory = new Dictionary<uint, List<PrimitiveRevisionRef>>();
+        var poolsByCategory = new Dictionary<uint, List<PrimitiveDefinition>>();
         uint tried = 0;
         uint rejected = 0;
 
@@ -69,7 +69,7 @@ public static class SetGenerator
                     {
                         ParameterDescriptor descriptor = schema.Parameters[index];
                         IReadOnlyList<PrimitiveRevisionRef> pool = descriptor.Kind == ParameterKind.PrimitiveRef
-                            ? Pool(poolsByCategory, descriptor.RefCategory)
+                            ? Candidates(poolsByCategory, descriptor.RefCategory, template.Ranges[index].RequiredTags)
                             : [];
                         try
                         {
@@ -77,11 +77,14 @@ public static class SetGenerator
                         }
                         catch (InvalidOperationException exception)
                         {
-                            throw new GenerationException($"Template '{template.Label}': {exception.Message}");
+                            string suits = template.Ranges[index].RequiredTags.Count == 0
+                                ? string.Empty
+                                : $" carrying every tag of '{string.Join(", ", template.Ranges[index].RequiredTags)}'";
+                            throw new GenerationException($"Template '{template.Label}': {exception.Message}{suits}");
                         }
                     }
 
-                    PrimitiveDefinition candidate = PrimitiveDefinition.Create(registry, id, template.Category, provenance, values, template.Connectors, string.Empty);
+                    PrimitiveDefinition candidate = PrimitiveDefinition.Create(registry, id, template.Category, provenance, values, template.Connectors, string.Empty, template.Tags);
                     if (hashes.Add(candidate.Hash))
                     {
                         accepted = candidate;
@@ -98,7 +101,7 @@ public static class SetGenerator
                 }
 
                 definitions.Add(accepted);
-                Pool(poolsByCategory, template.Category).Add(accepted.Reference);
+                Pool(poolsByCategory, template.Category).Add(accepted);
             }
         }
 
@@ -119,9 +122,18 @@ public static class SetGenerator
         return PrimitiveSet.Create(manifest, definitions);
     }
 
-    private static List<PrimitiveRevisionRef> Pool(Dictionary<uint, List<PrimitiveRevisionRef>> pools, uint category)
+    /// <summary>
+    /// The definitions a reference may draw: those already allocated of <paramref name="category"/> that
+    /// carry every tag in <paramref name="requiredTags"/>, in allocation order. A reference to a category
+    /// with no tag requirement draws from all of them, which is what every revision before 3 does
+    /// (decision 0055).
+    /// </summary>
+    private static IReadOnlyList<PrimitiveRevisionRef> Candidates(Dictionary<uint, List<PrimitiveDefinition>> pools, uint category, IReadOnlyList<string> requiredTags) =>
+        [.. Pool(pools, category).Where(candidate => TagList.Satisfies(candidate.Tags, requiredTags)).Select(candidate => candidate.Reference)];
+
+    private static List<PrimitiveDefinition> Pool(Dictionary<uint, List<PrimitiveDefinition>> pools, uint category)
     {
-        if (!pools.TryGetValue(category, out List<PrimitiveRevisionRef>? pool))
+        if (!pools.TryGetValue(category, out List<PrimitiveDefinition>? pool))
         {
             pool = [];
             pools[category] = pool;

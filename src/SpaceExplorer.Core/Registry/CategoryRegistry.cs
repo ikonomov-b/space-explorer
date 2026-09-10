@@ -35,6 +35,13 @@ public sealed class CategoryRegistry
     /// <summary>The domain label of this record.</summary>
     public string Domain => DomainFor(Revision);
 
+    /// <summary>
+    /// Whether a definition, a template, and a reference range of this revision carry tags. The layout
+    /// grew in revision 3, so revisions 1 and 2 encode exactly what they always did and every pack
+    /// published under them keeps its recorded hashes (decisions 0050, 0055).
+    /// </summary>
+    public bool CarriesTags => Revision >= 3;
+
     /// <summary>The domain label a definition record laid out under this revision carries.</summary>
     public string DefinitionDomain => $"primitive-definition/1/registry/{Revision}";
 

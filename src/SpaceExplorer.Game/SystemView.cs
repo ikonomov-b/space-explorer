@@ -30,6 +30,7 @@ public partial class SystemView : Node3D
 
     private readonly Destination _destination;
     private readonly CategoryRegistry _registry;
+    private readonly PrimitiveResources _resources;
 
     /// <summary>Somewhere to fly to: the star, a body, or the whole system, with the distance it reads well from.</summary>
     private sealed record Target(string Name, Vector3 Position, float Radius);
@@ -68,6 +69,7 @@ public partial class SystemView : Node3D
     {
         _destination = destination;
         _registry = registry;
+        _resources = new PrimitiveResources(destination.Graph.Source, registry);
         _screenshot = screenshot;
         _openOn = openOn;
         _openWithPanel = panel;
@@ -406,13 +408,15 @@ public partial class SystemView : Node3D
         {
             BackgroundMode = Godot.Environment.BGMode.Color,
             BackgroundColor = new Color(0.02f, 0.02f, 0.05f),
+            // A review harness, not a simulation: the fill light is what makes a body's own material
+            // legible at the outer orbits, where the star alone leaves it too dark to judge.
             AmbientLightSource = Godot.Environment.AmbientSource.Color,
-            AmbientLightColor = new Color(0.25f, 0.25f, 0.32f),
-            AmbientLightEnergy = 1.0f,
+            AmbientLightColor = new Color(0.42f, 0.42f, 0.50f),
+            AmbientLightEnergy = 1.6f,
         },
     };
 
-    private static OmniLight3D Light() => new() { Position = Vector3.Zero, OmniRange = 400f, LightEnergy = 2.0f };
+    private static OmniLight3D Light() => new() { Position = Vector3.Zero, OmniRange = 400f, LightEnergy = 4.0f, OmniAttenuation = 0.35f };
 
     private Node3D Star()
     {
@@ -436,11 +440,15 @@ public partial class SystemView : Node3D
 
     private Node3D Body(BodyDescription body, Vector3 position, float radius)
     {
-        Color colour = BodyColour(body.Type);
+        // The material the body's own definition names, built from the stored record by the adapter
+        // (decisions 0031, 0055); a stand-in coloured by body type only where the content has none, which
+        // is every pack published before registry revision 3.
+        StandardMaterial3D? stored = Stored(body);
+        Color colour = stored?.AlbedoColor ?? BodyColour(body.Type);
         var node = new MeshInstance3D
         {
             Mesh = new SphereMesh { Radius = radius, Height = radius * 2f },
-            MaterialOverride = new StandardMaterial3D { AlbedoColor = colour, Roughness = 0.85f },
+            MaterialOverride = stored ?? new StandardMaterial3D { AlbedoColor = colour, Roughness = 0.85f },
             Position = position,
         };
 
@@ -621,6 +629,13 @@ public partial class SystemView : Node3D
         "              not. A moon is offset beside its planet rather than on its own orbit.";
 
     /// <summary>The angle of a body's named orbital element, from the binary turn the graph stores (decision 0036).</summary>
+    /// <summary>The material the graph node behind <paramref name="body"/> names, or null where it names none.</summary>
+    private StandardMaterial3D? Stored(BodyDescription body)
+    {
+        GraphNode? node = _destination.Graph.Nodes.FirstOrDefault(candidate => candidate.Path == body.Path);
+        return node is null ? null : _resources.For(node.Definition);
+    }
+
     private float Angle(BodyDescription body, string component)
     {
         GraphNode? node = _destination.Graph.Nodes.FirstOrDefault(candidate => candidate.Path == body.Path);

@@ -11,13 +11,14 @@ public sealed class PrimitiveTemplate
 {
     private readonly byte[] _bytes;
 
-    private PrimitiveTemplate(uint id, string label, uint category, ParameterRange[] ranges, ConnectorDeclaration[] connectors, byte[] bytes, ContentHash hash)
+    private PrimitiveTemplate(uint id, string label, uint category, ParameterRange[] ranges, ConnectorDeclaration[] connectors, string[] tags, byte[] bytes, ContentHash hash)
     {
         Id = id;
         Label = label;
         Category = category;
         Ranges = ranges;
         Connectors = connectors;
+        Tags = tags;
         _bytes = bytes;
         Hash = hash;
     }
@@ -27,11 +28,18 @@ public sealed class PrimitiveTemplate
     public uint Category { get; }
     public IReadOnlyList<ParameterRange> Ranges { get; }
     public IReadOnlyList<ConnectorDeclaration> Connectors { get; }
+
+    /// <summary>
+    /// The tags every definition drawn from this template carries, so a reference elsewhere can require
+    /// them (decision 0055). Empty under a registry revision that carries no tags.
+    /// </summary>
+    public IReadOnlyList<string> Tags { get; }
+
     public ContentHash Hash { get; }
 
     /// <summary>Builds and validates a template against <paramref name="registry"/>.</summary>
     /// <exception cref="ArgumentException">A range does not fit its category's schema.</exception>
-    public static PrimitiveTemplate Create(CategoryRegistry registry, uint id, string label, uint category, IReadOnlyList<ParameterRange> ranges, IReadOnlyList<ConnectorDeclaration> connectors)
+    public static PrimitiveTemplate Create(CategoryRegistry registry, uint id, string label, uint category, IReadOnlyList<ParameterRange> ranges, IReadOnlyList<ConnectorDeclaration> connectors, IReadOnlyList<string>? tags = null)
     {
         ArgumentNullException.ThrowIfNull(registry);
         ArgumentNullException.ThrowIfNull(ranges);
@@ -61,30 +69,41 @@ public sealed class PrimitiveTemplate
             throw new ArgumentException($"Category '{schema.Label}' has {schema.Connectors.Count} connector kinds; template '{label}' declares {connectors.Count}.", nameof(connectors));
         }
 
+        string[] declared = TagList.Validate(tags ?? [], nameof(tags));
+        if (declared.Length > 0 && !registry.CarriesTags)
+        {
+            throw new ArgumentException($"Template '{label}' declares tags, which registry revision {registry.Revision} does not carry (decision 0055).", nameof(tags));
+        }
+
         var writer = new CanonicalWriter(registry.TemplateDomain);
-        Encode(writer, id, label, category, ranges, connectors, schema);
-        return new PrimitiveTemplate(id, label, category, [.. ranges], [.. connectors], writer.ToArray(), writer.ToContentHash());
+        Encode(writer, id, label, category, ranges, connectors, declared, schema, registry.CarriesTags);
+        return new PrimitiveTemplate(id, label, category, [.. ranges], [.. connectors], declared, writer.ToArray(), writer.ToContentHash());
     }
 
-    private static void Encode(CanonicalWriter writer, uint id, string label, uint category, IReadOnlyList<ParameterRange> ranges, IReadOnlyList<ConnectorDeclaration> connectors, CategoryDefinition schema)
+    private static void Encode(CanonicalWriter writer, uint id, string label, uint category, IReadOnlyList<ParameterRange> ranges, IReadOnlyList<ConnectorDeclaration> connectors, IReadOnlyList<string> tags, CategoryDefinition schema, bool carriesTags)
     {
         writer.WriteUInt32(id);
         writer.WriteText(label);
         writer.WriteUInt32(category);
         for (int index = 0; index < ranges.Count; index++)
         {
-            ranges[index].Encode(writer, schema.Parameters[index]);
+            ranges[index].Encode(writer, schema.Parameters[index], carriesTags);
         }
 
         foreach (ConnectorDeclaration connector in connectors)
         {
             connector.Encode(writer);
         }
+
+        if (carriesTags)
+        {
+            TagList.Encode(writer, tags);
+        }
     }
 
     /// <summary>Writes this template's fields, without a header, into an enclosing vocabulary record.</summary>
     internal void EncodeInline(CanonicalWriter writer, CategoryRegistry registry) =>
-        Encode(writer, Id, Label, Category, Ranges, Connectors, registry.Find(Category));
+        Encode(writer, Id, Label, Category, Ranges, Connectors, Tags, registry.Find(Category), registry.CarriesTags);
 
     /// <summary>Reads the fields <see cref="EncodeInline"/> wrote and rebuilds the template, recomputing its hash.</summary>
     internal static PrimitiveTemplate DecodeInline(CanonicalReader reader, CategoryRegistry registry)
@@ -98,7 +117,7 @@ public sealed class PrimitiveTemplate
         var ranges = new ParameterRange[schema.Parameters.Count];
         for (int index = 0; index < ranges.Length; index++)
         {
-            ranges[index] = ParameterRange.Decode(reader, schema.Parameters[index]);
+            ranges[index] = ParameterRange.Decode(reader, schema.Parameters[index], registry.CarriesTags);
         }
 
         var connectors = new ConnectorDeclaration[schema.Connectors.Count];
@@ -107,9 +126,11 @@ public sealed class PrimitiveTemplate
             connectors[index] = ConnectorDeclaration.Decode(reader);
         }
 
+        string[] tags = registry.CarriesTags ? TagList.Decode(reader) : [];
+
         try
         {
-            return Create(registry, id, label, category, ranges, connectors);
+            return Create(registry, id, label, category, ranges, connectors, tags);
         }
         catch (ArgumentException exception)
         {

@@ -50,7 +50,11 @@ internal sealed record VocabularyFile(TemplateVocabulary Vocabulary, IReadOnlyLi
                 }
             }
 
-            templates.Add(PrimitiveTemplate.Create(registry, id, label, category.Id, ranges, declarations));
+            // What definitions of this template suit, which a reference elsewhere may require of them
+            // (decision 0055). A revision that carries no tags refuses a template that declares any.
+            string[] tags = element.TryGetProperty("tags", out JsonElement tagsElement) ? Strings(tagsElement) : [];
+
+            templates.Add(PrimitiveTemplate.Create(registry, id, label, category.Id, ranges, declarations, tags));
         }
 
         var requests = new List<SetRequest>();
@@ -122,7 +126,9 @@ internal sealed record VocabularyFile(TemplateVocabulary Vocabulary, IReadOnlyLi
                 }
 
             case ParameterKind.PrimitiveRef:
-                return ParameterRange.Ref();
+                // A reference states the tags what it draws must carry, as a list of text; an absent or
+                // empty list draws from any definition of the category (decision 0055).
+                return ParameterRange.Ref(Strings(element));
 
             default:
                 throw Invalid($"'{template}/{descriptor.Label}' has an unknown kind");
@@ -164,7 +170,13 @@ internal sealed record VocabularyFile(TemplateVocabulary Vocabulary, IReadOnlyLi
     private static (byte Min, byte Max) Channel((long Min, long Max) pair) => (checked((byte)pair.Min), checked((byte)pair.Max));
 
     private static IReadOnlyList<string> Strings(JsonElement element, string name) =>
-        element.TryGetProperty(name, out JsonElement list) ? [.. list.EnumerateArray().Select(item => item.GetString() ?? throw Invalid($"{name} entries must be text"))] : [];
+        element.TryGetProperty(name, out JsonElement list) ? Strings(list) : [];
+
+    /// <summary>A list of text, which a tag list and a reference's requirement both are.</summary>
+    private static string[] Strings(JsonElement list) =>
+        list.ValueKind == JsonValueKind.Array
+            ? [.. list.EnumerateArray().Select(item => item.GetString() ?? throw Invalid("tag entries must be text"))]
+            : throw Invalid("a tag list must be an array of text");
 
     private static JsonElement Required(JsonElement element, string name) =>
         element.TryGetProperty(name, out JsonElement value) ? value : throw Invalid($"missing '{name}'");
