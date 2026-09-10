@@ -9,6 +9,12 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- The zone fixture of the core tests, compiled in rather than copied: a destination is only worth
+         storing over content a system description can read, and there is one such fixture. -->
+    <Compile Include="../SpaceExplorer.Core.Tests/Generation/ZoneFixture.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="Microsoft.NET.Test.Sdk" />
     <PackageReference Include="xunit" />
     <PackageReference Include="xunit.runner.visualstudio" />

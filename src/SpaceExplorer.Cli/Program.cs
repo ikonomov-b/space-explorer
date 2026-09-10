@@ -56,8 +56,8 @@ static int Usage()
     Console.WriteLine("                                      Print the system description derived from a published graph.");
     Console.WriteLine("  iterate --set <pack-id> --seeds <a-b> [--tier <name>] [--data-root <dir>]");
     Console.WriteLine("                                      Compose one system per seed without publishing and describe each.");
-    Console.WriteLine("  destination --tier <name> --seed <n> [--set <pack-id>] [--data-root <dir>]");
-    Console.WriteLine("                                      Compose the destination the two levers name and describe it.");
+    Console.WriteLine("  destination --tier <name> --seed <n> [--no-publish] [--set <pack-id>] [--data-root <dir>]");
+    Console.WriteLine("                                      Load or compose the destination the two levers name, publish it, and describe it.");
     return 0;
 }
 
@@ -273,13 +273,41 @@ static int Destination(string[] options)
     CompositionGrammar grammar = GrammarFor(registry);
     SuitProfile suit = SuitProfile.Version1;
 
-    Destination destination = DestinationComposer.Compose(tier, seed, source, grammar, registry, suit);
+    // The two levers name their destination's pack before anything is composed, so a destination already
+    // stored is read rather than drawn again, and its bounded retry is paid once (decision 0053).
+    DestinationSpecification specification = DestinationSpecification.For(tier, seed, source, grammar, registry, suit);
+    DestinationRecord? stored = DestinationStore.Find(root, specification);
+
+    string status;
+    Destination destination;
+    if (stored is not null)
+    {
+        CompositionGraph graph = GraphLoader.Load(root, stored.GraphPack, CategoryRegistries.Supported, grammar);
+        destination = new Destination(tier, seed, stored.Attempt, stored.CompositionSeed, graph, SystemDescription.Derive(graph, registry, suit));
+        status = "loaded from the data root; nothing composed";
+    }
+    else
+    {
+        destination = DestinationComposer.Compose(tier, seed, source, grammar, registry, suit);
+        if (Array.IndexOf(options, "--no-publish") >= 0)
+        {
+            status = "composed; not published";
+        }
+        else
+        {
+            GraphPublisher.Publish(root, destination.Graph);
+            DestinationPublishResult published = DestinationStore.Publish(root, DestinationRecord.Of(destination, source, grammar, registry, suit));
+            status = published.AlreadyPublished ? "composed; already published" : "composed and published";
+        }
+    }
 
     Console.WriteLine($"destination   tier {TierRules.Label(tier)}, seed {seed}");
+    Console.WriteLine($"pack          {specification.PackId}");
     Console.WriteLine($"drawn         attempt {destination.Attempt + 1} of at most {DestinationComposer.MaxAttempts}; composition seed {destination.CompositionSeed}");
     Console.WriteLine($"set           {source.Manifest.Pack} {source.Manifest.Hash}");
     Console.Write(destination.Description.Text);
     Console.WriteLine(Verdict(destination.Description, tier));
+    Console.WriteLine($"status        {status}");
     return 0;
 }
 
@@ -374,6 +402,11 @@ static int List(string[] options)
     foreach (GraphEntry entry in GraphLoader.List(root))
     {
         Console.WriteLine($"graph {entry.Pack} record   {entry.GraphHash} instances {entry.NodeCount} domain {CompositionDomains.Label(entry.Domain)} set {entry.SourcePack}");
+    }
+
+    foreach (DestinationEntry entry in DestinationStore.List(root))
+    {
+        Console.WriteLine($"dest  {entry.Pack} record   {entry.RecordHash} tier {TierRules.Label(entry.Tier)} seed {entry.Seed} attempt {entry.Attempt + 1} graph {entry.GraphPack}");
     }
 
     return 0;

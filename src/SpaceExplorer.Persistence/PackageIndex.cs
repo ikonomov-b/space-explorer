@@ -1,4 +1,5 @@
 using Microsoft.Data.Sqlite;
+using SpaceExplorer.Core.Description;
 using SpaceExplorer.Core.Registry;
 using SpaceExplorer.Core.Shared;
 
@@ -6,6 +7,9 @@ namespace SpaceExplorer.Persistence;
 
 /// <summary>One indexed composition graph: what a loader needs before it can read the record itself.</summary>
 internal sealed record GraphRow(PackId Pack, ContentHash GraphHash, PackId SourcePack, uint RegistryRevision, uint GrammarVersion, int NodeCount, CompositionDomain Domain);
+
+/// <summary>One indexed destination: the levers that name it and the graph it drew (decision 0053).</summary>
+internal sealed record DestinationRow(PackId Pack, ContentHash RecordHash, PackId GraphPack, DistanceTier Tier, ulong Seed, uint Attempt);
 
 /// <summary>
 /// <c>&lt;data root&gt;/index.db</c>: the index of verified immutable packages, records, and composition
@@ -19,9 +23,11 @@ internal sealed class PackageIndex : IDisposable
     private const int RecordKindDefinition = 2;
     private const int DependantKindPackage = 1;
     private const int DependantKindGraph = 2;
+    private const int DependantKindDestination = 3;
     private const int DependencyKindPack = 1;
     private const int DependencyKindVocabulary = 2;
     private const int DependencyKindGrammar = 3;
+    private const int DependencyKindGraph = 4;
 
     private readonly SqliteConnection _connection;
 
@@ -61,6 +67,14 @@ internal sealed class PackageIndex : IDisposable
                 grammar_version INTEGER NOT NULL CHECK (grammar_version >= 1),
                 domain INTEGER NOT NULL CHECK (domain >= 1),
                 node_count INTEGER NOT NULL CHECK (node_count >= 1)
+            );
+            CREATE TABLE IF NOT EXISTS destinations (
+                pack_id BLOB PRIMARY KEY CHECK (length(pack_id) = 16),
+                record_hash BLOB NOT NULL UNIQUE CHECK (length(record_hash) = 32),
+                graph_pack_id BLOB NOT NULL REFERENCES graphs (pack_id),
+                tier INTEGER NOT NULL CHECK (tier >= 1),
+                lever_seed BLOB NOT NULL CHECK (length(lever_seed) = 8),
+                attempt INTEGER NOT NULL CHECK (attempt >= 0)
             );
             CREATE TABLE IF NOT EXISTS dependants (
                 dependant_kind INTEGER NOT NULL,
@@ -178,6 +192,64 @@ internal sealed class PackageIndex : IDisposable
 
         transaction.Commit();
     }
+
+    /// <summary>The destination indexed under <paramref name="pack"/>, or null.</summary>
+    public DestinationRow? FindDestination(PackId pack)
+    {
+        using SqliteCommand command = _connection.CreateCommand();
+        command.CommandText = "SELECT record_hash, graph_pack_id, tier, lever_seed, attempt FROM destinations WHERE pack_id = $pack;";
+        command.Parameters.AddWithValue("$pack", pack.Bytes.ToArray());
+        using SqliteDataReader reader = command.ExecuteReader();
+        return reader.Read() ? DestinationOf(pack, reader) : null;
+    }
+
+    /// <summary>Every indexed destination, in pack-identifier order.</summary>
+    public IReadOnlyList<DestinationRow> ListDestinations()
+    {
+        using SqliteCommand command = _connection.CreateCommand();
+        command.CommandText = "SELECT record_hash, graph_pack_id, tier, lever_seed, attempt, pack_id FROM destinations ORDER BY pack_id;";
+        using SqliteDataReader reader = command.ExecuteReader();
+        var destinations = new List<DestinationRow>();
+        while (reader.Read())
+        {
+            destinations.Add(DestinationOf(PackId.FromBytes((byte[])reader[5]), reader));
+        }
+
+        return destinations;
+    }
+
+    /// <summary>Commits the destination row and its edge to the graph it drew, last in the publish protocol.</summary>
+    public void RegisterDestination(DestinationRecord record)
+    {
+        DestinationSpecification specification = record.Specification;
+        using SqliteTransaction transaction = _connection.BeginTransaction();
+        byte[] pack = record.Pack.Bytes.ToArray();
+
+        Execute(
+            "INSERT INTO destinations (pack_id, record_hash, graph_pack_id, tier, lever_seed, attempt) VALUES ($pack, $record, $graph, $tier, $seed, $attempt);",
+            transaction,
+            ("$pack", pack), ("$record", record.Hash.Bytes.ToArray()), ("$graph", record.GraphPack.Bytes.ToArray()), ("$tier", (long)specification.Tier), ("$seed", SeedBytes(specification.Seed)), ("$attempt", (long)record.Attempt));
+
+        Execute(
+            "INSERT INTO dependants (dependant_kind, dependant_id, dependency_kind, dependency_id) VALUES ($dkind, $did, $ykind, $yid);",
+            transaction,
+            ("$dkind", (long)DependantKindDestination), ("$did", pack), ("$ykind", (long)DependencyKindGraph), ("$yid", record.GraphPack.Bytes.ToArray()));
+
+        transaction.Commit();
+    }
+
+    /// <summary>A lever seed spans the whole unsigned range, which SQLite's signed integer does not, so it is stored as its eight canonical bytes.</summary>
+    private static byte[] SeedBytes(ulong seed) => BitConverter.IsLittleEndian ? BitConverter.GetBytes(seed) : [.. BitConverter.GetBytes(seed).Reverse()];
+
+    private static ulong SeedOf(byte[] bytes) => BitConverter.IsLittleEndian ? BitConverter.ToUInt64(bytes) : BitConverter.ToUInt64([.. bytes.Reverse()]);
+
+    private static DestinationRow DestinationOf(PackId pack, SqliteDataReader reader) => new(
+        pack,
+        ContentHash.FromBytes((byte[])reader[0]),
+        PackId.FromBytes((byte[])reader[1]),
+        (DistanceTier)reader.GetInt64(2),
+        SeedOf((byte[])reader[3]),
+        (uint)reader.GetInt64(4));
 
     private static GraphRow Row(PackId pack, SqliteDataReader reader) => new(
         pack,

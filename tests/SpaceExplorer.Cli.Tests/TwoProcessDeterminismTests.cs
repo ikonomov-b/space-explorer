@@ -87,7 +87,36 @@ public sealed class TwoProcessDeterminismTests : IDisposable
         Assert.Equal(one, two);
         Assert.Contains("tier          pass (starter)", one, StringComparison.Ordinal);
         Assert.Contains($"set           {first["pack"]}", one, StringComparison.Ordinal);
+
+        // What the two processes stored, not only what they printed: the levers name one pack, and the
+        // record in it is the same byte for byte (decision 0053).
+        string pack = Fields(one)["pack"];
+        Assert.Equal(
+            File.ReadAllBytes(Records("first", pack).Single()),
+            File.ReadAllBytes(Records("second", pack).Single()));
     }
+
+    [Fact]
+    public void A_second_run_of_the_same_levers_loads_the_stored_destination_and_composes_nothing()
+    {
+        // The retry of decision 0052 is paid once: the second run addresses the record the first wrote and
+        // reads its graph, which is what a player reopening a destination will do.
+        GenerateSet("first");
+
+        string first = Run(["destination", "--tier", "starter", "--seed", "7", "--data-root", Root("first")]);
+        string again = Run(["destination", "--tier", "starter", "--seed", "7", "--data-root", Root("first")]);
+
+        Assert.Contains("status        composed and published", first, StringComparison.Ordinal);
+        Assert.Contains("status        loaded from the data root; nothing composed", again, StringComparison.Ordinal);
+        Assert.Equal(Description(first), Description(again));
+
+        string listed = Run(["list", "--data-root", Root("first")]);
+        Assert.Contains($"dest  {Fields(first)["pack"]}", listed, StringComparison.Ordinal);
+    }
+
+    /// <summary>The description and verdict alone, without the status line the two runs differ in.</summary>
+    private static string Description(string output) =>
+        string.Join('\n', output.Split('\n').Where(line => !line.StartsWith("status", StringComparison.Ordinal)));
 
     [Fact]
     public void A_different_seed_yields_a_different_pack_across_processes()

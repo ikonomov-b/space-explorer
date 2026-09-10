@@ -66,7 +66,7 @@ dotnet run --project src/SpaceExplorer.Cli -- grammar            # every support
 dotnet run --project src/SpaceExplorer.Cli -- generate-set --vocabulary content/templates/basic/vocabulary.json --seed 42
 # publishes to the data root (decision 0018); prints pack, manifest hash, definition count
 # add --data-root <dir> to publish elsewhere, --retries <n> to override the vocabulary's budget
-dotnet run --project src/SpaceExplorer.Cli -- list               # published packs and graphs
+dotnet run --project src/SpaceExplorer.Cli -- list               # published sets, graphs, destinations
 dotnet run --project src/SpaceExplorer.Cli -- inspect <pack-id>  # reload without generating; print every definition
 dotnet run --project src/SpaceExplorer.Cli -- validate <pack-id> # exit 0 when every record verifies; 1 with the reason otherwise
 
@@ -82,8 +82,11 @@ dotnet run --project src/SpaceExplorer.Cli -- iterate --set <pack-id> --seeds 1-
 # one generation iteration: composes a system per seed without publishing, describes each, and prints
 # the pins that reproduce it, every verdict, and the sample's totals and refusal counts
 dotnet run --project src/SpaceExplorer.Cli -- destination --tier starter --seed 7
-# the two destination levers: draws systems on seeds derived from the tier and the seed until one
-# satisfies that tier's rules, then describes it. --set names the pack when more than one is published
+# the two destination levers: loads the destination they name when the data root holds it, otherwise
+# draws systems on seeds derived from the tier and the seed until one satisfies that tier's rules,
+# publishes it, and describes it either way; the printed pack is the destination to reopen or draw
+# (decision 0053). --no-publish composes without storing, for a sweep of many seeds; --set names the
+# set when more than one is published
 
 dotnet run --project src/SpaceExplorer.Cli -- --help   # usage; exits 0
                                                        # unknown command exits 2; a refused input exits 1
@@ -108,7 +111,8 @@ The solar-system review view of [decision 0052](decisions/0052-the-two-levers-co
 
 ```sh
 godot --path src/SpaceExplorer.Game -- --system --tier starter --seed 7
-# composes the destination the two levers name and draws it, each body wearing its own description
+# loads or composes the destination the two levers name and draws it, each body wearing its own
+# description; --destination <pack-id> draws a stored destination instead, straight from the data root
 # --set <pack-id> when more than one set is published; --data-root <dir> to read another root
 # tab and shift-tab cycle bodies, 1-9 choose one, 0 frames the system, w a s d q e move, shift is
 # faster, drag turns, the wheel closes in, escape quits

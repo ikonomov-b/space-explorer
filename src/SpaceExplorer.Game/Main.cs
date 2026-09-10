@@ -46,25 +46,48 @@ public partial class Main : Node
     }
 
     /// <summary>
-    /// Composes the destination the two levers name and shows it, replacing the preview the scene holds.
-    /// The description is printed as well as displayed, so a run from a terminal is reviewable without a
-    /// window and the two cannot disagree.
+    /// Shows the destination named on the command line, replacing the preview the scene holds: a stored one
+    /// with <c>--destination &lt;pack&gt;</c>, or the one the two levers name, which is loaded from the data
+    /// root when it is stored there and composed and published when it is not (decision 0053). The
+    /// description is printed as well as displayed, so a run from a terminal is reviewable without a window
+    /// and the two cannot disagree.
     /// </summary>
     private void OpenSystemView(string[] arguments)
     {
         try
         {
-            DistanceTier tier = TierRules.TryParse(Option(arguments, "--tier") ?? "starter")
-                ?? throw new ArgumentException($"--tier takes one of {string.Join(", ", TierRules.Labels)}.");
-            ulong seed = ulong.Parse(Option(arguments, "--seed") ?? "1", System.Globalization.CultureInfo.InvariantCulture);
-
             DataRoot root = Option(arguments, "--data-root") is { } path ? DataRoot.At(path) : DataRoot.Resolve();
-            PrimitiveSet set = SourceSet(root, Option(arguments, "--set"));
-            CategoryRegistry registry = CategoryRegistries.Supported.Find(set.Manifest.RegistryRevision);
-            CompositionGrammar grammar = CompositionGrammars.Supported.Newest(registry.Revision)
-                ?? throw new ArgumentException($"This build has no composition grammar over category-registry revision {registry.Revision}.");
+            CategoryRegistry registry;
+            CompositionGrammar grammar;
+            Destination destination;
 
-            Destination destination = DestinationComposer.Compose(tier, seed, set, grammar, registry, SuitProfile.Version1);
+            if (Option(arguments, "--destination") is { } stored)
+            {
+                DestinationRecord record = DestinationStore.Load(root, PackId.Parse(stored));
+                registry = CategoryRegistries.Supported.Find(record.Specification.RegistryRevision);
+                grammar = GrammarOver(registry);
+                CompositionGraph graph = GraphLoader.Load(root, record.GraphPack, CategoryRegistries.Supported, grammar);
+                destination = new Destination(
+                    record.Specification.Tier,
+                    record.Specification.Seed,
+                    record.Attempt,
+                    record.CompositionSeed,
+                    graph,
+                    SystemDescription.Derive(graph, registry, SuitProfile.Version1));
+                GD.Print($"destination   {record.Pack} loaded; graph {record.GraphPack}");
+            }
+            else
+            {
+                DistanceTier tier = TierRules.TryParse(Option(arguments, "--tier") ?? "starter")
+                    ?? throw new ArgumentException($"--tier takes one of {string.Join(", ", TierRules.Labels)}.");
+                ulong seed = ulong.Parse(Option(arguments, "--seed") ?? "1", System.Globalization.CultureInfo.InvariantCulture);
+
+                PrimitiveSet set = SourceSet(root, Option(arguments, "--set"));
+                registry = CategoryRegistries.Supported.Find(set.Manifest.RegistryRevision);
+                grammar = GrammarOver(registry);
+                destination = Draw(root, tier, seed, set, grammar, registry, arguments.Contains("--no-publish"));
+            }
+
             GD.Print(destination.Description.Text);
 
             foreach (Node child in GetChildren())
@@ -80,6 +103,40 @@ public partial class Main : Node
             GetTree().Quit(1);
         }
     }
+
+    /// <summary>
+    /// The destination the levers name: the stored one when the data root holds it, otherwise composed and
+    /// published, so what was drawn can be reopened and cited (decision 0053).
+    /// </summary>
+    private static Destination Draw(DataRoot root, DistanceTier tier, ulong seed, PrimitiveSet set, CompositionGrammar grammar, CategoryRegistry registry, bool noPublish)
+    {
+        DestinationSpecification specification = DestinationSpecification.For(tier, seed, set, grammar, registry, SuitProfile.Version1);
+        if (DestinationStore.Find(root, specification) is { } stored)
+        {
+            CompositionGraph loaded = GraphLoader.Load(root, stored.GraphPack, CategoryRegistries.Supported, grammar);
+            GD.Print($"destination   {stored.Pack} loaded; graph {stored.GraphPack}");
+            return new Destination(tier, seed, stored.Attempt, stored.CompositionSeed, loaded, SystemDescription.Derive(loaded, registry, SuitProfile.Version1));
+        }
+
+        Destination composed = DestinationComposer.Compose(tier, seed, set, grammar, registry, SuitProfile.Version1);
+        if (!noPublish)
+        {
+            GraphPublisher.Publish(root, composed.Graph);
+            DestinationStore.Publish(root, DestinationRecord.Of(composed, set, grammar, registry, SuitProfile.Version1));
+            GD.Print($"destination   {specification.PackId} composed and published; graph {composed.Graph.Pack}");
+        }
+        else
+        {
+            GD.Print($"destination   {specification.PackId} composed; not published");
+        }
+
+        return composed;
+    }
+
+    /// <summary>The newest grammar this build holds over <paramref name="registry"/>.</summary>
+    private static CompositionGrammar GrammarOver(CategoryRegistry registry) =>
+        CompositionGrammars.Supported.Newest(registry.Revision)
+        ?? throw new ArgumentException($"This build has no composition grammar over category-registry revision {registry.Revision}.");
 
     /// <summary>The set to compose from: the one named, or the only one published under a supported revision.</summary>
     private static PrimitiveSet SourceSet(DataRoot root, string? named)

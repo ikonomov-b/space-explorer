@@ -61,4 +61,5 @@ File name: `NNNN-short-title.md`. Use [0000-template.md](0000-template.md). A re
 | [0050](0050-registry-revision-2-grammar-version-2-and-versioned-record-growth.md) | Registry revision 2 derives what contradicted itself, grammar version 2 spaces the orbits, and a versioned record may grow | Accepted |
 | [0051](0051-grammar-version-3-orbits-scaled-to-the-star-and-bodies-suited-to-their-zone.md) | Grammar version 3: orbits scaled to the star, and a body suited to the zone it takes | Accepted |
 | [0052](0052-the-two-levers-compose-a-destination-and-a-review-view-shows-it.md) | The two levers compose a destination by bounded retry, and a review view shows it beside its description | Accepted |
+| [0053](0053-a-destination-is-a-stored-record-addressed-by-its-levers.md) | A destination is a stored record addressed by its levers, and the view draws what is stored | Accepted |
 <!-- generated:end decisions -->
