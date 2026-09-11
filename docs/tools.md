@@ -150,6 +150,17 @@ godot --path src/SpaceExplorer.Game -- --surface --tier starter --seed 1
 # legend says "loaded from the data root"; "generated and stored" appears only for a destination
 # published before decision 0067 or a field whose parameters have moved, which is the fallback and
 # not a contradiction (decisions 0066, 0067)
+# from rung 3 (decision 0070, accepted, being built; these lines state the record and are replaced by
+# the built options and printed lines when its view lands): the ground wears each cell's biome
+# material, derived on load from the stored biome patches, the heights and the planet's sea level by
+# derive-biome-index/1 and never stored; a flat opaque plane at the sea level wears the submerged
+# biome's material where the palette holds one; the legend lists the palette, each biome's material
+# and claim, and the sea level as stored lines, and names as supplied the blend at a boundary, the
+# water plane's flatness with its 2.0 m tangent-plane error, and how the mesh carries more than one
+# material (clause 11); the sweep draws one region per body kind, the seed's index selecting the kind
+# and falling back to the first region where that kind is absent, and the row prints the kind beside
+# each frame (clause 12); the row's two new counts, distinct biome elements across the sample and
+# biomes actually present per region, are what the build's list form is expected to print (clause 15)
 # --tier, --seed, --set, --data-root, --no-publish and --screenshot are the system view's, unchanged
 # w a s d walk the ground, shift is faster, drag turns, and the eye stays at its 2 m: the walk frame
 # is walkable in an interactive run, held inside the region's own extent, because a repeat is a
