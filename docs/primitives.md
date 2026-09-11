@@ -2,7 +2,7 @@
 
 Written 2026-09-10, on the owner's statement that a primitive database and the ability to combine primitives into randomly generated primitive-based structures is the basic capability the solar systems, the planet surfaces, and the artifacts all rest on.
 
-This document is the orientation: what a primitive is, what a structure is, how both are stored and read back, and why the same two ideas carry every generated thing in the game. It states no status — [progress.md](progress.md) is the single source for what is built ([decision 0011](decisions/0011-requirements-single-source.md)) — and it settles nothing on its own: every claim below points at the decision record that fixed it, and where this document and a record disagree, the record is right.
+This document is the orientation: what a primitive is, what a structure is, how both are stored and read back, why the same two ideas carry every generated thing in the game, and what they do not yet carry. It states no status — [progress.md](progress.md) is the single source for what is built ([decision 0011](decisions/0011-requirements-single-source.md)) — and it settles nothing on its own: every claim below points at the decision record that fixed it, and where this document and a record disagree, the record is right.
 
 It is not the origin of the idea and not its contract. The idea is the concept of record's [Randomness from expandable primitives](concept.md#8-randomness-from-expandable-primitives), which states that planetary systems, environments, life and artifacts are represented *completely* by primitives, that materials, textures, geometry, collision, physical properties and behaviour are primitive concerns rather than engine-owned facts, and that there is no separate environment description that bypasses the primitive composition. The field-by-field contract is the [technical design](technical-design.md#primitive-registry-and-composition), which this document does not restate.
 
@@ -26,12 +26,12 @@ A primitive is one **exact revision of a data-only definition**. Four properties
 
 **Where definitions come from.** An authored **vocabulary** states templates — a category, a label, a range per parameter, the tags its connectors provide and require, and, from registry revision 3, the tags its definitions carry and the tags each reference parameter demands of what it names — and how many definitions of each template a set should hold. The generator draws each definition on its own random stream, rejects duplicate content within a retry budget, fills a reference parameter from the definitions already allocated whose own tags satisfy the demand, and publishes the result as a pack ([decision 0042](decisions/0042-category-registry-revision-1-first-content-records-generator-and-publish-protocol.md), [decision 0055](decisions/0055-definition-level-tags-and-tagged-references.md)). A tag is canonical text, unique in its list and at most sixteen to a list, and means the same thing wherever it is declared; a definition's tags are what let a leaf category with no connector say what it suits, and a demand no definition satisfies fails the run by name rather than filling the reference with something unsuitable. Authored content therefore enters as templates and constraints, never as set members, and sets hold generated definitions only in the core release ([decision 0002](decisions/0002-primitive-set-content-gate.md)).
 
-The categories registry revision 3 declares, with the domains each may be composed in:
+The categories registry revision 4 declares, with the domains each may be composed in. From that revision every parameter below carries the unit its value is read in and a decimal exponent, and a default wherever its kind admits one — a reference has none — while the bounds a decoder applies before it allocates travel in the record's own header ([decision 0060](decisions/0060-registry-revision-4-units-defaults-and-validation-limits.md)):
 
 | Category | Domains | What it carries |
 | --- | --- | --- |
 | `star` | solar system | mass, radius, effective temperature; class and luminosity are derived |
-| `barycentre` | solar system | nothing of its own; it is a place two bodies orbit |
+| `barycentre` | solar system | a place two bodies orbit; its mass is derived as the sum of theirs |
 | `planet` | solar system, planet | mass, mean density, albedo, pole, rotation, body type, and a surface-material reference; radius is derived |
 | `atmosphere` | planet | model, surface pressure, composition, scattering tint |
 | `surface-material` | surface, artifact | shader, base colour, roughness, metallic, and a texture reference |
@@ -93,6 +93,44 @@ What follows from that, and is worth stating because it is easy to forget:
 - **A player's controls are inputs to the same machinery.** The two destination levers, a distance tier and a seed, name a composition seed and therefore a structure; nothing else in the chain knows they came from a player ([decision 0043](decisions/0043-destination-controls-distance-tier-and-seed-lever.md), [decision 0052](decisions/0052-the-two-levers-compose-a-destination-and-a-review-view-shows-it.md)).
 
 Where the levels genuinely differ is presentation, not machinery. A solar system cannot be drawn to scale, so its review view places orbit and body radii logarithmically and says so on screen; an artifact is metre-scale and is drawn as it is. That difference is a presentation decision, recorded as one, and it changes nothing below it.
+
+## Part 5: what the structure does not yet carry
+
+Written 2026-09-10, from an assessment of the structure above against the level it has not reached: a planet surface. Nothing here is a decision. Most of what a surface needs, the structure already expresses with no new idea; three things it does not express at all.
+
+### What is already expressed
+
+A region hangs under a planet by the `SurfaceAnchor` connector, which is one of the three transform types [decision 0036](decisions/0036-frames-and-transforms-typed-by-connector-kind.md) already fixed and which already carries a latitude, a longitude, a height and a heading. Sites, caves and life forms are among the domains [Part 4](#part-4-why-this-is-the-universal-base) counts as reserved and awaiting their vocabulary and grammar. Which material a biome draws is the tagged reference built for [decision 0055](decisions/0055-definition-level-tags-and-tagged-references.md), unchanged: a definition says what it suits and a reference demands it. A region property that follows from others is a derived or an aggregation rule in the position [decision 0037](decisions/0037-derivation-rules-integer-periods-and-orbit-hierarchy.md) put them. A scatter of thousands of plants is the derived set of [Part 2](#part-2-the-primitive-based-structure), with nothing added.
+
+The format's own ceilings are not the constraint either. A grammar carries its own depth and instance bounds ([decision 0048](decisions/0048-composition-grammar-version-1-graph-records-and-graph-publication.md)) inside a format ceiling of 64 and 65,536; version 1 declared a depth of three, which is what a solar system needed. A deeper surface hierarchy is therefore a grammar version, not a format change.
+
+### Where it must grow
+
+All three are named somewhere in the documents already; none is built.
+
+**1. A bulk parameter kind.** Every one of the eight parameter kinds of [Part 1](#part-1-the-primitive) is scalar-shaped, and grids arrive with the first category that needs them ([decision 0042](decisions/0042-category-registry-revision-1-first-content-records-generator-and-publish-protocol.md)). The [technical design](technical-design.md#primitive-registry-and-composition) already names ordered arrays, bounded rectangular grids, and the cube-sphere grids of six power-of-two faces that [decision 0041](decisions/0041-planet-fields-tangent-regions-minimum-radius-and-far-field.md) needs for a planet's relief. This is the lightest of the three: the canonical format is schema-driven rather than self-describing ([decision 0020](decisions/0020-canonical-encoding-and-content-hash.md)), so a new kind is a registry revision plus a writer and a reader case, and earlier revisions keep their bytes.
+
+**2. A third content class: per-instance data.** A definition is shared and reusable; a graph is arrangement. A region's heightfield is neither — it belongs to one instance, is never reused, and would be absurd in a definition that other regions name. [Decision 0031](decisions/0031-primitive-complete-composition-and-storage.md) calls this a primitive-owned payload and the [persistence table](technical-design.md#persistence-and-compatibility) lists it in a graph or chunk record; a set manifest's `PolicyPin` already reserves the retention decision per category ([decision 0034](decisions/0034-storage-policy-pinned-by-manifests.md)). What does not exist is the thing itself: no payload record class, no writer, no index table, and nothing that stores one. Mutable player state is the same shape again — the primitive-state overlay of [decision 0038](decisions/0038-derived-instances.md), keyed by instance path.
+
+Almost all of a surface's bulk is per-instance and never belongs in a definition at all, so the payload is the class the surface level rests on and the grid kind is one of the shapes it will hold.
+
+**3. Graph-to-graph composition.** A graph specification names a set and a domain and never another graph. One graph therefore cannot hold a planet, and the arithmetic below says why that is not a tuning question. The [technical design](technical-design.md#primitive-sets-and-compact-references) already speaks of nested graphs with versioned depth and node limits, and the edge exists in miniature: a destination record names its graph and pins it by hash ([decision 0053](decisions/0053-a-destination-is-a-stored-record-addressed-by-its-levers.md)), which is one record referring to another and verifying it, one level up from where a planet needs it.
+
+### The arithmetic that decides it
+
+Every figure follows from constants the decisions already fix; nothing here is an estimate.
+
+A maximal region is [decision 0017](decisions/0017-region-extent-cap-and-storage-derivation.md)'s 2,048 m per axis, so it covers 4.194 km² and costs the 1 MiB compressed that decision budgets.
+
+A body of [decision 0041](decisions/0041-planet-fields-tangent-regions-minimum-radius-and-far-field.md)'s minimum landable radius, 524,288 m, has 3.454 million km² of surface, which is some 823,500 maximal regions. An Earth-sized body of 6,371 km has 510.1 million km², or some 121.6 million.
+
+Two conclusions follow. Materialising the smallest landable body costs 804 GiB against the 300 MiB decision 0017 budgets a 300-region campaign, so **regeneration is mandatory** for terrain and the evictable cache is the load-bearing mechanism rather than the payload record — the payload holds what a player has changed and what regeneration cannot reproduce, not the ground itself. The conclusion that bears on the format is the other one: 121.6 million against a 65,536-instance ceiling is why a planet is not one graph, a factor of 1,855 and not a bound to be raised.
+
+### What is not yet knowable
+
+No measurement bears on any of this yet, and saying so is more useful than predicting it: what has been measured and what has not is [progress](progress.md#verification-and-performance-targets)'s Resource-use row, and the M0b measurement that would set `regenerate` against `materialize` per category is in it.
+
+Every category of every registry revision permits `Materialize` and nothing else. The arithmetic above says that is the wrong default for terrain. It does not say what the right one is for anything else, and no measurement yet does.
 
 ## Terms
 
