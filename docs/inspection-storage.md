@@ -1,0 +1,151 @@
+# Inspection: storage structure and effectiveness
+
+Inspected 2026-09-11 at commit `717834e`, "Read cycle three across the kinds, and name what the sweep could not show", on the owner's question of the same day: what the database storage structure of the generated solar systems is, how effective it is, and how it stands against the requirement that each detail of a newly generated environment be stored locally, loaded, and rendered. It measures the data root as it is and reads the code that writes and reads it. It records no decision and clears nothing; where it names a change, acceptance stays with the owner ([decisions](decisions/README.md)). Its companion, [inspection: documents and structure](inspection.md), reads the documents against the code; this one reads the store against its own claims.
+
+Later in the same reading the owner restated the goal the store serves: the space trip generates the solar system, explorable planet surfaces, and artifacts; once exploration starts, every explored area is stored in more detail, so that exploration progress is kept; and everything is kept locally for revisiting. That statement is not yet in [requirements](requirements.md), whose single-source rule ([decision 0011](decisions/0011-requirements-single-source.md)) says it should be, and [the open question](#the-open-question) is read against it.
+
+Findings are numbered within this document, as that inspection's are, and are not [design review](review.md) findings.
+
+A peer session's work was in flight in the working tree throughout the reading: a draft decision 0066, a `RegionPayload` class and a `PayloadStore`, a registry revision 8 and a grammar version 9, and edits to the loaders and the surface view, none of it committed and, when first seen, not yet compiling. None of it is read here: the state below is the state of `717834e`. Where a measurement bears on what it proposes, [the open question](#the-open-question) says so, and where that session confirmed or corrected a figure by message during the reading, the text says whose figure it is.
+
+## What was run
+
+Commands are the ones single-sourced in [external tools](tools.md), with one exception: the two terrain timing programs were written for this reading in a scratch directory outside the repository and are not kept, so their figures are a reading on one machine and not a vector.
+
+| Check | Result |
+| --- | --- |
+| `dotnet run tools/stats.cs` | 117 pack directories, 702 record files, 172,036 B; `index.db` 172,032 B; sets 125,751 B, graphs 28,533 B, destinations 17,752 B |
+| `sqlite3` over `index.db` | 5 packages, 590 records, 56 graphs, 56 destinations, 173 dependants; 42 pages of 4,096 B, no free pages |
+| `du` and `stat` over `packs/` | 3.4 MiB allocated for 172,036 B of content; each record file occupies 8 blocks of 512 B |
+| The command-line tool, Release build, wall clock per process | `diagnostics` 0.050 to 0.056 s; `list` 0.112 s; `inspect` of a 117-definition set 0.134 s; `inspect-graph` and `validate-graph` of a 36-instance graph 0.144 and 0.146 s; `describe` of it 0.145 s; `destination --tier starter --seed 15` against its stored record 0.159 s |
+| `strace -e openat` over that stored-destination load | 238 record files opened; `index.db` opened 4 times |
+| `TerrainHeightfield.Sample` of one maximal region, this workstation, 16 cores | 43 ms warm in a Release build; 311 ms for the first call of a cold process and 215 ms for the second. The peer session independently measures 322 ms cold and 53 ms warm in Release. The [surface iterations](progress.md#surface-iterations) row records 2.7 s single-threaded and 0.46 s across cores, which that session has since identified as a Debug-build figure |
+| `dotnet run tools/docs.cs -- --check` | after this document and the README line were staged: 91 documents, 2545 internal links, 65 decision records; 0 problem(s), exit 0 |
+
+## What is stored, and how
+
+The layout is [decision 0018](decisions/0018-data-root-region-encoding-and-save-integrity.md)'s as far as it is built: `index.db` and `packs/<pack-id>/<content-hash>.bin`, and nothing else. The `campaigns/`, `blobs/`, and `backups/` directories and the cache root of the [storage layout](technical-design.md#storage-location-and-layout) do not exist on this workstation, because nothing writes to them yet. Three kinds of record share one publish protocol and one reader path ([primitives, part 3](primitives.md#part-3-storing-and-reading-back)): the record is written to a temporary file, re-read, verified against its own hash, moved into place, and indexed last; on load the index names the file, the file is verified against its name before it is decoded, and a decoded graph is re-encoded and compared byte for byte with what was read.
+
+| Record | Count | Bytes | Per record | Addressed by |
+| --- | --- | --- | --- | --- |
+| Set manifest | 5 | 24,225 | 4,845 each | the pack its specification hash derives |
+| Definition | 585 | 101,526 | 96 to 258, median 166 | its content hash, within its pack |
+| Composition graph | 56 | 28,533 | 225 to 902, median 524; 24 to 57 B an instance, mean 34 | the pack its specification hash derives ([decision 0048](decisions/0048-composition-grammar-version-1-graph-records-and-graph-publication.md)) |
+| Destination | 56 | 17,752 | 317 each | the pack its two levers and the build's pins derive ([decision 0053](decisions/0053-a-destination-is-a-stored-record-addressed-by-its-levers.md)) |
+
+The index holds five tables. `packages`, `graphs`, and `destinations` are read by the loaders; `records` and `dependants` are written in the same publish-last transaction and read by nothing ([finding 3](#3-two-of-the-five-index-tables-are-written-and-never-read)). Every row of every table restates something a record file already holds, so the index is rebuildable, as [decision 0053](decisions/0053-a-destination-is-a-stored-record-addressed-by-its-levers.md) says of the `destinations` table and the technical design of the whole.
+
+What the 56 graphs hold: 991 instances naming 58 distinct definitions of the 585 stored, at 24 to 57 bytes an instance, because an instance is a variable-length integer naming its definition, one transform, and its child counts, and the variety lives in the set. They are 327 planets, 327 atmospheres, 264 regions, 56 stars, and 17 barycentres. Every one of the 264 regions names the one `region` definition, whose only parameter is an extent of 2,048 m; what distinguishes one region from another is its anchor on its body and the relief field of the planet instance it hangs from, neither of which is a region record.
+
+The five set packs are one vocabulary published under registry revisions 5, 6, 6, 7, and 7, each of 117 definitions from 29 templates and 24.3 to 24.7 KiB. Content addressing is per pack, so 84 definitions whose bytes are identical between the two revision-6 packs or the two revision-7 packs are stored twice, 9,256 duplicate bytes in all; the `blobs/` directory the technical design gives shared payloads would remove that and does not yet exist ([observation](#observations-not-findings)).
+
+## What is derived rather than stored
+
+The design's rule is that a record stores the inputs and pins the rule, and that a derived quantity is computed on read under a frozen, versioned implementation ([decision 0037](decisions/0037-derivation-rules-integer-periods-and-orbit-hierarchy.md), [decision 0053](decisions/0053-a-destination-is-a-stored-record-addressed-by-its-levers.md)). Applied to a stored system, that is most of what a reader sees:
+
+| Detail a reader sees | Stored | Derived on read by |
+| --- | --- | --- |
+| A body's mass, density, albedo, pole, spin, type, material, relief parameters; a star's mass, radius, temperature; an atmosphere's model, pressure, composition, tint | the definition record | nothing |
+| Which bodies, how many, on which orbits, under which anchors | the graph record: definition, transform, child counts | nothing |
+| Radius, surface gravity, equilibrium temperature, star class and luminosity, orbit scale | nothing | `derive-radius/1`, `derive-surface-gravity/1`, `derive-equilibrium-temperature/1`, `derive-spectral-class/1`, `derive-luminosity/1`, `derive-orbit-scale/1` |
+| The star's colour | nothing | `derive-star-colour/1` ([decision 0057](decisions/0057-the-view-draws-what-the-content-stores.md)) |
+| The system description and every verdict in it | nothing; the destination pins the description version, suit profile, tier profile, and region limits it was read under | `SystemDescription.Derive` |
+| The texture a body or a region wears, 128 by 128 pixels | nothing | `derive-surface-raster/2` over the material and recipe records ([decision 0056](decisions/0056-surface-raster-rule-and-the-boundary-of-stream-derivation.md), [decision 0064](decisions/0064-surface-raster-version-2-tiles-seamlessly-and-finely.md)) |
+| The ground of a region, 1,025 by 1,025 heights | nothing | `terrain-heightfield/1` or `/2` over the planet's `relief-field` and the anchor ([decision 0063](decisions/0063-relief-by-terrain-heightfield-registry-revision-6-and-grammar-version-7.md), [decision 0065](decisions/0065-terrain-heightfield-version-2-ridges-and-registry-revision-7s-ridging.md)) |
+| The mesh, material, and image the engine draws | nothing, by rule | `PrimitiveResources`, from the derived bytes ([decision 0031](decisions/0031-primitive-complete-composition-and-storage.md)) |
+
+What that policy costs and saves, measured on this data root:
+
+| Quantity | Figure |
+| --- | --- |
+| Terrain bytes stored for 264 regions | 0 |
+| Raw heights of one maximal region | 2,101,250 B, int16 at 1/16 m |
+| The same 264 regions if their heights were stored raw | 554.7 MB, about 3,200 times the whole root today |
+| Regenerating one maximal region | 43 ms warm, 311 ms cold, this workstation, Release; the recorded row's 0.46 s is a Debug build's |
+| Loading and describing a stored 36-instance destination, whole process | 0.159 s, of which about 0.05 s is process start |
+
+The arithmetic [primitives, part 5](primitives.md#the-arithmetic-that-decides-it) derives from decisions [0017](decisions/0017-region-extent-cap-and-storage-derivation.md) and [0041](decisions/0041-planet-fields-tangent-regions-minimum-radius-and-far-field.md) holds in the store as it stands: the terrain of the systems reviewed so far would already outweigh every other record by three orders of magnitude, and it is reproduced in well under a second because its rules are frozen and vectored on both operating systems. Everything above the terrain, the descriptions and the textures included, costs less to derive than the process takes to start.
+
+## Findings
+
+| # | Finding | Class | Clears by |
+| --- | --- | --- | --- |
+| 1 | [The set is read and verified twice on every stored-destination load](#1-the-set-is-read-and-verified-twice-on-every-stored-destination-load) | Process | Code fix; no record |
+| 2 | [One file per record costs twenty times its content in filesystem blocks, and the index weighs as much as the content](#2-one-file-per-record-costs-twenty-times-its-content-in-filesystem-blocks-and-the-index-weighs-as-much-as-the-content) | Measurement | Nothing until a payload record exists; the Resource-use row should carry the figure |
+| 3 | [Two of the five index tables are written and never read](#3-two-of-the-five-index-tables-are-written-and-never-read) | Gap | Applying [decision 0040](decisions/0040-reference-index-and-deletion-sweep.md) |
+| 4 | [Nothing derived has anywhere to be kept](#4-nothing-derived-has-anywhere-to-be-kept) | Gap | Applying [decision 0031](decisions/0031-primitive-complete-composition-and-storage.md)'s evictable cache, which [decision 0063](decisions/0063-relief-by-terrain-heightfield-registry-revision-6-and-grammar-version-7.md) schedules at rung 7 |
+| 5 | [The detail a player changes has no record class](#5-the-detail-a-player-changes-has-no-record-class) | Gap | **A new decision record** |
+| 6 | [The Resource-use row is behind the store and behind the surface rows](#6-the-resource-use-row-is-behind-the-store-and-behind-the-surface-rows) | Inconsistency | Applying [decision 0011](decisions/0011-requirements-single-source.md) |
+
+### 1. The set is read and verified twice on every stored-destination load
+
+`destination --tier starter --seed 15` against a stored record opens 238 record files: the destination, the graph, and the 118 files of the set twice. The command loads the set first, because the destination specification needs the manifest hash to derive the pack identifier it looks up, and then calls `GraphLoader.Load`, which has no way to accept a set already in hand and reloads it through `SetLoader.Load`. The game's `Main.Draw` does the same. Each of the 236 set reads is a file open and a SHA-256, and the index is opened four times in one process, each open running five `CREATE TABLE IF NOT EXISTS` statements.
+
+The cost today is some tens of milliseconds and invisible under process start. It is the path the game will read a world through ([decision 0053](decisions/0053-a-destination-is-a-stored-record-addressed-by-its-levers.md)), and a "view only reads" rule makes it the only path. An overload of `GraphLoader.Load` taking a loaded `PrimitiveSet`, checked against the graph's pinned pack and manifest hash exactly as the graph's own `Create` already checks it, removes the second read without weakening the verification. No record is involved.
+
+### 2. One file per record costs twenty times its content in filesystem blocks, and the index weighs as much as the content
+
+The 702 record files hold 172,036 bytes and occupy 3.4 MiB, because a record of 96 to 902 bytes takes a 4,096-byte block and each of the 117 pack directories takes another. Graph and destination records are the extreme: 112 directories holding one file each, 46,285 bytes in 0.9 MiB. `index.db` is 172,032 bytes, within four bytes of the content it indexes, and its 590 `records` rows are the bulk of it.
+
+None of this matters at 3.5 MiB, and it is recorded as a measurement rather than a fault: the first payload record of two megabytes makes the block overhead irrelevant by itself, and the [technical design](technical-design.md#persistence-and-compatibility) already expects "hundreds of definitions per set, thousands of explicit nodes per world". What the figure is for is the Resource-use row of [progress](progress.md#verification-and-performance-targets), which owes authoritative bytes, cache bytes, and index bytes measured separately, and had none of them for the store as it stands ([finding 6](#6-the-resource-use-row-is-behind-the-store-and-behind-the-surface-rows)).
+
+### 3. Two of the five index tables are written and never read
+
+`records` holds 590 rows and `dependants` 173, one per record and one per dependency edge, inserted in every publish-last transaction as [decision 0040](decisions/0040-reference-index-and-deletion-sweep.md) requires. No query in `src/` reads either: the loaders find a manifest through `packages`, a graph through `graphs`, a destination through `destinations`, and the record paths they need through the manifest itself. The two tables exist for the deletion sweep decision 0040 specifies, which is not built, so the sweep's input is maintained and the sweep is absent. [Decision 0053](decisions/0053-a-destination-is-a-stored-record-addressed-by-its-levers.md) names the consequence: a data root accumulates a small record per lever pair reviewed, "and until the sweep exists they are deleted by hand". This root holds 56 destinations of 24 lever seeds under three registry revisions, so 32 of them already point at systems no current build composes.
+
+At 317 bytes a destination this is tidiness. It stops being tidiness the day a destination owns a payload, which is the same day [finding 2](#2-one-file-per-record-costs-twenty-times-its-content-in-filesystem-blocks-and-the-index-weighs-as-much-as-the-content) stops mattering. The tables are correct and ready; what applying decision 0040 owes is the sweep itself, the user-confirmed removal of zero-reference content, with the `records` table as its per-pack inventory.
+
+### 4. Nothing derived has anywhere to be kept
+
+The cache root is resolved by `DataRoot` on every run and referenced by no other line of code; on this workstation it does not exist. Every launch of the review view therefore re-derives the description, re-rasters a 128-by-128 texture per distinct material, regenerates the region's 1,050,625 heights, and rebuilds a mesh of some 2.1 million triangles that nothing chunks ([open items](progress.md#open-items-outside-the-plans-process)), and frees none of it ([inspection finding 7](inspection.md#7-the-generated-textures-are-never-freed)). The regenerate policy is the right one for terrain by the arithmetic above, and [decision 0031](decisions/0031-primitive-complete-composition-and-storage.md) is explicit that regenerated content is carried by a size-limited evictable cache; [decision 0063](decisions/0063-relief-by-terrain-heightfield-registry-revision-6-and-grammar-version-7.md) defers that cache to rung 7 with chunking, and names an upstream graph's hash as part of its key.
+
+That deferral is correct for a review harness that draws one region per launch. It is named here because "loaded and rendered" for a player means loaded once and rendered many times, and today the second render of the same region costs exactly what the first did: the store holds what reproduces a world and nothing that a world has already reproduced.
+
+### 5. The detail a player changes has no record class
+
+The [persistence table](technical-design.md#persistence-and-compatibility) lists primitive-owned payloads in a graph or chunk record and mutable state as primitive-state overlays keyed by instance path ([decision 0038](decisions/0038-derived-instances.md)); the save-integrity rule tags every overlay record; the set manifest carries an empty `PolicyPin` for the policy such a payload would be stored under ([decision 0034](decisions/0034-storage-policy-pinned-by-manifests.md)). No class in `src/` encodes a payload or an overlay, no index table names one, and no loader reads one; `grep` for either word over `src/` returns nothing at `717834e`. [Primitives, part 5](primitives.md#where-it-must-grow) has recorded this since 2026-09-10 as the second of three gaps and names its first true occupant: "what a player has changed is exactly what regeneration cannot reproduce".
+
+This is the one detail of an environment that genuinely must be stored rather than derived, and it is the one with no home. A campaign, a world manifest, and a transaction ledger are in the same state, all **Not started** in [progress](progress.md#verification-and-performance-targets)'s Durability row. Which record class comes first, and whether a region's heights are stored beside a player's changes to them or only the changes, is the decision the peer draft observed in the working tree appears to be making; this inspection takes no position on its content and records only that the gap is real and that its arithmetic is in [the open question](#the-open-question).
+
+### 6. The Resource-use row is behind the store and behind the surface rows
+
+The Resource-use row of [progress](progress.md#verification-and-performance-targets) cites `tools/stats.cs` as of 2026-09-10: 98 pack directories, 308 record files, 73.4 KiB, two sets. The same tool today reports 117 directories, 702 files, 168.0 KiB, and five sets; the surface cycles have since published 50 graphs and 50 destinations. The row also says "no timing bears on generation cost either, every one taken so far being dominated by roughly a tenth of a second of process startup", while the [surface iterations](progress.md#surface-iterations) row records that one maximal region "takes 2.7 seconds on the reference workstation single-threaded, or 0.46 seconds across its cores", and [decision 0063](decisions/0063-relief-by-terrain-heightfield-registry-revision-6-and-grammar-version-7.md) clause 14 says that figure belongs in the Resource-use row. It is the first generation cost this project has measured and the row that exists to hold it says none exists. Applying [decision 0011](decisions/0011-requirements-single-source.md): the row owes the current store figures, the terrain figure with its provenance, and the block-allocation and index figures of [finding 2](#2-one-file-per-record-costs-twenty-times-its-content-in-filesystem-blocks-and-the-index-weighs-as-much-as-the-content). During the reading the session that recorded the terrain figure identified it as a Debug-build measurement, measured 322 ms cold and 53 ms warm in Release, and undertook to correct the row; the finding stands as what `717834e` says.
+
+## Observations, not findings
+
+- The five set packs are one vocabulary at three registry revisions, and each revision re-mints the pack and every destination, by [decision 0063](decisions/0063-relief-by-terrain-heightfield-registry-revision-6-and-grammar-version-7.md)'s own account "free because iteration content is disposable". It is free at 25 KiB a set; it is what [finding 3](#3-two-of-the-five-index-tables-are-written-and-never-read)'s sweep will spend most of its time on.
+- Content addressing is per pack directory, so identical bytes under two packs are two files. Measured: 84 of 585 definition hashes appear in two packs, 9,256 duplicate bytes. The [storage layout](technical-design.md#storage-location-and-layout) already gives shared payloads a root-wide `blobs/<content-hash>.bin`; whether definitions belong there too is a question for the first pack that is not disposable.
+- `GraphLoader.Load` takes the grammar as an argument and refuses a graph pinning another version, so a caller must know the version before it loads; the command-line tool's `LoadGraph` learns it by listing every graph in the index and finding its own. Correct, and a full-table scan per load that a `FindGraph` already answers.
+- The warm and cold terrain figures differ by seven times on one machine: the rule's rows run in parallel, so a cold process pays thread-pool start and tier-0 code on its first region. The cold figure is the honest one for a player's first landing and the warm one for a cache miss during play; the recorded row's figure was taken in a Debug build and is neither. All three belong in the Resource-use row with the build configuration named, which is how one measurement stopped being comparable with the next.
+- Every property the two views draw is read from a record or derived from one by a named rule, and each legend names what the harness supplied instead; nothing found here contradicts [decision 0057](decisions/0057-the-view-draws-what-the-content-stores.md). The guarantee that a picture is a verdict on the generator holds.
+
+## The open question
+
+The owner's goal has three parts, and the store answers each differently.
+
+*The trip generates the system, its explorable surfaces, and its artifacts.* Held for the first two: a stored destination reproduces its system exactly on any machine, and its surfaces follow from the same records by frozen rules. Artifacts have their categories and their grammar and no iteration yet. The store's rule, that a record stores inputs and pins rules and derives the rest on read, is what makes this cheap, and the measurements above are what make it a fact rather than a policy.
+
+*Once exploration starts, every explored area is stored in more detail, so that progress is kept.* Not held, and the design already says how it will be: this is the `hybrid` policy of [decision 0034](decisions/0034-storage-policy-pinned-by-manifests.md) applied by exploration rather than by category alone, where a region a player has stood in gains a primitive-owned payload carrying what generation alone does not, its accepted derived instances as a bounded ordered array ([persistence table](technical-design.md#persistence-and-compatibility), [decision 0038](decisions/0038-derived-instances.md)) and the overlays of what the player found, took, or changed. Heights alone are not more detail, because the rule reproduces them exactly; the biome, ocean, scatter, and site layers the later rungs add, and the player's marks on them, are. That is [finding 5](#5-the-detail-a-player-changes-has-no-record-class)'s gap exactly, and it scopes the storage to explored regions rather than to every region a system composes.
+
+*Everything is kept locally for revisiting.* Held for what is generated, by the pins: a destination read twice is the same destination byte for byte, and a rule version is never changed once its output is stored or vectored. Held for the visible far field only through the cache [finding 4](#4-nothing-derived-has-anywhere-to-be-kept) says does not exist. Not held for what a player changes, until finding 5 is closed.
+
+What the numbers say if the ground itself is to be stored as well, at generation time and for every region, which is what the untracked draft in the working tree proposes:
+
+- **Bytes.** 2,101,250 raw per maximal region; 554.7 MB for the 264 regions this root already holds, before any campaign exists. The peer session measures its planar-predicted, per-row bit-width packing on real content at 19% of raw for flat ocean, 26% for smooth ground, and 38% for ridged rock, 0.38 to 0.76 MiB a region, so this root would carry some 105 to 210 MB. Scoped to explored regions as the owner's goal scopes it, the figure is regions visited times under a mebibyte, which fits inside [decision 0017](decisions/0017-region-extent-cap-and-storage-derivation.md)'s 300 MiB for a 300-region campaign with room for the layers the later rungs add. At either size the sweep ([finding 3](#3-two-of-the-five-index-tables-are-written-and-never-read)) is no longer tidiness.
+- **Time.** Regeneration is 43 to 322 ms here in Release, measured twice independently; reading a stored payload is one SHA-256 over two megabytes and a decode of a million residuals, which is the same order. Storing terrain does not buy load time on this evidence. What it buys is that a view reads and never runs a rule, and that a stored world is frozen against a later rule version without keeping every earlier rule alive, which are design properties and not performance ones.
+- **Policy.** Registry revision 7 declares `region`'s permitted storage policy as `Regenerate` alone ([decision 0063](decisions/0063-relief-by-terrain-heightfield-registry-revision-6-and-grammar-version-7.md) clause 9), and `CategoryDefinition` refuses a category that lists a generator revision without permitting regeneration or the reverse. Under [decision 0034](decisions/0034-storage-policy-pinned-by-manifests.md) a stored region payload is a `materialize` or `hybrid` pin, which the category must permit and a manifest must carry. A record that stores the ground therefore comes with a registry revision permitting it and a manifest that pins the choice, and supersedes decision 0063's clauses 9 and 10 by name; the peer session reports that its draft does both.
+- **Identity.** A payload that names the `relief-field` hash it was produced from, as the draft's docstring says it does, keeps [decision 0053](decisions/0053-a-destination-is-a-stored-record-addressed-by-its-levers.md)'s property that a picture and a record cannot disagree: a payload of another world's ground is refused rather than drawn. That is the right shape whichever policy is chosen.
+
+The recommendation, offered and not decided: keep `regenerate` as the authoritative policy for ground nobody has stood on, because the arithmetic that chose it has not moved and the measured cost is small; make an explored region `hybrid`, with a payload that names the field hash it was produced from and grows, version by version, to carry the derived instances and overlays that are the "more detail" the owner asks for; and let the evictable cache of [decision 0031](decisions/0031-primitive-complete-composition-and-storage.md), when rung 7 builds it, hold regenerated ground so that the visible distance on a revisit costs a read. Storing every region's heights at generation time is a legitimate choice with a stated cost, and if the owner takes it so that the view never runs a rule, it should land as it is apparently drafted, a registry revision and a manifest pin under decision 0034, and its payload class should be the one an explored region will later grow, not a second.
+
+## What the documents owe
+
+Two applications of accepted decisions, one code fix, and one question for the owner.
+
+Application: [requirements.md](requirements.md) owes the owner's statement of 2026-09-11 with its provenance, that explored areas are stored in more detail to keep exploration progress and that everything is kept locally for revisiting, since [decision 0011](decisions/0011-requirements-single-source.md) makes it the single source for owner-stated constraints and the [development plan](development-plan.md)'s Compatibility check is the only place a revisit is named today.
+
+Application: [progress.md](progress.md)'s Resource-use row owes the current store figures, the terrain cost with its provenance, and the block-allocation and index figures ([finding 6](#6-the-resource-use-row-is-behind-the-store-and-behind-the-surface-rows)).
+
+Code: an overload of `GraphLoader.Load` over a loaded set, and the same in `Main.Draw` and the `destination` command ([finding 1](#1-the-set-is-read-and-verified-twice-on-every-stored-destination-load)).
+
+Question: which record class holds what a player changes, and under which storage policy a region's ground is kept, if at all ([finding 5](#5-the-detail-a-player-changes-has-no-record-class), [the open question](#the-open-question)). Findings 3 and 4 wait on work already scheduled, the sweep of [decision 0040](decisions/0040-reference-index-and-deletion-sweep.md) and the cache of rung 7, and are recorded so that the day they become urgent is recognised when it comes.
