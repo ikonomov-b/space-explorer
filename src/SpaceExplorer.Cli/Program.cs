@@ -286,7 +286,7 @@ static int Destination(string[] options)
     Destination destination;
     if (stored is not null)
     {
-        CompositionGraph graph = GraphLoader.Load(root, stored.GraphPack, CategoryRegistries.Supported, grammar);
+        CompositionGraph graph = GraphLoader.Load(root, stored.GraphPack, CategoryRegistries.Supported, grammar, source);
         destination = new Destination(tier, seed, stored.Attempt, stored.CompositionSeed, graph, SystemDescription.Derive(graph, registry, suit, RegionLimits.Version1));
         status = "loaded from the data root; nothing composed";
     }

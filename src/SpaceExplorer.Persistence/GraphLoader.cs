@@ -14,16 +14,44 @@ public sealed record GraphEntry(PackId Pack, ContentHash GraphHash, PackId Sourc
 /// </summary>
 public static class GraphLoader
 {
-    public static CompositionGraph Load(DataRoot root, PackId pack, CategoryRegistries registries, CompositionGrammar grammar)
+    public static CompositionGraph Load(DataRoot root, PackId pack, CategoryRegistries registries, CompositionGrammar grammar) =>
+        Read(root, pack, registries, grammar, source: null);
+
+    /// <summary>
+    /// The same load, over a set the caller already holds, which is verified to be the set the graph pins
+    /// rather than trusted: the pack identifier and the manifest hash must both be the ones the index
+    /// names, so nothing is accepted here that the reloading form would have refused.
+    /// </summary>
+    /// <remarks>
+    /// It exists because every stored-destination load reads the set twice. The destination specification
+    /// needs the manifest hash to derive the pack identifier it looks up, so the caller loads the set
+    /// first; this overload lets it hand that set over instead of having 118 files opened and hashed a
+    /// second time. A view that only reads makes this the one path a world is read through
+    /// ([decision 0066](../../../docs/decisions/0066-generation-writes-to-the-database-and-the-view-only-reads.md)),
+    /// which is what turns a tens-of-milliseconds waste into one worth removing.
+    /// </remarks>
+    /// <exception cref="CompatibilityException">The set offered is not the set the graph was composed from.</exception>
+    public static CompositionGraph Load(DataRoot root, PackId pack, CategoryRegistries registries, CompositionGrammar grammar, PrimitiveSet source)
+    {
+        ArgumentNullException.ThrowIfNull(source);
+        return Read(root, pack, registries, grammar, source);
+    }
+
+    private static CompositionGraph Read(DataRoot root, PackId pack, CategoryRegistries registries, CompositionGrammar grammar, PrimitiveSet? source)
     {
         ArgumentNullException.ThrowIfNull(root);
         ArgumentNullException.ThrowIfNull(registries);
         ArgumentNullException.ThrowIfNull(grammar);
 
         GraphRow row;
+        ContentHash pinnedManifest;
         using (PackageIndex index = PackageIndex.Open(root))
         {
             row = index.FindGraph(pack) ?? throw new PackageNotFoundException(pack);
+
+            // Read in the same open as the row, so offering a set costs no extra index connection: the
+            // whole point of the overload is to open fewer things, not to move where they are opened.
+            pinnedManifest = source is null ? default : index.FindManifest(row.SourcePack);
         }
 
         CategoryRegistry registry = registries.TryFind(row.RegistryRevision)
@@ -35,7 +63,15 @@ public static class GraphLoader
             throw new CompatibilityException($"Graph {pack} was composed under grammar version {row.GrammarVersion}; this build holds version {grammar.Version}.");
         }
 
-        PrimitiveSet source = SetLoader.Load(root, row.SourcePack, registries);
+        if (source is null)
+        {
+            source = SetLoader.Load(root, row.SourcePack, registries);
+        }
+        else if (source.Manifest.Pack != row.SourcePack || source.Manifest.Hash != pinnedManifest)
+        {
+            throw new CompatibilityException(
+                $"Graph {pack} was composed from pack {row.SourcePack}; the set offered is {source.Manifest.Pack} at manifest {source.Manifest.Hash}.");
+        }
 
         CompositionGraph graph;
         try

@@ -208,7 +208,7 @@ public partial class Main : Node
         DestinationSpecification specification = DestinationSpecification.For(tier, seed, set, grammar, registry, SuitProfile.Version1, TierProfile.Version1, RegionLimits.Version1);
         if (DestinationStore.Find(root, specification) is { } stored)
         {
-            CompositionGraph loaded = GraphLoader.Load(root, stored.GraphPack, CategoryRegistries.Supported, grammar);
+            CompositionGraph loaded = GraphLoader.Load(root, stored.GraphPack, CategoryRegistries.Supported, grammar, set);
             GD.Print($"destination   {stored.Pack} loaded; graph {stored.GraphPack}");
             return new Destination(tier, seed, stored.Attempt, stored.CompositionSeed, loaded, SystemDescription.Derive(loaded, registry, SuitProfile.Version1, RegionLimits.Version1));
         }

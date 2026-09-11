@@ -94,16 +94,18 @@ public static class PayloadStore
         string rule = field.RidgingFraction is null ? TerrainHeightfield.Rule : TerrainHeightfield.RidgedRule;
         ContentHash fieldHash = field.Hash;
 
-        using (PackageIndex index = PackageIndex.Open(root))
+        // One connection whichever way this goes: the generation between the lookup and the row is CPU
+        // work under no transaction, so holding the index open across it costs nothing and opening it
+        // twice would undo half of what this method exists to save.
+        using PackageIndex index = PackageIndex.Open(root);
+
+        if (index.FindPayload(graphPack, instancePath) is { } row
+            && row.FieldHash == fieldHash
+            && row.Rule == rule
+            && TryLoad(root, graphPack, row.RecordHash) is { } stored)
         {
-            if (index.FindPayload(graphPack, instancePath) is { } row
-                && row.FieldHash == fieldHash
-                && row.Rule == rule
-                && TryLoad(root, graphPack, row.RecordHash) is { } stored)
-            {
-                generated = false;
-                return stored;
-            }
+            generated = false;
+            return stored;
         }
 
         RegionPayload payload = RegionPayload.Of(
@@ -114,10 +116,7 @@ public static class PayloadStore
             TerrainHeightfield.Sample(field, latitude, longitude, heading, extentMetres));
 
         PayloadPublishResult published = Publish(root, graphPack, payload);
-        using (PackageIndex index = PackageIndex.Open(root))
-        {
-            index.RegisterPayload(graphPack, instancePath, published.Hash, fieldHash, rule, payload.Bytes.Length);
-        }
+        index.RegisterPayload(graphPack, instancePath, published.Hash, fieldHash, rule, payload.Bytes.Length);
 
         generated = true;
         return payload;

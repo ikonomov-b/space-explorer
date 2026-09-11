@@ -64,6 +64,34 @@ public sealed class GraphPublisherTests : IDisposable
     }
 
     [Fact]
+    public void A_set_already_in_hand_loads_the_same_graph_and_is_checked_rather_than_trusted()
+    {
+        // Every stored-destination load held the set already and had 118 files opened and hashed a second
+        // time to get the graph. Handing the set over must not weaken what the reloading form verified, so
+        // the offered set's pack and manifest hash are checked against what the index says the graph was
+        // composed from, and another set of the same shape is refused by name.
+        SetPublisher.Publish(_root, _set);
+        CompositionGraph graph = Compose(1);
+        GraphPublisher.Publish(_root, graph);
+
+        CompositionGraph reloading = GraphLoader.Load(_root, graph.Pack, Registries, Grammar);
+        CompositionGraph offered = GraphLoader.Load(_root, graph.Pack, Registries, Grammar, _set);
+
+        Assert.Equal(reloading.Hash, offered.Hash);
+        Assert.Equal(reloading.Nodes.Select(node => node.Path), offered.Nodes.Select(node => node.Path));
+
+        PrimitiveSet other = SetGenerator.Generate(
+            SetSpecification.Create(Registry.Revision, Registry.Hash, GeneratorVersion.Current, SetGenerator.GrammarVersion, 4, TemplatePack, Vocabulary.Hash, [new SetRequest(1, 2), new SetRequest(2, 4), new SetRequest(3, 2)], 8),
+            Vocabulary,
+            Registry);
+
+        Assert.Contains(
+            "the set offered is",
+            Assert.Throws<CompatibilityException>(() => GraphLoader.Load(_root, graph.Pack, Registries, Grammar, other)).Message,
+            StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void A_published_graph_reloads_without_composing_and_matches()
     {
         SetPublisher.Publish(_root, _set);

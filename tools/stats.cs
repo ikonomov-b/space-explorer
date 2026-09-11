@@ -105,11 +105,17 @@ long setBytes = sets.Sum(s => s.Bytes);
 long graphBytes = structures.Sum(s => s.Bytes);
 long destinationBytes = destinations.Sum(d => d.Bytes);
 
+// Whatever the three kinds above do not account for is region ground: the payload records of
+// decision 0066. Taken as the remainder rather than counted on its own, so the line cannot drift out of
+// step with the total beside it — before payloads existed this was zero, and a reader could not see that
+// the store had grown nor where.
+long payloadBytes = packFiles.Sum(p => p.Value.Sum()) - setBytes - graphBytes - destinationBytes;
+
 Console.WriteLine($"data root     {dataRoot}");
 Console.WriteLine($"measured      {DateTime.Now.ToString("yyyy-MM-dd HH:mm", CultureInfo.InvariantCulture)}");
 Console.WriteLine($"packs         {packFiles.Count} directories, {packFiles.Sum(p => p.Value.Count)} record files, {Bytes(packFiles.Sum(p => p.Value.Sum()))}");
 Console.WriteLine($"index.db      {Bytes(indexBytes)}, rebuildable from the manifests");
-Console.WriteLine($"of that       sets {Bytes(setBytes)}, graphs {Bytes(graphBytes)}, destinations {Bytes(destinationBytes)}");
+Console.WriteLine($"of that       sets {Bytes(setBytes)}, graphs {Bytes(graphBytes)}, destinations {Bytes(destinationBytes)}, region ground {Bytes(payloadBytes)}");
 Console.WriteLine();
 
 Console.WriteLine($"== PRIMITIVES: {sets.Count} set pack(s), {sets.Sum(s => s.Definitions.Count)} definitions");
