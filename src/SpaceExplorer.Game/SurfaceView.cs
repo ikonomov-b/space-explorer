@@ -37,6 +37,13 @@ public partial class SurfaceView : Node3D
     /// <summary>A brisk human walking pace, so crossing a maximal region on foot takes minutes and not seconds.</summary>
     private const float WalkSpeed = 3.2f;
 
+    /// <summary>
+    /// What `shift` multiplies the pace by: enough to cross a maximal region in some twenty seconds, because
+    /// a reader judging a whole region's relief is surveying it rather than walking it, and at a walking
+    /// pace 2,048 m is ten minutes of holding a key.
+    /// </summary>
+    private const float SurveyMultiplier = 28f;
+
     private readonly GraphNode _body;
     private readonly GraphNode _region;
     private readonly BodyDescription _description;
@@ -103,7 +110,12 @@ public partial class SurfaceView : Node3D
             Parameter(body, registry, CategoryRegistryRevision6.RoughnessParameter),
             Parameter(body, registry, CategoryRegistryRevision6.WavelengthParameter),
             compositionSeed,
-            body.Path);
+            body.Path,
+
+            // Null and not zero where the revision has no such parameter: a body that cannot declare
+            // ridging is a different thing from one that declares none, and only the first reproduces
+            // cycle two's ground (decision 0065).
+            body.Definition.TryParameter(registry, CategoryRegistryRevision7.RidgingParameter)?.Value.AsInteger);
 
         _heights = TerrainHeightfield.Sample(
             _relief,
@@ -156,7 +168,7 @@ public partial class SurfaceView : Node3D
             return;
         }
 
-        float speed = WalkSpeed * (Input.IsKeyPressed(Key.Shift) ? 3f : 1f) * (float)delta;
+        float speed = WalkSpeed * (Input.IsKeyPressed(Key.Shift) ? SurveyMultiplier : 1f) * (float)delta;
         Basis flat = Basis.FromEuler(new Vector3(0f, _yaw, 0f));
         // The basis's Z points behind the eye, so w giving a negative move.Z is already forward: negating
         // it here is what put the walk in reverse.
@@ -298,28 +310,63 @@ public partial class SurfaceView : Node3D
         return Mathf.Lerp(near, far, alongZ);
     }
 
+    /// <summary>How far the sun stands above the horizon: low, because a low sun is what makes relief readable.</summary>
+    private const float SunElevationDegrees = 26f;
+
     /// <summary>
     /// The light, which the view invents and the legend admits to: there is no celestial solution yet, so
-    /// this is a fixed afternoon sun and not the star the system stores.
+    /// this is a fixed low sun and not the star the system stores.
     /// </summary>
-    private static DirectionalLight3D Sun() => new()
+    /// <remarks>
+    /// It stands low deliberately. Relief is read from the shadows it casts as much as from the shape
+    /// itself, and a high sun flattens a landscape into one tone; a low one rakes across the ridges and
+    /// says which way the ground falls. Its shadow reaches across the whole region rather than Godot's
+    /// hundred-metre default, which on a 2,048 m plate would have shadowed only what is underfoot.
+    /// </remarks>
+    private DirectionalLight3D Sun() => new()
     {
-        Rotation = new Vector3(-Mathf.DegToRad(38f), Mathf.DegToRad(130f), 0f),
-        LightEnergy = 1.1f,
+        Rotation = new Vector3(-Mathf.DegToRad(SunElevationDegrees), Mathf.DegToRad(130f), 0f),
+        LightEnergy = 1.25f,
         ShadowEnabled = true,
+        DirectionalShadowMaxDistance = _extentMetres * 1.5f,
+        DirectionalShadowSplit1 = 0.06f,
+        DirectionalShadowSplit2 = 0.2f,
+        DirectionalShadowSplit3 = 0.5f,
+        ShadowNormalBias = 1.4f,
+        ShadowBias = 0.06f,
+
+        // The sun is drawn in the sky as well as lighting the ground, so a reader can see where the light
+        // he is judging the relief by is coming from.
+        SkyMode = DirectionalLight3D.SkyModeEnum.LightAndSky,
         Name = "HarnessLight",
     };
 
-    /// <summary>A plain ground-coloured horizon, so the ground reads against something without claiming to be a sky.</summary>
+    /// <summary>
+    /// A sky with a sun in it. Every part of it is the harness's own and the legend says so: the celestial
+    /// solution of [decision 0032](../../../docs/decisions/0032-astronomically-consistent-surface-sky.md)
+    /// is rung 6 and unbuilt, so this is not the star the system stores, nor its colour, nor its angular
+    /// size, nor where it would actually stand in this region's sky.
+    /// </summary>
     private static WorldEnvironment Sky() => new()
     {
         Environment = new Godot.Environment
         {
-            BackgroundMode = Godot.Environment.BGMode.Color,
-            BackgroundColor = new Color(0.10f, 0.11f, 0.13f),
-            AmbientLightSource = Godot.Environment.AmbientSource.Color,
-            AmbientLightColor = new Color(0.32f, 0.33f, 0.36f),
-            AmbientLightEnergy = 0.7f,
+            BackgroundMode = Godot.Environment.BGMode.Sky,
+            Sky = new Sky
+            {
+                SkyMaterial = new ProceduralSkyMaterial
+                {
+                    SkyTopColor = new Color(0.16f, 0.20f, 0.30f),
+                    SkyHorizonColor = new Color(0.42f, 0.38f, 0.36f),
+                    GroundBottomColor = new Color(0.08f, 0.08f, 0.09f),
+                    GroundHorizonColor = new Color(0.30f, 0.27f, 0.26f),
+                    SunAngleMax = 2.5f,
+                    SunCurve = 0.12f,
+                },
+            },
+            AmbientLightSource = Godot.Environment.AmbientSource.Sky,
+            AmbientLightSkyContribution = 1f,
+            AmbientLightEnergy = 0.95f,
         },
         Name = "HarnessSky",
     };
@@ -382,15 +429,16 @@ public partial class SurfaceView : Node3D
             Invariant($"extent     {_extentMetres:N0} m a side, {(_extentMetres * _extentMetres / 1_000_000.0):0.00} km^2"),
             Invariant($"anchor     latitude {Turn(_region.Transform?.Component("latitude") ?? 0):0.0}, longitude {Turn(_region.Transform?.Component("longitude") ?? 0):0.0}, heading {Turn(_region.Transform?.Component("heading") ?? 0):0.0}"),
             Invariant($"material   tiled {repeats:N0} times across, {metresPerTile:0.000} m a tile, {(metresPerTile * 100 / 128):0.00} cm a texel"),
-            Invariant($"relief     {_relief.AmplitudeMetres:N0} m amplitude, roughness {_relief.RoughnessFraction / (double)ReliefField.RoughnessUnit:0.000}, {_relief.WavelengthMetres:N0} m coarsest over {_relief.Octaves} octaves"),
-            Invariant($"field      {_relief.Hash.ToString()[..8]} by terrain-heightfield/1, {_across} x {_across} samples, {Lowest():0.0} m to {Highest():0.0} m here"),
+            Invariant($"relief     {_relief.AmplitudeMetres:N0} m amplitude, roughness {_relief.RoughnessFraction / (double)ReliefField.RoughnessUnit:0.000}, ridging {Ridging()}, {_relief.WavelengthMetres:N0} m coarsest over {_relief.Octaves} octaves"),
+            Invariant($"field      {_relief.Hash.ToString()[..8]} by {(_relief.RidgingFraction is null ? TerrainHeightfield.Rule : TerrainHeightfield.RidgedRule)}, {_across} x {_across} samples, {Lowest():0.0} m to {Highest():0.0} m here"),
             "",
             Invariant($"frame      {(_fromAbove ? $"orthographic, the whole region; the bar below is {ScaleBarMetres():N0} m" : $"walk, eye at {EyeHeight:0} m above the ground along the stored heading")}"),
-            "supplied   light direction, sky colour, eye height and shading normals are this harness's",
-            "           own: no celestial solution exists yet, so none of them is derived. The relief is",
-            "           drawn at true scale, with no vertical exaggeration",
+            Invariant($"supplied   the sun, {SunElevationDegrees:0} deg up and drawn in the sky, the sky itself, the eye height and"),
+            "           the shading normals are all this harness's own: no celestial solution exists yet,",
+            "           so none of them is this system's star. The relief is drawn at true scale, with no",
+            "           vertical exaggeration, and its shadows are cast across the whole region",
             "stored     extent, material, texture scale, the anchor above, and the relief the field derives",
-            Invariant($"controls   {(_fromAbove ? "escape quits" : "w a s d walk, drag turn, shift faster, held inside the region's own extent, escape quits")}"),
+            Invariant($"controls   {(_fromAbove ? "escape quits" : Invariant($"w a s d walk, drag turn, shift surveys at {SurveyMultiplier:0}x, held inside the region's extent, escape quits"))}"),
         ];
 
         _legend = new Label { Position = new Vector2(28, 24), Text = string.Join('\n', lines) };
@@ -402,6 +450,12 @@ public partial class SurfaceView : Node3D
 
         CallDeferred(nameof(SizeLegend));
     }
+
+    /// <summary>How ridged this body says its ground is, or that its revision cannot say.</summary>
+    private string Ridging() =>
+        _relief.RidgingFraction is { } ridging
+            ? FormattableString.Invariant($"{ridging / (double)ReliefField.RoughnessUnit:0.000}")
+            : "none stored";
 
     /// <summary>The lowest sample of this region, in metres: half of the map frame's height key.</summary>
     private double Lowest() => _heights.Min() / (double)ReliefField.HeightUnit;

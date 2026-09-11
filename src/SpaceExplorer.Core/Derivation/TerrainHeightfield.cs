@@ -21,8 +21,16 @@ namespace SpaceExplorer.Core.Derivation;
 /// </remarks>
 public static class TerrainHeightfield
 {
-    /// <summary>The generator revision identifier this rule is known by (decision 0035).</summary>
+    /// <summary>The generator revision identifier version 1 is known by (decision 0035).</summary>
     public const string Rule = "terrain-heightfield/1";
+
+    /// <summary>
+    /// Version 2, which folds each octave into ridges by the body's own `relief-ridging`
+    /// ([decision 0065](../../../docs/decisions/0065-terrain-heightfield-version-2-ridges-and-registry-revision-7s-ridging.md)).
+    /// At a ridging of zero it computes version 1's number exactly, so the two are one construction with a
+    /// dial rather than two rules.
+    /// </summary>
+    public const string RidgedRule = "terrain-heightfield/2";
 
     /// <summary>The ground sampling interval in metres, which is decision 0010's cell and not an input.</summary>
     public const long CellMetres = 2;
@@ -70,6 +78,10 @@ public static class TerrainHeightfield
         long amplitudeUnits = field.AmplitudeMetres * ReliefField.HeightUnit;
         long half = (across - 1) / 2;
 
+        // Zero is version 1's construction exactly, and it is what content published before registry
+        // revision 7 gets, since that content declares no ridging at all.
+        long ridging = field.RidgingFraction ?? 0;
+
         // Rows are independent and each writes only its own slice, so running them in parallel changes
         // the cost and not one byte, which is the freedom this rule reserves for itself.
         var heights = new short[across * across];
@@ -91,7 +103,8 @@ public static class TerrainHeightfield
                 long wavelength = field.WavelengthMetres;
                 for (int octave = 0; octave < octaves; octave++)
                 {
-                    total += (Int128)Lattice(seed, positionX, positionY, positionZ, wavelength, octave) * weights[octave];
+                    long value = Lattice(seed, positionX, positionY, positionZ, wavelength, octave);
+                    total += (Int128)Ridged(value, ridging) * weights[octave];
                     wavelength /= 2;
                 }
 
@@ -205,6 +218,31 @@ public static class TerrainHeightfield
         }
 
         return ((long)(quotient >> 16), (long)(quotient & 0xFFFF));
+    }
+
+    /// <summary>
+    /// One octave's value, folded into a ridge by <paramref name="ridging"/> parts in 65,535
+    /// ([decision 0065](../../../docs/decisions/0065-terrain-heightfield-version-2-ridges-and-registry-revision-7s-ridging.md)
+    /// clause 2). At zero this returns <paramref name="value"/> unchanged, which is what makes version 2 a
+    /// dial on version 1 rather than a second rule.
+    /// </summary>
+    /// <remarks>
+    /// The fold is what turns a rounded hill into a ridge: where the smooth field crosses zero — the place
+    /// that was a gentle shoulder — becomes the high ground, and the smooth field's own peaks and troughs
+    /// both become valley floors. Squaring the fold then narrows the ridges and broadens the valleys, which
+    /// is the difference between crumpled ground and ground with crests on it.
+    /// </remarks>
+    private static long Ridged(long value, long ridging)
+    {
+        if (ridging <= 0)
+        {
+            return value;
+        }
+
+        long folded = 32_767 - Math.Abs(value);
+        long sharpened = folded * folded / 32_767;
+        long ridged = (2 * sharpened) - 32_767;
+        return value + ((ridged - value) * ridging / ReliefField.RoughnessUnit);
     }
 
     /// <summary>The integer smoothstep of a fraction of 65,536: exactly 0, 32,768, and 65,536 at nothing, a half, and all.</summary>

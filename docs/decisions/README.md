@@ -73,4 +73,5 @@ File name: `NNNN-short-title.md`. Use [0000-template.md](0000-template.md). A re
 | [0062](0062-the-surface-harness-walks-in-an-interactive-session.md) | The surface harness walks in an interactive session, and its two screenshot frames are unchanged | Accepted |
 | [0063](0063-relief-by-terrain-heightfield-registry-revision-6-and-grammar-version-7.md) | Relief by `terrain-heightfield/1`, registry revision 6's relief field, and grammar version 7 | Accepted |
 | [0064](0064-surface-raster-version-2-tiles-seamlessly-and-finely.md) | `derive-surface-raster/2` tiles seamlessly and finely, because a region lays a tile at its true length | Accepted |
+| [0065](0065-terrain-heightfield-version-2-ridges-and-registry-revision-7s-ridging.md) | `terrain-heightfield/2` ridges, and registry revision 7 lets a body say how much | Accepted |
 <!-- generated:end decisions -->

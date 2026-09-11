@@ -24,13 +24,21 @@ namespace SpaceExplorer.Core.Derivation;
 /// <param name="WavelengthMetres">The coarsest feature's wavelength in metres; each octave halves it.</param>
 /// <param name="CompositionSeed">The seed of the graph specification this planet was composed under.</param>
 /// <param name="InstancePath">The planet node's instance path within that graph.</param>
+/// <param name="RidgingFraction">
+/// How much of each octave is folded into ridges rather than left as a smooth rise, out of 65,535: zero is
+/// the dunes `terrain-heightfield/1` makes and the maximum is rock
+/// ([decision 0065](../../../docs/decisions/0065-terrain-heightfield-version-2-ridges-and-registry-revision-7s-ridging.md)).
+/// Null where the content carries no such parameter, which is every registry revision before 7 — and that
+/// is a different thing from a body that declares no ridging, which is why it is not simply zero.
+/// </param>
 public sealed record ReliefField(
     long ReferenceRadiusUnits,
     long AmplitudeMetres,
     long RoughnessFraction,
     long WavelengthMetres,
     ulong CompositionSeed,
-    string InstancePath)
+    string InstancePath,
+    long? RidgingFraction = null)
 {
     /// <summary>The fraction <see cref="RoughnessFraction"/> is out of, which is the range the registry gives it.</summary>
     public const long RoughnessUnit = 65_535;
@@ -45,17 +53,29 @@ public sealed record ReliefField(
     /// The field's identity, and the only seed <see cref="TerrainHeightfield"/> takes: two equal fields
     /// are one landscape on any machine, and two different ones are two.
     /// </summary>
+    /// <remarks>
+    /// The record grows a version rather than a field, on the rule
+    /// [decision 0050](../../../docs/decisions/0050-registry-revision-2-grammar-version-2-and-versioned-record-growth.md)
+    /// already applies to the registry: a field added by a later version is written only from that version
+    /// on, so content published under registry revision 6 hashes exactly as it hashed and surface cycle two
+    /// reproduces from its pins.
+    /// </remarks>
     public ContentHash Hash
     {
         get
         {
-            var writer = new CanonicalWriter("relief-field/1");
+            var writer = new CanonicalWriter(RidgingFraction is null ? "relief-field/1" : "relief-field/2");
             writer.WriteVarInt(ReferenceRadiusUnits);
             writer.WriteVarInt(AmplitudeMetres);
             writer.WriteVarInt(RoughnessFraction);
             writer.WriteVarInt(WavelengthMetres);
             writer.WriteUInt64(CompositionSeed);
             writer.WritePath(InstancePath);
+            if (RidgingFraction is { } ridging)
+            {
+                writer.WriteVarInt(ridging);
+            }
+
             return writer.ToContentHash();
         }
     }

@@ -24,7 +24,7 @@ public class RegistryRevision2Tests
         // The frozen hash of revision 1 is asserted on its own; this states why it may be trusted after a
         // field was added to the record: revision 1 does not encode it.
         Assert.Empty(CategoryRegistryRevision1.Registry.Find(Planet).DerivedParameters);
-        Assert.Equal(6, CategoryRegistries.Supported.Registries.Count);
+        Assert.Equal(7, CategoryRegistries.Supported.Registries.Count);
     }
 
     [Fact]

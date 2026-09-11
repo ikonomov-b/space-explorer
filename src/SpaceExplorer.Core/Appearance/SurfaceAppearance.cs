@@ -121,12 +121,11 @@ public sealed record SurfaceAppearance(
         ulong seed = Seed(Hash);
         var pixels = new byte[side * side * 4];
 
-        // Version 2 draws every feature small enough that no motif survives the repeat: the coarsest
-        // octave is an eighth of version 1's, the cells are a quarter of the size, and the stripes are
-        // half the period. What a reader sees close up is grain, and what a reader sees far off is the
-        // average of it, which is what version 1 already got right.
-        int cell = version == 1 ? Math.Max(4, side / 6) : Math.Max(3, side / 24);
-        int stripe = version == 1 ? Math.Max(2, side / 16) : Math.Max(1, side / 32);
+        // Version 2's features are smaller than version 1's but not so small that the ground goes blank:
+        // the seam is what read as a grid, and the motif is what a walker sees at all, so the wrap does
+        // the work and the sizes keep the texture visible at the distance a person stands from it.
+        int cell = version == 1 ? Math.Max(4, side / 6) : Math.Max(4, side / 16);
+        int stripe = version == 1 ? Math.Max(2, side / 16) : Math.Max(1, side / 24);
 
         for (int y = 0; y < side; y++)
         {
@@ -213,14 +212,15 @@ public sealed record SurfaceAppearance(
     /// </summary>
     private static int FineFbm(ulong seed, int x, int y, int side)
     {
+        // The octaves are counted in cells rather than measured in pixels, because a lattice only wraps
+        // with the tile where its cell count divides the side: a step chosen in pixels can leave the last
+        // cell cut short, and a cut cell is the seam this version exists to remove.
         int total = 0;
         int amplitude = 128;
-        int step = Math.Max(2, side / 16);
-        for (int octave = 0; octave < 3 && step >= 1; octave++)
+        for (int octave = 0, cells = 16; octave < 3 && cells <= side; octave++, cells *= 2)
         {
-            total += amplitude * SeamlessLattice(seed, x, y, step, octave, side) / 256;
+            total += amplitude * SeamlessLattice(seed, x, y, side / cells, octave, side) / 256;
             amplitude /= 2;
-            step /= 2;
         }
 
         return Math.Clamp(total * 256 / 224, 0, 256);
