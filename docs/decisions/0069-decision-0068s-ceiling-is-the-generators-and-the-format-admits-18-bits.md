@@ -1,6 +1,6 @@
 # 0069. Decision 0068's ceiling is the generator's, not the format's: the format admits 18 bits a residual
 
-Date: 2026-09-11. Status: Proposed. Source: the iteration session's measurement of 2026-09-11 against the `region-payload/1` packer, made within the hour of [decision 0068](0068-campaign-storage-budget-re-derived-from-the-payload-ceiling.md)'s acceptance. Corrects how decision 0068 clause 1 characterises its ceiling and changes none of its figures and nothing of the owner's ruling. Supersedes clause 1's claims that the ceiling holds "whatever the region looks like" and that "nothing in it is assumed", and nothing else of that record.
+Date: 2026-09-11. Status: Accepted. Source: the iteration session's measurement of 2026-09-11 against the `region-payload/1` packer, made within the hour of [decision 0068](0068-campaign-storage-budget-re-derived-from-the-payload-ceiling.md)'s acceptance; accepted by the owner the same day, on the words "accept the recommended". Corrects how decision 0068 clause 1 characterises its ceiling and changes none of its figures and nothing of the owner's ruling. Supersedes clause 1's claims that the ceiling holds "whatever the region looks like" and that "nothing in it is assumed", and nothing else of that record.
 
 ## Context
 
