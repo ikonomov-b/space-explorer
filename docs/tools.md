@@ -86,10 +86,13 @@ dotnet run --project src/SpaceExplorer.Cli -- destination --tier starter --seed 
 # the two destination levers: loads the destination they name when the data root holds it, otherwise
 # draws systems on seeds derived from the tier and the seed until one satisfies that tier's rules,
 # publishes it, and describes it either way; the printed pack is the destination to reopen or draw
-# (decision 0053). --no-publish composes without storing, for a sweep of many seeds; --set names the
-# set when more than one is published. A destination pins the tier profile whose demands its verdict
-# met and the region limits its landing verdicts used, so its pack identifier moves when either is
-# tuned (decisions 0058, 0059)
+# (decision 0053). Publishing composes the ground too: every region's region-payload/1 is generated
+# and written after the graph and before the destination record, so a destination on disk is complete
+# or absent, and a first compose prints a ground line, "ground  11 region(s), 11 generated, 10.70 MiB
+# written", that a load of the same levers never prints (decision 0067). --no-publish composes without
+# storing and grounds nothing, for a sweep of many seeds; --set names the set when more than one is
+# published. A destination pins the tier profile whose demands its verdict met and the region limits
+# its landing verdicts used, so its pack identifier moves when either is tuned (decisions 0058, 0059)
 
 dotnet run --project src/SpaceExplorer.Cli -- --help   # usage; exits 0
                                                        # unknown command exits 2; a refused input exits 1
@@ -143,6 +146,10 @@ godot --path src/SpaceExplorer.Game -- --surface --tier starter --seed 1
 # true extent, wearing the body's own stored material tiled at the length its recipe's scale claims
 # --region <n> draws another of the listed regions; --from-above draws the whole region orthographic
 # with a scale bar, since a flat 2,048 m plane is illegible from inside it
+# the ground is read from the region-payload/1 record the destination's composition wrote, and the
+# legend says "loaded from the data root"; "generated and stored" appears only for a destination
+# published before decision 0067 or a field whose parameters have moved, which is the fallback and
+# not a contradiction (decisions 0066, 0067)
 # --tier, --seed, --set, --data-root, --no-publish and --screenshot are the system view's, unchanged
 # w a s d walk the ground, shift is faster, drag turns, and the eye stays at its 2 m: the walk frame
 # is walkable in an interactive run, held inside the region's own extent, because a repeat is a
