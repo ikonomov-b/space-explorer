@@ -140,9 +140,19 @@ public sealed class PrimitiveResources
         return built;
     }
 
-    /// <summary>The core's raster, wrapped as a texture; the bytes are straight RGBA in row order.</summary>
-    private static ImageTexture TextureFor(SurfaceAppearance appearance) =>
-        ImageTexture.CreateFromImage(Image.CreateFromData(TextureSide, TextureSide, false, Image.Format.Rgba8, appearance.Raster(TextureSide)));
+    /// <summary>
+    /// The core's raster, wrapped as a texture; the bytes are straight RGBA in row order. Mipmaps are
+    /// generated before wrapping: a region tiles this 128-pixel image thousands of times across its
+    /// ground, and sampling that without a mip chain aliases into a false large-scale gradient that is
+    /// not in the source image at all, rather than resolving to the flat average a minified tile should
+    /// show (decision 0061's own reading of rung one).
+    /// </summary>
+    private static ImageTexture TextureFor(SurfaceAppearance appearance)
+    {
+        Image image = Image.CreateFromData(TextureSide, TextureSide, false, Image.Format.Rgba8, appearance.Raster(TextureSide));
+        image.GenerateMipmaps();
+        return ImageTexture.CreateFromImage(image);
+    }
 
     private static Color Colour(Rgba colour) => Color.Color8(colour.Red, colour.Green, colour.Blue, colour.Alpha);
 

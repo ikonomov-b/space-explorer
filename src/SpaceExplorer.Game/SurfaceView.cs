@@ -33,6 +33,9 @@ public partial class SurfaceView : Node3D
     /// <summary>How far the walk frame sees; a maximal region's far corner is 2,896 m from its centre.</summary>
     private const float ViewDistance = 4_096f;
 
+    /// <summary>A brisk human walking pace, so crossing a maximal region on foot takes minutes and not seconds.</summary>
+    private const float WalkSpeed = 3.2f;
+
     private readonly GraphNode _body;
     private readonly GraphNode _region;
     private readonly BodyDescription _description;
@@ -48,6 +51,14 @@ public partial class SurfaceView : Node3D
     private ColorRect _behind = null!;
     private Control _scaleBar = null!;
     private int _framesDrawn;
+
+    // Free walking on the ground plane only: the interactive session moves and looks around at fixed
+    // eye height, but the two frames a row's screenshot pins ([decision 0061](../../../docs/decisions/0061-surface-iterations-by-an-escalating-ladder-registry-revision-5-and-grammar-version-6.md)
+    // clause 10) are unaffected, since a screenshot always starts the camera at the region centre.
+    private Vector3 _walkedFrom = Vector3.Zero;
+    private float _yaw;
+    private float _pitch;
+    private bool _dragging;
 
     public SurfaceView(
         GraphNode body,
@@ -94,27 +105,70 @@ public partial class SurfaceView : Node3D
 
     public override void _Process(double delta)
     {
-        if (_screenshot is null)
+        if (_screenshot is not null)
+        {
+            // The first frames come out before the textures and the light have settled, as the system view
+            // found; the fourth is what is saved. A screenshot's camera never walks, so it always starts
+            // exactly where decision 0061 clause 10 pins it.
+            if (++_framesDrawn >= 4)
+            {
+                Error saved = GetViewport().GetTexture().GetImage().SavePng(_screenshot);
+                GD.Print(saved == Error.Ok ? $"screenshot {_screenshot}" : $"screenshot failed: {saved}");
+                GetTree().Quit(saved == Error.Ok ? 0 : 1);
+            }
+
+            return;
+        }
+
+        // The map frame is a fixed overhead reference, not a walk; only the walk frame moves.
+        if (_fromAbove)
         {
             return;
         }
 
-        // The first frames come out before the textures and the light have settled, as the system view
-        // found; the fourth is what is saved.
-        if (++_framesDrawn >= 4)
+        var move = new Vector3(Pressed(Key.D) - Pressed(Key.A), 0f, Pressed(Key.S) - Pressed(Key.W));
+        if (move == Vector3.Zero)
         {
-            Error saved = GetViewport().GetTexture().GetImage().SavePng(_screenshot);
-            GD.Print(saved == Error.Ok ? $"screenshot {_screenshot}" : $"screenshot failed: {saved}");
-            GetTree().Quit(saved == Error.Ok ? 0 : 1);
+            return;
         }
+
+        float speed = WalkSpeed * (Input.IsKeyPressed(Key.Shift) ? 3f : 1f) * (float)delta;
+        Basis flat = Basis.FromEuler(new Vector3(0f, _yaw, 0f));
+        Vector3 stepped = _walkedFrom + ((flat.X * move.X) - (flat.Z * move.Z)) * speed;
+
+        // Held inside the region's own extent: what lies beyond it is rung 5's far field and edge, unbuilt,
+        // so walking off shows a missing rung rather than a fault in what rung one actually generated
+        // ([decision 0062](../../../docs/decisions/0062-the-surface-harness-walks-in-an-interactive-session.md)).
+        float half = _extentMetres / 2f;
+        _walkedFrom = new Vector3(Mathf.Clamp(stepped.X, -half, half), 0f, Mathf.Clamp(stepped.Z, -half, half));
+        UpdateWalkCamera();
     }
 
     public override void _UnhandledInput(InputEvent @event)
     {
-        if (@event is InputEventKey { Pressed: true, Keycode: Key.Escape or Key.Q })
+        switch (@event)
         {
-            GetTree().Quit(0);
+            case InputEventKey { Pressed: true, Keycode: Key.Escape }:
+                GetTree().Quit(0);
+                break;
+            case InputEventMouseButton { ButtonIndex: MouseButton.Left } click when !_fromAbove:
+                _dragging = click.Pressed;
+                break;
+            case InputEventMouseMotion motion when _dragging && !_fromAbove:
+                _yaw -= motion.Relative.X * 0.008f;
+                _pitch = Mathf.Clamp(_pitch - (motion.Relative.Y * 0.008f), -1.5f, 1.5f);
+                UpdateWalkCamera();
+                break;
         }
+    }
+
+    private static float Pressed(Key key) => Input.IsKeyPressed(key) ? 1f : 0f;
+
+    /// <summary>Places the walk camera at how far the drag has walked, facing where the drag has turned.</summary>
+    private void UpdateWalkCamera()
+    {
+        _camera.Position = _walkedFrom + new Vector3(0f, EyeHeight, 0f);
+        _camera.Rotation = new Vector3(_pitch, _yaw, 0f);
     }
 
     /// <summary>The region itself: a square of ground the size the record says, wearing the body's own surface.</summary>
@@ -151,12 +205,17 @@ public partial class SurfaceView : Node3D
         Name = "HarnessSky",
     };
 
-    /// <summary>The walk frame: a person's eye at the region's centre, looking along the stored heading.</summary>
+    /// <summary>
+    /// The walk frame: a person's eye starting at the region's centre, looking along the stored heading,
+    /// and free to walk from there in an interactive session (a screenshot session never moves it).
+    /// </summary>
     private Camera3D AtEyeHeight()
     {
+        _yaw = _heading;
+        _pitch = -Mathf.DegToRad(4f);
         var camera = new Camera3D { Far = ViewDistance, Fov = 70f, Name = "WalkCamera" };
-        camera.Position = new Vector3(0f, EyeHeight, 0f);
-        camera.Rotation = new Vector3(-Mathf.DegToRad(4f), _heading, 0f);
+        _camera = camera;
+        UpdateWalkCamera();
         return camera;
     }
 
@@ -207,6 +266,7 @@ public partial class SurfaceView : Node3D
             "supplied   light direction, sky colour, and eye height are this harness's own:",
             "           no celestial solution exists yet, so none of the three is derived",
             "stored     extent, material, texture scale, and the anchor above",
+            Invariant($"controls   {(_fromAbove ? "escape quits" : "w a s d walk, drag turn, shift faster, held inside the region's own extent, escape quits")}"),
         ];
 
         _legend = new Label { Position = new Vector2(28, 24), Text = string.Join('\n', lines) };

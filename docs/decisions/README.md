@@ -70,4 +70,5 @@ File name: `NNNN-short-title.md`. Use [0000-template.md](0000-template.md). A re
 | [0059](0059-region-limits-are-a-pinned-record.md) | The minimum landable radius is a region-limits record, and the description that prints it is version 3 | Accepted |
 | [0060](0060-registry-revision-4-units-defaults-and-validation-limits.md) | Category registry revision 4: a unit and a default on every parameter, the validation limits in the record, and a barycentre's derived mass | Accepted |
 | [0061](0061-surface-iterations-by-an-escalating-ladder-registry-revision-5-and-grammar-version-6.md) | Surface iterations by an escalating ladder, registry revision 5's region, and grammar version 6 | Accepted |
+| [0062](0062-the-surface-harness-walks-in-an-interactive-session.md) | The surface harness walks in an interactive session, and its two screenshot frames are unchanged | Accepted |
 <!-- generated:end decisions -->

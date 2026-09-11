@@ -144,15 +144,21 @@ godot --path src/SpaceExplorer.Game -- --surface --tier starter --seed 1
 # --region <n> draws another of the listed regions; --from-above draws the whole region orthographic
 # with a scale bar, since a flat 2,048 m plane is illegible from inside it
 # --tier, --seed, --set, --data-root, --no-publish and --screenshot are the system view's, unchanged
-# the legend names what the view supplied rather than read: the light direction, the sky colour and
-# the eye height are the harness's own, because no celestial solution exists yet (decision 0032)
+# w a s d walk the ground, shift is faster, drag turns, and the eye stays at its 2 m: the walk frame
+# is walkable in an interactive run, held inside the region's own extent, because a repeat is a
+# property of ground over distance and one pose can only report the pose it was taken at
+# ([decision 0062](decisions/0062-the-surface-harness-walks-in-an-interactive-session.md))
+# the legend names what the view supplied rather than read: the light direction, the sky colour, the
+# eye height and the pace are the harness's own, because no celestial solution exists yet (decision 0032)
 # --list prints the regions and quits, which is how a sweep counts a sample's regions and the distinct
 # surfaces they wear; it is the only form that works under --headless, since a headless run has no
 # viewport to save a screenshot from
-# escape or q quits
+# escape quits
 
 godot --path src/SpaceExplorer.Game --resolution 1600x900 -- --surface --tier starter --seed 1 \
   --region 0 --screenshot /tmp/surface.png
+# saves the fixed frame of decision 0061 and exits, so a picture is the same frame whether or not a
+# reader could have walked in it; the map frame is fixed in every run
 ```
 
 **A destination with no landable body has no region to draw** and the view says so by name, exit 1: a
