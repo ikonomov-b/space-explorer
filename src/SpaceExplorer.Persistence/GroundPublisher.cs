@@ -49,7 +49,8 @@ public static class GroundPublisher
                 (int)(region.Transform?.Component("longitude") ?? 0),
                 (int)(region.Transform?.Component("heading") ?? 0),
                 extent,
-                out bool wasGenerated);
+                out bool wasGenerated,
+                PaletteLength(body, registry));
 
             if (wasGenerated)
             {
@@ -78,6 +79,21 @@ public static class GroundPublisher
             compositionSeed,
             body.Path,
             body.Definition.TryParameter(registry, CategoryRegistryRevision7.RidgingParameter)?.Value.AsInteger);
+    }
+
+    /// <summary>
+    /// How many biomes the body's palette holds, or zero where its revision has none: a region of a planet
+    /// with no palette stores heights alone, which is what every graph composed before registry revision 9
+    /// holds.
+    /// </summary>
+    public static int PaletteLength(GraphNode body, CategoryRegistry registry)
+    {
+        ArgumentNullException.ThrowIfNull(body);
+        ArgumentNullException.ThrowIfNull(registry);
+
+        return body.Definition.TryParameter(registry, CategoryRegistryRevision9.BiomesParameter) is { } palette
+            ? palette.Value.AsRefList.Count
+            : 0;
     }
 
     /// <summary>Every region of the graph, with the body that carries it.</summary>

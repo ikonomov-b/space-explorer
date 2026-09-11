@@ -13,7 +13,7 @@ public sealed class CompositionGrammars
     private CompositionGrammars(CompositionGrammar[] grammars) => _grammars = grammars;
 
     /// <summary>The versions this build supports.</summary>
-    public static CompositionGrammars Supported { get; } = Of(CompositionGrammarVersion1.Grammar, CompositionGrammarVersion2.Grammar, CompositionGrammarVersion3.Grammar, CompositionGrammarVersion4.Grammar, CompositionGrammarVersion5.Grammar, CompositionGrammarVersion6.Grammar, CompositionGrammarVersion7.Grammar, CompositionGrammarVersion8.Grammar, CompositionGrammarVersion9.Grammar);
+    public static CompositionGrammars Supported { get; } = Of(CompositionGrammarVersion1.Grammar, CompositionGrammarVersion2.Grammar, CompositionGrammarVersion3.Grammar, CompositionGrammarVersion4.Grammar, CompositionGrammarVersion5.Grammar, CompositionGrammarVersion6.Grammar, CompositionGrammarVersion7.Grammar, CompositionGrammarVersion8.Grammar, CompositionGrammarVersion9.Grammar, CompositionGrammarVersion10.Grammar);
 
     /// <summary>The supported grammars in ascending version order.</summary>
     public IReadOnlyList<CompositionGrammar> Grammars => _grammars;

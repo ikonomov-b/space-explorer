@@ -14,8 +14,9 @@ public readonly record struct ParameterValue
     private readonly long _c;
     private readonly long _d;
     private readonly PrimitiveRevisionRef _reference;
+    private readonly PrimitiveRevisionRef[]? _references;
 
-    private ParameterValue(ParameterKind kind, long a, long b, long c, long d, PrimitiveRevisionRef reference)
+    private ParameterValue(ParameterKind kind, long a, long b, long c, long d, PrimitiveRevisionRef reference, PrimitiveRevisionRef[]? references = null)
     {
         Kind = kind;
         _a = a;
@@ -23,6 +24,7 @@ public readonly record struct ParameterValue
         _c = c;
         _d = d;
         _reference = reference;
+        _references = references;
     }
 
     public ParameterKind Kind { get; }
@@ -36,6 +38,13 @@ public readonly record struct ParameterValue
     public static ParameterValue Colour(byte red, byte green, byte blue, byte alpha) => new(ParameterKind.Colour, red, green, blue, alpha, default);
     public static ParameterValue Ref(PrimitiveRevisionRef reference) => new(ParameterKind.PrimitiveRef, 0, 0, 0, 0, reference);
 
+    /// <summary>An ordered array of exact references, in the order the vocabulary drew them (decision 0070 clause 4).</summary>
+    public static ParameterValue RefList(IReadOnlyList<PrimitiveRevisionRef> references)
+    {
+        ArgumentNullException.ThrowIfNull(references);
+        return new ParameterValue(ParameterKind.RefList, references.Count, 0, 0, 0, default, [.. references]);
+    }
+
     public bool AsBool => Expect(ParameterKind.Bool)._a != 0;
     public uint AsEnumIndex => (uint)Expect(ParameterKind.Enum)._a;
     public long AsInteger => Expect(ParameterKind.Integer)._a;
@@ -44,6 +53,9 @@ public readonly record struct ParameterValue
     public (long X, long Y, long Z) AsVector3 { get { ParameterValue v = Expect(ParameterKind.Vector3); return (v._a, v._b, v._c); } }
     public (byte Red, byte Green, byte Blue, byte Alpha) AsColour { get { ParameterValue v = Expect(ParameterKind.Colour); return ((byte)v._a, (byte)v._b, (byte)v._c, (byte)v._d); } }
     public PrimitiveRevisionRef AsRef => Expect(ParameterKind.PrimitiveRef)._reference;
+
+    /// <summary>The ordered references this value holds; a patch names its biome by an ordinal into it.</summary>
+    public IReadOnlyList<PrimitiveRevisionRef> AsRefList => Expect(ParameterKind.RefList)._references ?? [];
 
     /// <summary>The <paramref name="index"/>th scalar component, for range checks: one for integers and turns, three for rotations and vectors, four for colours.</summary>
     public long Component(int index) => index switch
@@ -95,6 +107,22 @@ public readonly record struct ParameterValue
                 }
 
                 break;
+            case ParameterKind.RefList:
+                PrimitiveRevisionRef[] list = _references ?? [];
+                if (list.Length < descriptor.Min || list.Length > descriptor.Max)
+                {
+                    throw new ArgumentException($"Parameter '{descriptor.Label}' holds {list.Length} references, outside [{descriptor.Min}, {descriptor.Max}].");
+                }
+
+                foreach (PrimitiveRevisionRef entry in list)
+                {
+                    if (entry.IsUnset)
+                    {
+                        throw new ArgumentException($"Parameter '{descriptor.Label}' holds an unset reference.");
+                    }
+                }
+
+                break;
         }
     }
 
@@ -137,6 +165,17 @@ public readonly record struct ParameterValue
                 writer.WriteUInt32(_reference.Id.LocalId);
                 writer.WriteContentHash(_reference.Hash);
                 break;
+            case ParameterKind.RefList:
+                PrimitiveRevisionRef[] entries = _references ?? [];
+                writer.WriteCount(entries.Length);
+                foreach (PrimitiveRevisionRef entry in entries)
+                {
+                    writer.WritePackId(entry.Id.Pack);
+                    writer.WriteUInt32(entry.Id.LocalId);
+                    writer.WriteContentHash(entry.Hash);
+                }
+
+                break;
         }
     }
 
@@ -152,6 +191,7 @@ public readonly record struct ParameterValue
             ParameterKind.Vector3 => Vector3(reader.ReadVarInt(), reader.ReadVarInt(), reader.ReadVarInt()),
             ParameterKind.Colour => Colour(reader.ReadUInt8(), reader.ReadUInt8(), reader.ReadUInt8(), reader.ReadUInt8()),
             ParameterKind.PrimitiveRef => Ref(new PrimitiveRevisionRef(new PrimitiveId(reader.ReadPackId(), reader.ReadUInt32()), reader.ReadContentHash())),
+            ParameterKind.RefList => DecodeRefList(reader, descriptor),
             _ => throw new FormatException($"Parameter '{descriptor.Label}' has unknown kind {(byte)descriptor.Kind}."),
         };
 
@@ -187,6 +227,28 @@ public readonly record struct ParameterValue
         }
 
         return Enum((uint)index);
+    }
+
+    /// <summary>
+    /// The references an ordered array holds, its length checked against the descriptor's bounds before a
+    /// byte of it is allocated — which is what the persistence table promises of every bounded array and
+    /// what this, the first one in code, has to honour.
+    /// </summary>
+    private static ParameterValue DecodeRefList(CanonicalReader reader, ParameterDescriptor descriptor)
+    {
+        int count = reader.ReadCount();
+        if (count < descriptor.Min || count > descriptor.Max)
+        {
+            throw new FormatException($"Parameter '{descriptor.Label}' declares {count} references, outside [{descriptor.Min}, {descriptor.Max}].");
+        }
+
+        var references = new PrimitiveRevisionRef[count];
+        for (int index = 0; index < count; index++)
+        {
+            references[index] = new PrimitiveRevisionRef(new PrimitiveId(reader.ReadPackId(), reader.ReadUInt32()), reader.ReadContentHash());
+        }
+
+        return RefList(references);
     }
 
     private ParameterValue Expect(ParameterKind kind) =>

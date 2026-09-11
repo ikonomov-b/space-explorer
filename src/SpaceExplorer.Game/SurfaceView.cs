@@ -33,6 +33,43 @@ public partial class SurfaceView : Node3D
     /// <summary>Eye height in metres: the height decision 0041's minimum landable radius is derived from.</summary>
     private const float EyeHeight = 2f;
 
+    /// <summary>
+    /// The sea, where the planet declares one: a flat plane at the stored datum, spanning the region.
+    /// </summary>
+    /// <remarks>
+    /// Drawn flat and not curved, which is decision 0041's already-accepted flat-model error rather than a
+    /// new one: the datum is a sphere of radius R + sea-level and the region a plane tangent at R, so the
+    /// water stands up to 2.0 m proud at a maximal region's corner on the smallest landable body. Decision
+    /// 0070 clause 6 names that and declines to pay for it twice.
+    ///
+    /// Its colour is the harness's own and the legend says so. What the content stores is which biome lies
+    /// under the water and what that biome is made of, not what the water looks like from above.
+    /// </remarks>
+    private MeshInstance3D? Sea()
+    {
+        if (_seaLevelMetres <= CategoryRegistryRevision9.SeaLevelFloorMetres || _palette.Count == 0)
+        {
+            return null;
+        }
+
+        var water = new StandardMaterial3D
+        {
+            AlbedoColor = new Color(0.16f, 0.34f, 0.52f, 0.72f),
+            Transparency = BaseMaterial3D.TransparencyEnum.Alpha,
+            Roughness = 0.12f,
+            Metallic = 0.1f,
+            CullMode = BaseMaterial3D.CullModeEnum.Disabled,
+        };
+
+        return new MeshInstance3D
+        {
+            Mesh = new PlaneMesh { Size = new Vector2(_extentMetres, _extentMetres) },
+            MaterialOverride = water,
+            Position = new Vector3(0f, _seaLevelMetres, 0f),
+            Name = "HarnessSea",
+        };
+    }
+
     /// <summary>How far the walk frame sees; a maximal region's far corner is 2,896 m from its centre.</summary>
     private const float ViewDistance = 4_096f;
 
@@ -61,6 +98,12 @@ public partial class SurfaceView : Node3D
     private readonly int _across;
     private readonly int _storedBytes;
     private readonly bool _groundWasGenerated;
+
+    private readonly IReadOnlyList<PrimitiveDefinition> _palette;
+    private readonly byte[] _index;
+    private readonly long _seaLevelMetres;
+    private readonly int _patchCount;
+    private int _surfacesDrawn;
 
     private Camera3D _camera = null!;
     private Label _legend = null!;
@@ -134,11 +177,29 @@ public partial class SurfaceView : Node3D
         _across = payload.Across;
         _storedBytes = payload.Bytes.Length;
         _groundWasGenerated = generated;
+        _patchCount = payload.Patches?.Count ?? 0;
+
+        // The palette is the planet's and reaches the region as data, which is what decision 0070 clause 3
+        // means by parent-to-child: the region draws from it and does not own it.
+        _palette = Palette(body, registry, resources);
+        _seaLevelMetres = body.Definition.TryParameter(registry, CategoryRegistryRevision9.SeaLevelParameter)?.Value.AsInteger
+            ?? CategoryRegistryRevision9.SeaLevelFloorMetres;
+
+        // Derived here and stored nowhere, which is requirement R18's two tiers: the patches are permanent
+        // and this is what a renderer wants from them.
+        _index = _palette.Count > 0 && payload.Patches is { Count: > 0 } patches
+            ? BiomeIndex.Derive(_heights, _extentMetres, patches, Claims(_palette, registry), _seaLevelMetres, _relief.AmplitudeMetres)
+            : [];
     }
 
     public override void _Ready()
     {
         AddChild(Ground());
+        if (Sea() is { } sea)
+        {
+            AddChild(sea);
+        }
+
         AddChild(Sun());
         AddChild(Sky());
 
@@ -256,41 +317,86 @@ public partial class SurfaceView : Node3D
             }
         }
 
-        var indices = new int[(_across - 1) * (_across - 1) * 6];
-        int next = 0;
-        for (int j = 0; j < _across - 1; j++)
+        // One surface per biome over one shared set of vertices: the triangles of a cell go to the surface
+        // of the biome that cell wears, so each biome draws with its own stored material and the boundary
+        // between two of them falls where `derive-biome-index/1` put it rather than where a shader guessed
+        // ([decision 0070](../../../docs/decisions/0070-a-biome-is-a-derived-set-registry-revision-9-and-grammar-version-10.md)
+        // clause 11).
+        int cells = _across - 1;
+        int surfaces = Math.Max(1, _palette.Count);
+        var byBiome = new List<int>[surfaces];
+        for (int biome = 0; biome < surfaces; biome++)
         {
-            for (int i = 0; i < _across - 1; i++)
+            byBiome[biome] = [];
+        }
+
+        for (int j = 0; j < cells; j++)
+        {
+            for (int i = 0; i < cells; i++)
             {
+                int biome = _index.Length == 0 ? 0 : Math.Min(_index[(j * cells) + i], surfaces - 1);
+                List<int> into = byBiome[biome];
+
                 // Clockwise seen from above, which is the winding Godot takes for a front face: wound the
                 // other way the ground is culled and a walker sees straight through the hill in front.
                 int corner = (j * _across) + i;
-                indices[next++] = corner;
-                indices[next++] = corner + 1;
-                indices[next++] = corner + _across;
-                indices[next++] = corner + 1;
-                indices[next++] = corner + _across + 1;
-                indices[next++] = corner + _across;
+                into.Add(corner);
+                into.Add(corner + 1);
+                into.Add(corner + _across);
+                into.Add(corner + 1);
+                into.Add(corner + _across + 1);
+                into.Add(corner + _across);
             }
         }
 
-        var surface = new Godot.Collections.Array();
-        surface.Resize((int)Mesh.ArrayType.Max);
-        surface[(int)Mesh.ArrayType.Vertex] = vertices;
-        surface[(int)Mesh.ArrayType.Normal] = normals;
-        surface[(int)Mesh.ArrayType.TexUV] = uvs;
-        surface[(int)Mesh.ArrayType.Index] = indices;
-
         var mesh = new ArrayMesh();
-        mesh.AddSurfaceFromArrays(Mesh.PrimitiveType.Triangles, surface);
+        var drawn = new MeshInstance3D { Mesh = mesh, Name = "Ground" };
 
-        return new MeshInstance3D
+        int written = 0;
+        for (int biome = 0; biome < surfaces; biome++)
         {
-            Mesh = mesh,
-            MaterialOverride = _resources.GroundFor(_body.Definition, _extentMetres),
-            Name = "Ground",
-        };
+            if (byBiome[biome].Count == 0)
+            {
+                continue;
+            }
+
+            var surface = new Godot.Collections.Array();
+            surface.Resize((int)Mesh.ArrayType.Max);
+            surface[(int)Mesh.ArrayType.Vertex] = vertices;
+            surface[(int)Mesh.ArrayType.Normal] = normals;
+            surface[(int)Mesh.ArrayType.TexUV] = uvs;
+            surface[(int)Mesh.ArrayType.Index] = byBiome[biome].ToArray();
+            mesh.AddSurfaceFromArrays(Mesh.PrimitiveType.Triangles, surface);
+
+            // The biome's own stored material where the palette names one, and the body's own where no
+            // palette exists, which is every graph composed before registry revision 9.
+            drawn.SetSurfaceOverrideMaterial(written, _palette.Count > biome
+                ? _resources.GroundFor(_palette[biome], _extentMetres)
+                : _resources.GroundFor(_body.Definition, _extentMetres));
+            written++;
+        }
+
+        _surfacesDrawn = written;
+        return drawn;
     }
+
+    /// <summary>The biome definitions a planet's palette names, in palette order, or empty where it has none.</summary>
+    private static IReadOnlyList<PrimitiveDefinition> Palette(GraphNode body, CategoryRegistry registry, PrimitiveResources resources)
+    {
+        if (body.Definition.TryParameter(registry, CategoryRegistryRevision9.BiomesParameter) is not { } parameter)
+        {
+            return [];
+        }
+
+        return [.. parameter.Value.AsRefList.Select(resources.Resolve)];
+    }
+
+    /// <summary>What each biome of the palette claims, as `derive-biome-index/1` reads it.</summary>
+    private static BiomeClaim[] Claims(IReadOnlyList<PrimitiveDefinition> palette, CategoryRegistry registry) =>
+        [.. palette.Select(biome => new BiomeClaim(
+            biome.TryParameter(registry, CategoryRegistryRevision9.SubmergedParameter)!.Value.Value.AsBool,
+            biome.TryParameter(registry, CategoryRegistryRevision9.ElevationLowParameter)!.Value.Value.AsInteger,
+            biome.TryParameter(registry, CategoryRegistryRevision9.ElevationHighParameter)!.Value.Value.AsInteger))];
 
     /// <summary>The stored height at a sample, in metres, with the edge held rather than wrapped.</summary>
     private float HeightAt(int i, int j) =>
@@ -436,6 +542,11 @@ public partial class SurfaceView : Node3D
             Invariant($"relief     {_relief.AmplitudeMetres:N0} m amplitude, roughness {_relief.RoughnessFraction / (double)ReliefField.RoughnessUnit:0.000}, ridging {Ridging()}, {_relief.WavelengthMetres:N0} m coarsest over {_relief.Octaves} octaves"),
             Invariant($"field      {_relief.Hash.ToString()[..8]} by {(_relief.RidgingFraction is null ? TerrainHeightfield.Rule : TerrainHeightfield.RidgedRule)}, {_across} x {_across} samples, {Lowest():0.0} m to {Highest():0.0} m here"),
             Invariant($"ground     {(_groundWasGenerated ? "generated and stored" : "loaded from the data root")}, {_storedBytes / 1024.0 / 1024.0:0.00} MiB of records against {_heights.Length * 2 / 1024.0 / 1024.0:0.00} MiB of samples"),
+            Invariant($"biomes     {_palette.Count} in the planet's palette, {_patchCount} patches stored, {Present()} present here, drawn in {_surfacesDrawn} surface(s)"),
+            // The inner string is built invariantly too: an interpolation nested inside an invariant one is
+            // evaluated under the process locale, which is how "100,0%" reached a frame beside an
+            // invariant "0.534 AU".
+            Invariant($"sea        {SeaLine()}"),
             "",
             Invariant($"frame      {(_fromAbove ? $"orthographic, the whole region; the bar below is {ScaleBarMetres():N0} m" : $"walk, eye at {EyeHeight:0} m above the ground along the stored heading")}"),
             Invariant($"supplied   the sun, {SunElevationDegrees:0} deg up and drawn in the sky, the sky itself, the eye height and"),
@@ -461,6 +572,41 @@ public partial class SurfaceView : Node3D
         _relief.RidgingFraction is { } ridging
             ? FormattableString.Invariant($"{ridging / (double)ReliefField.RoughnessUnit:0.000}")
             : "none stored";
+
+    /// <summary>What the legend says about the water, invariantly.</summary>
+    private string SeaLine() =>
+        _seaLevelMetres <= CategoryRegistryRevision9.SeaLevelFloorMetres
+            ? "none: the planet declares no datum"
+            : FormattableString.Invariant($"{_seaLevelMetres} m above the reference sphere, {Submerged():0.0}% of cells under it");
+
+    /// <summary>How many of the palette's biomes actually appear here, which a palette of six painting one would not show.</summary>
+    private int Present() => _index.Length == 0 ? 0 : _index.Distinct().Count();
+
+    /// <summary>What share of the region's cells lie under the datum.</summary>
+    private double Submerged()
+    {
+        if (_index.Length == 0)
+        {
+            return 0;
+        }
+
+        int under = 0;
+        for (int biome = 0; biome < _palette.Count; biome++)
+        {
+            if (_palette[biome].TryParameter(_registry, CategoryRegistryRevision9.SubmergedParameter)?.Value.AsBool == true)
+            {
+                foreach (byte at in _index)
+                {
+                    if (at == biome)
+                    {
+                        under++;
+                    }
+                }
+            }
+        }
+
+        return 100.0 * under / _index.Length;
+    }
 
     /// <summary>The lowest sample of this region, in metres: half of the map frame's height key.</summary>
     private double Lowest() => _heights.Min() / (double)ReliefField.HeightUnit;

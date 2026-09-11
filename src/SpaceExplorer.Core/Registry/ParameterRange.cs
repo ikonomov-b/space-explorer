@@ -80,6 +80,14 @@ public sealed record ParameterRange
     /// <summary>A reference to any earlier definition of the descriptor's category carrying every tag in <paramref name="requiredTags"/>.</summary>
     public static ParameterRange Ref(params string[] requiredTags) => new(ParameterKind.PrimitiveRef, [], [], [], 0, TagList.Validate(requiredTags, nameof(requiredTags)));
 
+    /// <summary>
+    /// An ordered array: how many entries it may hold, and the tags each must carry
+    /// ([decision 0070](../../../docs/decisions/0070-a-biome-is-a-derived-set-registry-revision-9-and-grammar-version-10.md)
+    /// clause 4). The length is the range; the tags are the demand, exactly as a single reference states it.
+    /// </summary>
+    public static ParameterRange RefList(long minimum, long maximum, params string[] requiredTags) =>
+        new(ParameterKind.RefList, [minimum], [maximum], [], 0, TagList.Validate(requiredTags, nameof(requiredTags)));
+
     private static ParameterRange Components(ParameterKind kind, long[] min, long[] max)
     {
         for (int index = 0; index < min.Length; index++)

@@ -20,13 +20,31 @@ namespace SpaceExplorer.Core.Derivation;
 /// <param name="FieldHash">The content hash of the <see cref="ReliefField"/> they were produced from.</param>
 /// <param name="ExtentMetres">The region's extent per axis, in metres.</param>
 /// <param name="Heights">The heights in 1/16 m, z outer and x inner, as <see cref="TerrainHeightfield"/> gives them.</param>
+/// <param name="PatchRule">
+/// The generator revision identifier that drew <paramref name="Patches"/>, or null under version 1, which
+/// carried no derived set ([decision 0070](../../../docs/decisions/0070-a-biome-is-a-derived-set-registry-revision-9-and-grammar-version-10.md)
+/// clause 7).
+/// </param>
+/// <param name="Patches">
+/// The region's biome patches in index order: the derived set of
+/// [decision 0038](../../../docs/decisions/0038-derived-instances.md), which this record carries because a
+/// derived set is the node's payload and not a record beside it. Empty under version 1.
+/// </param>
 public sealed record RegionPayload(
     string InstancePath,
     string Rule,
     ContentHash FieldHash,
     long ExtentMetres,
-    short[] Heights)
+    short[] Heights,
+    string? PatchRule = null,
+    IReadOnlyList<BiomePatch>? Patches = null)
 {
+    /// <summary>The most patches a payload may carry, which is the region category's derived-instance budget.</summary>
+    public const int MaxPatches = 64;
+
+    /// <summary>Which version of the record these fields make: 2 where a derived set is carried, 1 where none is.</summary>
+    public int Version => PatchRule is null ? 1 : 2;
+
     /// <summary>The most samples a payload may carry, which is a maximal region's 1,025 a side.</summary>
     public const int MaxSamples = 1_025 * 1_025;
 
@@ -57,13 +75,30 @@ public sealed record RegionPayload(
     {
         get
         {
-            var writer = new CanonicalWriter("region-payload/1");
+            var writer = new CanonicalWriter(PatchRule is null ? "region-payload/1" : "region-payload/2");
             writer.WritePath(InstancePath);
             writer.WritePath(Rule);
             writer.WriteContentHash(FieldHash);
             writer.WriteVarInt(ExtentMetres);
             writer.WriteCount(Heights.Length);
             writer.WriteBytes(Pack(Heights, Across));
+
+            // A version's added field is written only from that version on, so version 1's bytes, its
+            // recorded hash, and surface cycles one to three are unmoved (decision 0050).
+            if (PatchRule is { } patchRule)
+            {
+                writer.WritePath(patchRule);
+                IReadOnlyList<BiomePatch> patches = Patches ?? [];
+                writer.WriteCount(patches.Count);
+                foreach (BiomePatch patch in patches)
+                {
+                    writer.WriteVarUInt((ulong)patch.Ordinal);
+                    writer.WriteVarInt(patch.CentreX);
+                    writer.WriteVarInt(patch.CentreZ);
+                    writer.WriteVarInt(patch.ReachMetres);
+                }
+            }
+
             return writer.ToArray();
         }
     }
@@ -227,7 +262,14 @@ public sealed record RegionPayload(
 
     /// <summary>The payload the given ground makes, checked against the shape its extent implies.</summary>
     /// <exception cref="ArgumentException">The heights are not the square the extent calls for.</exception>
-    public static RegionPayload Of(string instancePath, string rule, ContentHash fieldHash, long extentMetres, short[] heights)
+    public static RegionPayload Of(
+        string instancePath,
+        string rule,
+        ContentHash fieldHash,
+        long extentMetres,
+        short[] heights,
+        string? patchRule = null,
+        IReadOnlyList<BiomePatch>? patches = null)
     {
         ArgumentNullException.ThrowIfNull(heights);
 
@@ -237,14 +279,64 @@ public sealed record RegionPayload(
             throw new ArgumentException($"A region of {extentMetres} m carries {across} by {across} samples, not {heights.Length}.", nameof(heights));
         }
 
-        return new RegionPayload(instancePath, rule, fieldHash, extentMetres, heights);
+        if ((patchRule is null) != (patches is null))
+        {
+            throw new ArgumentException("A payload carries a patch rule and its patches together or neither: a derived set with no rule that made it is not a record.", nameof(patchRule));
+        }
+
+        if (patches is { Count: > MaxPatches })
+        {
+            throw new ArgumentException($"A region carries {patches.Count} patches; the region category's derived budget is {MaxPatches}.", nameof(patches));
+        }
+
+        return new RegionPayload(instancePath, rule, fieldHash, extentMetres, heights, patchRule, patches is null ? null : [.. patches]);
+    }
+
+    /// <summary>
+    /// The domain label these canonical bytes open with, read with the framing the writer wrote: a format
+    /// version byte, then the label as length-prefixed text.
+    /// </summary>
+    private static string DomainOf(byte[] bytes)
+    {
+        ArgumentNullException.ThrowIfNull(bytes);
+
+        int at = 1;
+        int length = 0;
+        int shift = 0;
+        while (true)
+        {
+            if (at >= bytes.Length || shift > 28)
+            {
+                throw new FormatException("A region payload record does not open with a domain label.");
+            }
+
+            byte piece = bytes[at++];
+            length |= (piece & 0x7F) << shift;
+            if ((piece & 0x80) == 0)
+            {
+                break;
+            }
+
+            shift += 7;
+        }
+
+        if (length < 0 || at + length > bytes.Length)
+        {
+            throw new FormatException("A region payload record's domain label runs past its end.");
+        }
+
+        return System.Text.Encoding.UTF8.GetString(bytes, at, length);
     }
 
     /// <summary>The payload these canonical bytes describe.</summary>
     /// <exception cref="FormatException">The bytes are not a canonical payload record.</exception>
     public static RegionPayload Decode(byte[] bytes)
     {
-        var reader = new CanonicalReader(bytes, "region-payload/1");
+        // A record says which version it is, and the reader dispatches on the label it opened rather than
+        // on what a caller guessed — the rule decision 0035 states for registry revisions, applied to a
+        // payload that grew one (decision 0070 clause 7).
+        bool carriesPatches = DomainOf(bytes) == "region-payload/2";
+        var reader = new CanonicalReader(bytes, carriesPatches ? "region-payload/2" : "region-payload/1");
         string path = reader.ReadPath();
         string rule = reader.ReadPath();
         ContentHash field = reader.ReadContentHash();
@@ -258,6 +350,31 @@ public sealed record RegionPayload(
 
         short[] heights = Unpack(reader.ReadBytes(), count, TerrainHeightfield.SamplesAcross(extent));
 
+        string? patchRule = null;
+        List<BiomePatch>? patches = null;
+        if (carriesPatches)
+        {
+            patchRule = reader.ReadPath();
+
+            int patchCount = reader.ReadCount();
+            if (patchCount > MaxPatches)
+            {
+                throw new FormatException($"A region payload carries {patchCount} patches; the region category's derived budget is {MaxPatches}.");
+            }
+
+            patches = new List<BiomePatch>(patchCount);
+            for (int index = 0; index < patchCount; index++)
+            {
+                ulong ordinal = reader.ReadVarUInt();
+                if (ordinal > int.MaxValue)
+                {
+                    throw new FormatException($"A region payload's patch {index} names biome {ordinal}, which is beyond a palette ordinal.");
+                }
+
+                patches.Add(new BiomePatch((int)ordinal, reader.ReadVarInt(), reader.ReadVarInt(), reader.ReadVarInt()));
+            }
+        }
+
         if (!reader.IsAtEnd)
         {
             throw new FormatException("The region payload record has trailing bytes.");
@@ -265,7 +382,7 @@ public sealed record RegionPayload(
 
         try
         {
-            return Of(path, rule, field, extent, heights);
+            return Of(path, rule, field, extent, heights, patchRule, patches);
         }
         catch (ArgumentException exception)
         {

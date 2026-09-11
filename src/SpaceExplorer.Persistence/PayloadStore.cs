@@ -86,7 +86,8 @@ public static class PayloadStore
         int longitude,
         int heading,
         long extentMetres,
-        out bool generated)
+        out bool generated,
+        int paletteLength = 0)
     {
         ArgumentNullException.ThrowIfNull(root);
         ArgumentNullException.ThrowIfNull(field);
@@ -108,12 +109,21 @@ public static class PayloadStore
             return stored;
         }
 
+        // A palette means a biome layer, which means version 2 of the record: the heights and the derived
+        // set together, because a derived set is the node's payload and not a record beside it
+        // (decision 0070 clause 7).
+        BiomePatch[]? patches = paletteLength > 0
+            ? BiomePatches.Draw(field.CompositionSeed, instancePath, extentMetres, paletteLength)
+            : null;
+
         RegionPayload payload = RegionPayload.Of(
             instancePath,
             rule,
             fieldHash,
             extentMetres,
-            TerrainHeightfield.Sample(field, latitude, longitude, heading, extentMetres));
+            TerrainHeightfield.Sample(field, latitude, longitude, heading, extentMetres),
+            patches is null ? null : BiomePatches.Rule,
+            patches);
 
         PayloadPublishResult published = Publish(root, graphPack, payload);
         index.RegisterPayload(graphPack, instancePath, published.Hash, fieldHash, rule, payload.Bytes.Length);

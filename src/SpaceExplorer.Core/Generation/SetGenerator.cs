@@ -68,7 +68,7 @@ public static class SetGenerator
                     for (int index = 0; index < values.Length; index++)
                     {
                         ParameterDescriptor descriptor = schema.Parameters[index];
-                        IReadOnlyList<PrimitiveRevisionRef> pool = descriptor.Kind == ParameterKind.PrimitiveRef
+                        IReadOnlyList<PrimitiveRevisionRef> pool = descriptor.Kind is ParameterKind.PrimitiveRef or ParameterKind.RefList
                             ? Candidates(poolsByCategory, descriptor.RefCategory, template.Ranges[index].RequiredTags)
                             : [];
                         try

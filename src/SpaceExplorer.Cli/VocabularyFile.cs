@@ -135,6 +135,19 @@ internal sealed record VocabularyFile(TemplateVocabulary Vocabulary, IReadOnlyLi
                 // empty list draws from any definition of the category (decision 0055).
                 return ParameterRange.Ref(Strings(element));
 
+            case ParameterKind.RefList:
+                {
+                    // An ordered array states how many it draws and what each must carry: a leading pair of
+                    // numbers is the length range, and the text entries after it are the tag demand. With
+                    // no pair it takes the registry's own bounds (decision 0070 clause 4).
+                    JsonElement[] items = [.. element.EnumerateArray()];
+                    bool counted = items.Length >= 2 && items[0].ValueKind == JsonValueKind.Number && items[1].ValueKind == JsonValueKind.Number;
+                    long low = counted ? items[0].GetInt64() : descriptor.Min;
+                    long high = counted ? items[1].GetInt64() : descriptor.Max;
+                    string[] tags = [.. items.Skip(counted ? 2 : 0).Select(item => item.GetString() ?? throw Invalid($"'{template}/{descriptor.Label}' tag entries must be text"))];
+                    return ParameterRange.RefList(low, high, tags);
+                }
+
             default:
                 throw Invalid($"'{template}/{descriptor.Label}' has an unknown kind");
         }
@@ -147,6 +160,11 @@ internal sealed record VocabularyFile(TemplateVocabulary Vocabulary, IReadOnlyLi
         {
             // A reference has no default and keeps drawing from every definition of its category.
             return ParameterRange.Ref();
+        }
+
+        if (descriptor.Kind == ParameterKind.RefList)
+        {
+            return ParameterRange.RefList(descriptor.Min, descriptor.Max);
         }
 
         ParameterValue standard = descriptor.Default
@@ -193,6 +211,7 @@ internal sealed record VocabularyFile(TemplateVocabulary Vocabulary, IReadOnlyLi
         ParameterKind.Vector3 => ParameterRange.Vector3((descriptor.Min, descriptor.Max), (descriptor.Min, descriptor.Max), (descriptor.Min, descriptor.Max)),
         ParameterKind.Colour => ParameterRange.Colour((0, 255), (0, 255), (0, 255), (0, 255)),
         ParameterKind.PrimitiveRef => ParameterRange.Ref(),
+        ParameterKind.RefList => ParameterRange.RefList(descriptor.Min, descriptor.Max),
         _ => throw Invalid($"'{descriptor.Label}' has an unknown kind"),
     };
 

@@ -82,7 +82,26 @@ public partial class Main : Node
                 return;
             }
 
+            // A sweep that always drew the first region drew a rocky body twenty-four times, because the
+            // first region of every starter seed sits on one — for the cycle whose whole change was that
+            // the ground varies by what a body is made of. `--kind` draws the first region of a named body
+            // type instead, and falls back to the first region where the destination has none, so a sweep
+            // rotating the kind by seed covers rock, ice and ocean in the same forty-eight frames
+            // ([decision 0070](../../../docs/decisions/0070-a-biome-is-a-derived-set-registry-revision-9-and-grammar-version-10.md)
+            // clause 12).
             int index = int.Parse(Option(arguments, "--region") ?? "0", System.Globalization.CultureInfo.InvariantCulture);
+            if (Option(arguments, "--kind") is { } wanted)
+            {
+                int found = Array.FindIndex(regions, region =>
+                    destination.Description.Bodies.First(body => body.Path == region.Body.Path).Type == wanted);
+
+                GD.Print($"kind          {wanted}: {(found >= 0 ? $"region {found}" : $"absent, falling back to region {index}")}");
+                if (found >= 0)
+                {
+                    index = found;
+                }
+            }
+
             if (index < 0 || index >= regions.Length)
             {
                 throw new ArgumentException($"--region {index} is outside the {regions.Length} this destination carries.");

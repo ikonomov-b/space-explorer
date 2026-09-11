@@ -25,7 +25,7 @@ public sealed record ParameterDescriptor
             throw new ArgumentException($"Parameter '{label}' has unknown kind {(byte)kind}.", nameof(kind));
         }
 
-        if (standard is not null && kind == ParameterKind.PrimitiveRef)
+        if (standard is not null && kind is ParameterKind.PrimitiveRef or ParameterKind.RefList)
         {
             throw new ArgumentException($"Parameter '{label}' is a reference, which takes no default: a default is written when the registry is, and a reference names a definition that does not exist then (decision 0060).", nameof(standard));
         }
@@ -36,7 +36,9 @@ public sealed record ParameterDescriptor
             throw new ArgumentException($"Parameter '{label}' of kind {kind} cannot declare {fractionBits} fraction bits.", nameof(fractionBits));
         }
 
-        bool ranged = kind is ParameterKind.Integer or ParameterKind.Vector3 or ParameterKind.BinaryTurn;
+        // A RefList's min and max bound its length rather than its value, which is what a decoder checks
+        // before it allocates (decision 0070 clause 4).
+        bool ranged = kind is ParameterKind.Integer or ParameterKind.Vector3 or ParameterKind.BinaryTurn or ParameterKind.RefList;
         if (ranged && min > max)
         {
             throw new ArgumentException($"Parameter '{label}' has an empty range [{min}, {max}].", nameof(min));
@@ -74,9 +76,14 @@ public sealed record ParameterDescriptor
             throw new ArgumentException($"Parameter '{label}' of kind {kind} carries no enum labels.", nameof(enumLabels));
         }
 
-        if ((kind == ParameterKind.PrimitiveRef) != (refCategory != 0))
+        if ((kind is ParameterKind.PrimitiveRef or ParameterKind.RefList) != (refCategory != 0))
         {
-            throw new ArgumentException($"Parameter '{label}' must name a reference category exactly when its kind is PrimitiveRef.", nameof(refCategory));
+            throw new ArgumentException($"Parameter '{label}' must name a reference category exactly when it references one.", nameof(refCategory));
+        }
+
+        if (kind == ParameterKind.RefList && (min < 1 || max < min))
+        {
+            throw new ArgumentException($"Parameter '{label}' is an ordered array; its length bounds must be a range of at least one.", nameof(min));
         }
 
         Label = label;
@@ -117,7 +124,9 @@ public sealed record ParameterDescriptor
     /// <summary>How many scalar components a value of this kind carries in its ranges: one, three, or four; zero for kinds without a range.</summary>
     public int RangeComponents => Kind switch
     {
-        ParameterKind.Integer or ParameterKind.BinaryTurn => 1,
+        // A RefList's one range component is its length rather than a component of its value, which is why
+        // ParameterValue.Validate checks it separately (decision 0070 clause 4).
+        ParameterKind.Integer or ParameterKind.BinaryTurn or ParameterKind.RefList => 1,
         ParameterKind.Rotation or ParameterKind.Vector3 => 3,
         ParameterKind.Colour => 4,
         _ => 0,
@@ -163,10 +172,11 @@ public sealed record ParameterDescriptor
         {
             (Unit ?? throw new ArgumentException($"Parameter '{Label}' carries no unit, which registry revision 4 and later require (decision 0060).", nameof(carriesUnits))).Encode(writer);
 
-            // A reference has no default and writes none; presence follows from the kind and from
-            // whether this is a derived parameter, so the bytes stay canonical with no flag to write two
-            // ways.
-            if (withDefault && Kind != ParameterKind.PrimitiveRef)
+            // A reference has no default and writes none, and an ordered array of references has none for
+            // the same reason: a default is written when the registry is, and no definition exists then.
+            // Presence follows from the kind and from whether this is a derived parameter, so the bytes
+            // stay canonical with no flag to write two ways.
+            if (withDefault && Kind is not (ParameterKind.PrimitiveRef or ParameterKind.RefList))
             {
                 (Default ?? throw new ArgumentException($"Parameter '{Label}' carries no default, which registry revision 4 and later require (decision 0060).", nameof(carriesUnits))).Encode(writer, this);
             }
@@ -203,7 +213,7 @@ public sealed record ParameterDescriptor
 
             ParameterUnit unit = ParameterUnit.Decode(reader);
             var bare = new ParameterDescriptor(label, kind, fractionBits, min, max, labels, refCategory, unit);
-            return !withDefault || kind == ParameterKind.PrimitiveRef
+            return !withDefault || kind is ParameterKind.PrimitiveRef or ParameterKind.RefList
                 ? bare
                 : new ParameterDescriptor(label, kind, fractionBits, min, max, labels, refCategory, unit, ParameterValue.Decode(reader, bare));
         }

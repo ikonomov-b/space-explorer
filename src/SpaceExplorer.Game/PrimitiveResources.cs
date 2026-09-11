@@ -92,6 +92,15 @@ public sealed class PrimitiveResources
     public float GroundRepeats(PrimitiveDefinition body, long extentMetres) =>
         (float)(extentMetres * (double)SurfaceAppearance.ScaleUnit / AppearanceOf(body).ScaleUnits);
 
+    /// <summary>
+    /// The definition an exact reference names, verified to be the content the reference meant rather than
+    /// whatever now sits at that identifier — which is what an exact reference is for (decision 0031).
+    /// </summary>
+    public PrimitiveDefinition Resolve(PrimitiveRevisionRef reference) =>
+        _set.TryFind(reference.Id) is { } found && found.Hash == reference.Hash
+            ? found
+            : throw new ArgumentException($"Reference {reference.Id} at {reference.Hash} is not held by the pinned set with that hash.", nameof(reference));
+
     /// <summary>The appearance a body's stored surface material describes.</summary>
     private SurfaceAppearance AppearanceOf(PrimitiveDefinition body)
     {

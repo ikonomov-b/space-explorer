@@ -57,9 +57,43 @@ public static class ParameterSampler
                 }
 
                 return ParameterValue.Ref(referencePool[(int)stream.NextBounded((uint)referencePool.Count)]);
+            case ParameterKind.RefList:
+                return SampleRefList(stream, range, descriptor, referencePool);
             default:
                 throw new InvalidOperationException($"Unknown parameter kind {(byte)range.Kind}.");
         }
+    }
+
+    /// <summary>
+    /// Draws an ordered array of references: a length within the template's range, then that many drawn
+    /// without repetition where the pool is large enough and with it where it is not
+    /// ([decision 0070](../../../docs/decisions/0070-a-biome-is-a-derived-set-registry-revision-9-and-grammar-version-10.md)
+    /// clause 4). Distinctness matters here in a way it does not for a single reference: a palette that
+    /// names one biome twice paints one biome, and the count a row prints would be a lie.
+    /// </summary>
+    private static ParameterValue SampleRefList(Pcg32 stream, ParameterRange range, ParameterDescriptor descriptor, IReadOnlyList<PrimitiveRevisionRef> referencePool)
+    {
+        if (referencePool.Count == 0)
+        {
+            throw new InvalidOperationException($"Parameter '{descriptor.Label}' needs definitions of category {descriptor.RefCategory}, and none has been generated yet");
+        }
+
+        // The template's own range where it states one, and the descriptor's bounds otherwise, which is
+        // decision 0060's rule that a template's silence means the registry's default.
+        long low = Math.Max(descriptor.Min, range.Min.Count > 0 ? range.Min[0] : descriptor.Min);
+        long high = Math.Min(descriptor.Max, range.Max.Count > 0 ? range.Max[0] : descriptor.Max);
+        int length = (int)Math.Min(SampleInclusive(stream, low, Math.Max(low, high)), referencePool.Count);
+
+        var chosen = new List<PrimitiveRevisionRef>(length);
+        var remaining = new List<PrimitiveRevisionRef>(referencePool);
+        for (int index = 0; index < length; index++)
+        {
+            int at = (int)stream.NextBounded((uint)remaining.Count);
+            chosen.Add(remaining[at]);
+            remaining.RemoveAt(at);
+        }
+
+        return ParameterValue.RefList(chosen);
     }
 
     /// <summary>Draws uniformly in <c>[min, max]</c>, rejecting rather than reducing modulo when the span exceeds 32 bits.</summary>
