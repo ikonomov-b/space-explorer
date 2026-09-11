@@ -184,6 +184,40 @@ godot --path src/SpaceExplorer.Game --resolution 1600x900 -- --surface --tier st
 # reader could have walked in it; the map frame is fixed in every run
 ```
 
+A surface cycle's whole sample, which is the command a row's frames come from
+([decision 0061](decisions/0061-surface-iterations-by-an-escalating-ladder-registry-revision-5-and-grammar-version-6.md)
+clauses 8 and 9, [decision 0070](decisions/0070-a-biome-is-a-derived-set-registry-revision-9-and-grammar-version-10.md)
+clause 12). `SET` is the published set pack and `N` the cycle number:
+
+```sh
+run() { command -v xvfb-run >/dev/null && xvfb-run -a "$@" || "$@"; }
+
+mkdir -p "build/samples/surface$N-starter"
+for seed in $(seq 1 24); do
+  case $(( (seed - 1) % 3 )) in 0) kind=rocky;; 1) kind=icy;; 2) kind=ocean;; esac
+  s=$(printf "%02d" "$seed")
+  dotnet run --project src/SpaceExplorer.Cli -- destination --tier starter --seed "$seed" --set "$SET"
+  for frame in walk map; do
+    [ "$frame" = map ] && above=--from-above || above=
+    run godot --path src/SpaceExplorer.Game --resolution 1600x900 -- --surface --tier starter \
+      --seed "$seed" --set "$SET" --kind "$kind" $above \
+      --screenshot "$PWD/build/samples/surface$N-starter/seed$s-$kind-$frame.png"
+  done
+done
+```
+
+**`xvfb-run` is used where it exists and skipped where it does not**, which is the only way a sweep renders
+without taking the screen: a Godot window with the no-focus flag does not run its render loop and never
+saves a frame, and one placed off the visible desktop renders the overlapping part and black for the rest —
+both measured on this workstation rather than assumed. Without a virtual display the sweep opens
+forty-eight windows in front of whatever else is running, which works and is merely antisocial. Install it
+with `sudo apt install xvfb`.
+
+The destination is composed before its frames because composing publishes the ground
+([decision 0067](decisions/0067-a-destinations-ground-is-generated-when-it-is-composed.md)), and the view
+only reads. A seed whose system has no body of its turn's kind falls back to its first region and says so,
+so the sweep never skips a seed.
+
 **A destination with no landable body has no region to draw** and the view says so by name, exit 1: a
 region is placed only where the body is both large enough for one ([decision 0059](decisions/0059-region-limits-are-a-pinned-record.md))
 and declares the `solid-surface` tag, which the `basic` vocabulary withholds from a gas giant.
