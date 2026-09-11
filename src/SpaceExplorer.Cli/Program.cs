@@ -305,7 +305,10 @@ static int Destination(string[] options)
             // never one whose ground is missing (decision 0067).
             GroundPublishResult ground = GroundPublisher.Publish(root, destination.Graph, registry);
             DestinationPublishResult published = DestinationStore.Publish(root, DestinationRecord.Of(destination, source, grammar, registry, suit, tiers, regions));
-            Console.WriteLine($"ground        {ground.Regions} region(s), {ground.Generated} generated, {ground.BytesWritten / 1024.0 / 1024.0:0.00} MiB written");
+            // Invariant, like every other figure this tool prints: under a decimal-comma locale the size
+            // would read "10,70 MiB" beside an invariant "0.534 AU", and a sweep parsing it would break by
+            // machine rather than by input.
+            Console.WriteLine(FormattableString.Invariant($"ground        {ground.Regions} region(s), {ground.Generated} generated, {ground.BytesWritten / 1024.0 / 1024.0:0.00} MiB written"));
             status = published.AlreadyPublished ? "composed; already published" : "composed and published";
         }
     }
