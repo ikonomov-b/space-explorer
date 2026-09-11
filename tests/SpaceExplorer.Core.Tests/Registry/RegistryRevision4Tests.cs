@@ -22,7 +22,7 @@ public class RegistryRevision4Tests
 
         Assert.False(CategoryRegistryRevision3.Registry.CarriesUnits);
         Assert.True(Revision4.CarriesUnits);
-        Assert.Equal(5, CategoryRegistries.Supported.Registries.Count);
+        Assert.Equal(6, CategoryRegistries.Supported.Registries.Count);
     }
 
     [Fact]

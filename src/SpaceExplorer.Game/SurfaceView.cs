@@ -1,4 +1,5 @@
 using Godot;
+using SpaceExplorer.Core.Derivation;
 using SpaceExplorer.Core.Description;
 using SpaceExplorer.Core.Registry;
 using GraphNode = SpaceExplorer.Core.Registry.GraphNode;
@@ -46,6 +47,10 @@ public partial class SurfaceView : Node3D
     private readonly string? _screenshot;
     private readonly bool _fromAbove;
 
+    private readonly ReliefField _relief;
+    private readonly short[] _heights;
+    private readonly int _across;
+
     private Camera3D _camera = null!;
     private Label _legend = null!;
     private ColorRect _behind = null!;
@@ -66,6 +71,7 @@ public partial class SurfaceView : Node3D
         BodyDescription description,
         PrimitiveResources resources,
         CategoryRegistry registry,
+        ulong compositionSeed,
         string? screenshot = null,
         bool fromAbove = false)
     {
@@ -85,10 +91,28 @@ public partial class SurfaceView : Node3D
         _extentMetres = region.Definition.TryParameter(registry, CategoryRegistryRevision5.ExtentParameter)?.Value.AsInteger
             ?? throw new ArgumentException($"Instance '{region.Path}' stores no extent, so nothing says how far its ground reaches.", nameof(region));
 
-        // The anchor's heading is a binary turn: which way the arrival faces on a body that has no north
-        // to speak of yet. Latitude and longitude place the region on the body and do not move the ground
-        // under it, so they are read into the legend rather than into the camera.
+        // The anchor's heading is a binary turn: which way the arrival faces. It turns the camera here and
+        // the ground in the core, where the whole anchor is read: from rung 2 the latitude and longitude
+        // place the region on the body's own relief, so they move what is under foot as well as labelling
+        // where it is.
         _heading = (float)(region.Transform?.Component("heading") ?? 0) / (1L << 31) * Mathf.Pi;
+
+        _relief = new ReliefField(
+            _description.RadiusUnits,
+            Parameter(body, registry, CategoryRegistryRevision6.AmplitudeParameter),
+            Parameter(body, registry, CategoryRegistryRevision6.RoughnessParameter),
+            Parameter(body, registry, CategoryRegistryRevision6.WavelengthParameter),
+            compositionSeed,
+            body.Path);
+
+        _heights = TerrainHeightfield.Sample(
+            _relief,
+            (int)(region.Transform?.Component("latitude") ?? 0),
+            (int)(region.Transform?.Component("longitude") ?? 0),
+            (int)(region.Transform?.Component("heading") ?? 0),
+            _extentMetres);
+
+        _across = TerrainHeightfield.SamplesAcross(_extentMetres);
     }
 
     public override void _Ready()
@@ -134,7 +158,9 @@ public partial class SurfaceView : Node3D
 
         float speed = WalkSpeed * (Input.IsKeyPressed(Key.Shift) ? 3f : 1f) * (float)delta;
         Basis flat = Basis.FromEuler(new Vector3(0f, _yaw, 0f));
-        Vector3 stepped = _walkedFrom + ((flat.X * move.X) - (flat.Z * move.Z)) * speed;
+        // The basis's Z points behind the eye, so w giving a negative move.Z is already forward: negating
+        // it here is what put the walk in reverse.
+        Vector3 stepped = _walkedFrom + ((flat.X * move.X) + (flat.Z * move.Z)) * speed;
 
         // Held inside the region's own extent: what lies beyond it is rung 5's far field and edge, unbuilt,
         // so walking off shows a missing rung rather than a fault in what rung one actually generated
@@ -164,20 +190,113 @@ public partial class SurfaceView : Node3D
 
     private static float Pressed(Key key) => Input.IsKeyPressed(key) ? 1f : 0f;
 
-    /// <summary>Places the walk camera at how far the drag has walked, facing where the drag has turned.</summary>
+    /// <summary>
+    /// Places the walk camera at how far the drag has walked, facing where the drag has turned, with the
+    /// eye riding the ground rather than holding an altitude: a camera at a fixed height over a landscape
+    /// reports the height and not the landscape (decision 0063 clause 11).
+    /// </summary>
     private void UpdateWalkCamera()
     {
-        _camera.Position = _walkedFrom + new Vector3(0f, EyeHeight, 0f);
+        _camera.Position = _walkedFrom + new Vector3(0f, GroundUnder(_walkedFrom.X, _walkedFrom.Z) + EyeHeight, 0f);
         _camera.Rotation = new Vector3(_pitch, _yaw, 0f);
     }
 
-    /// <summary>The region itself: a square of ground the size the record says, wearing the body's own surface.</summary>
-    private MeshInstance3D Ground() => new()
+    /// <summary>
+    /// The region itself: the ground `terrain-heightfield/1` derives from the planet's relief field, at the
+    /// size the record says and wearing the body's own surface. The heights are drawn at their true scale,
+    /// with no vertical exaggeration, because a reader asked to judge an amplitude must not be shown a
+    /// stretched one ([decision 0063](../../../docs/decisions/0063-relief-by-terrain-heightfield-registry-revision-6-and-grammar-version-7.md)
+    /// clause 11).
+    /// </summary>
+    private MeshInstance3D Ground()
     {
-        Mesh = new PlaneMesh { Size = new Vector2(_extentMetres, _extentMetres) },
-        MaterialOverride = _resources.GroundFor(_body.Definition, _extentMetres),
-        Name = "Ground",
-    };
+        var vertices = new Vector3[_heights.Length];
+        var normals = new Vector3[_heights.Length];
+        var uvs = new Vector2[_heights.Length];
+
+        float step = TerrainHeightfield.CellMetres;
+        float half = (_across - 1) / 2f;
+        for (int j = 0; j < _across; j++)
+        {
+            for (int i = 0; i < _across; i++)
+            {
+                int at = (j * _across) + i;
+                vertices[at] = new Vector3((i - half) * step, HeightAt(i, j), (j - half) * step);
+
+                // Central differences over the field, which is the slope the samples themselves state
+                // rather than one the renderer invents from the triangles it happens to have built.
+                float acrossX = HeightAt(i + 1, j) - HeightAt(i - 1, j);
+                float acrossZ = HeightAt(i, j + 1) - HeightAt(i, j - 1);
+                normals[at] = new Vector3(-acrossX, 2f * step, -acrossZ).Normalized();
+
+                // Unchanged from the flat ground: the material still tiles at the length its recipe's
+                // scale claims, so rung one's question is asked of rung two's surface on the same terms.
+                uvs[at] = new Vector2(i / (float)(_across - 1), j / (float)(_across - 1));
+            }
+        }
+
+        var indices = new int[(_across - 1) * (_across - 1) * 6];
+        int next = 0;
+        for (int j = 0; j < _across - 1; j++)
+        {
+            for (int i = 0; i < _across - 1; i++)
+            {
+                // Clockwise seen from above, which is the winding Godot takes for a front face: wound the
+                // other way the ground is culled and a walker sees straight through the hill in front.
+                int corner = (j * _across) + i;
+                indices[next++] = corner;
+                indices[next++] = corner + 1;
+                indices[next++] = corner + _across;
+                indices[next++] = corner + 1;
+                indices[next++] = corner + _across + 1;
+                indices[next++] = corner + _across;
+            }
+        }
+
+        var surface = new Godot.Collections.Array();
+        surface.Resize((int)Mesh.ArrayType.Max);
+        surface[(int)Mesh.ArrayType.Vertex] = vertices;
+        surface[(int)Mesh.ArrayType.Normal] = normals;
+        surface[(int)Mesh.ArrayType.TexUV] = uvs;
+        surface[(int)Mesh.ArrayType.Index] = indices;
+
+        var mesh = new ArrayMesh();
+        mesh.AddSurfaceFromArrays(Mesh.PrimitiveType.Triangles, surface);
+
+        return new MeshInstance3D
+        {
+            Mesh = mesh,
+            MaterialOverride = _resources.GroundFor(_body.Definition, _extentMetres),
+            Name = "Ground",
+        };
+    }
+
+    /// <summary>One stored integer parameter of a definition, by the label its registry revision gives it.</summary>
+    private static long Parameter(GraphNode node, CategoryRegistry registry, string label) =>
+        node.Definition.TryParameter(registry, label)?.Value.AsInteger
+        ?? throw new ArgumentException($"Instance '{node.Path}' stores no '{label}', which registry revision 6 gives every planet.", nameof(node));
+
+    /// <summary>The stored height at a sample, in metres, with the edge held rather than wrapped.</summary>
+    private float HeightAt(int i, int j) =>
+        _heights[(Math.Clamp(j, 0, _across - 1) * _across) + Math.Clamp(i, 0, _across - 1)] / (float)ReliefField.HeightUnit;
+
+    /// <summary>The ground under a point of the region, bilinearly between the four samples around it.</summary>
+    private float GroundUnder(float x, float z)
+    {
+        float step = TerrainHeightfield.CellMetres;
+        float half = (_across - 1) / 2f;
+        float atX = Math.Clamp((x / step) + half, 0, _across - 1);
+        float atZ = Math.Clamp((z / step) + half, 0, _across - 1);
+
+        int i = (int)atX;
+        int j = (int)atZ;
+        float alongX = atX - i;
+        float alongZ = atZ - j;
+
+        float near = Mathf.Lerp(HeightAt(i, j), HeightAt(i + 1, j), alongX);
+        float far = Mathf.Lerp(HeightAt(i, j + 1), HeightAt(i + 1, j + 1), alongX);
+        return Mathf.Lerp(near, far, alongZ);
+    }
 
     /// <summary>
     /// The light, which the view invents and the legend admits to: there is no celestial solution yet, so
@@ -237,7 +356,9 @@ public partial class SurfaceView : Node3D
             Name = "MapCamera",
         };
 
-        camera.Position = new Vector3(0f, _extentMetres, 0f);
+        // Above the highest sample rather than above the plane, since from rung 2 there is something to
+        // clear; orthographic, so the height changes what is lit and not how large anything looks.
+        camera.Position = new Vector3(0f, (float)Highest() + _extentMetres, 0f);
         camera.Rotation = new Vector3(-Mathf.Pi / 2f, _heading, 0f);
         return camera;
     }
@@ -261,11 +382,14 @@ public partial class SurfaceView : Node3D
             Invariant($"extent     {_extentMetres:N0} m a side, {(_extentMetres * _extentMetres / 1_000_000.0):0.00} km^2"),
             Invariant($"anchor     latitude {Turn(_region.Transform?.Component("latitude") ?? 0):0.0}, longitude {Turn(_region.Transform?.Component("longitude") ?? 0):0.0}, heading {Turn(_region.Transform?.Component("heading") ?? 0):0.0}"),
             Invariant($"material   tiled {repeats:N0} times across, {metresPerTile:0.000} m a tile, {(metresPerTile * 100 / 128):0.00} cm a texel"),
+            Invariant($"relief     {_relief.AmplitudeMetres:N0} m amplitude, roughness {_relief.RoughnessFraction / (double)ReliefField.RoughnessUnit:0.000}, {_relief.WavelengthMetres:N0} m coarsest over {_relief.Octaves} octaves"),
+            Invariant($"field      {_relief.Hash.ToString()[..8]} by terrain-heightfield/1, {_across} x {_across} samples, {Lowest():0.0} m to {Highest():0.0} m here"),
             "",
-            Invariant($"frame      {(_fromAbove ? $"orthographic, the whole region; the bar below is {ScaleBarMetres():N0} m" : $"walk, eye at {EyeHeight:0} m along the stored heading")}"),
-            "supplied   light direction, sky colour, and eye height are this harness's own:",
-            "           no celestial solution exists yet, so none of the three is derived",
-            "stored     extent, material, texture scale, and the anchor above",
+            Invariant($"frame      {(_fromAbove ? $"orthographic, the whole region; the bar below is {ScaleBarMetres():N0} m" : $"walk, eye at {EyeHeight:0} m above the ground along the stored heading")}"),
+            "supplied   light direction, sky colour, eye height and shading normals are this harness's",
+            "           own: no celestial solution exists yet, so none of them is derived. The relief is",
+            "           drawn at true scale, with no vertical exaggeration",
+            "stored     extent, material, texture scale, the anchor above, and the relief the field derives",
             Invariant($"controls   {(_fromAbove ? "escape quits" : "w a s d walk, drag turn, shift faster, held inside the region's own extent, escape quits")}"),
         ];
 
@@ -278,6 +402,12 @@ public partial class SurfaceView : Node3D
 
         CallDeferred(nameof(SizeLegend));
     }
+
+    /// <summary>The lowest sample of this region, in metres: half of the map frame's height key.</summary>
+    private double Lowest() => _heights.Min() / (double)ReliefField.HeightUnit;
+
+    /// <summary>The highest sample of this region, in metres.</summary>
+    private double Highest() => _heights.Max() / (double)ReliefField.HeightUnit;
 
     /// <summary>A round number of metres near a fifth of the region, for the map frame's bar.</summary>
     private long ScaleBarMetres()
@@ -314,6 +444,17 @@ public partial class SurfaceView : Node3D
         caption.AddThemeFontSizeOverride("font_size", 15);
         _scaleBar.AddChild(bar);
         _scaleBar.AddChild(caption);
+
+        // The vertical axis gets the same courtesy as the horizontal one from rung 2: a reader must be
+        // able to measure the relief rather than guess it, and a top-down frame shows none of it.
+        var key = new Label
+        {
+            Position = new Vector2(28, viewport.Y - 76),
+            Text = Invariant($"relief {Lowest():0.0} m to {Highest():0.0} m, {Highest() - Lowest():0.0} m of it"),
+        };
+
+        key.AddThemeFontSizeOverride("font_size", 15);
+        _scaleBar.AddChild(key);
     }
 
     private static double Turn(long component) => component / (double)(1L << 32) * 360.0;

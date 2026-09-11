@@ -22,6 +22,13 @@ public sealed class PrimitiveResources
     /// <summary>The side of the texture built from a recipe: enough for a pattern to read on a body.</summary>
     private const int TextureSide = 128;
 
+    /// <summary>
+    /// Which version of `derive-surface-raster` draws a material here: 2, the seamless fine-grained one,
+    /// because a region lays a tile at its true metre length and version 1's motifs read as a grid under a
+    /// walker's eye ([decision 0064](../../docs/decisions/0064-surface-raster-version-2-tiles-seamlessly-and-finely.md)).
+    /// </summary>
+    private const int RasterVersion = 2;
+
     private readonly PrimitiveSet _set;
     private readonly CategoryRegistry _registry;
     private readonly Dictionary<SurfaceAppearance, StandardMaterial3D> _materials = [];
@@ -149,7 +156,7 @@ public sealed class PrimitiveResources
     /// </summary>
     private static ImageTexture TextureFor(SurfaceAppearance appearance)
     {
-        Image image = Image.CreateFromData(TextureSide, TextureSide, false, Image.Format.Rgba8, appearance.Raster(TextureSide));
+        Image image = Image.CreateFromData(TextureSide, TextureSide, false, Image.Format.Rgba8, appearance.Raster(TextureSide, RasterVersion));
         image.GenerateMipmaps();
         return ImageTexture.CreateFromImage(image);
     }

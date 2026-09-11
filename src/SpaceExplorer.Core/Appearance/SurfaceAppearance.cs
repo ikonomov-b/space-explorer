@@ -98,18 +98,35 @@ public sealed record SurfaceAppearance(
     /// the same appearance is the same image on every operating system and in every renderer; the engine
     /// wraps these bytes and never generates them.
     /// </summary>
-    /// <exception cref="ArgumentOutOfRangeException">The side is not between 8 and 512.</exception>
-    public byte[] Raster(int side)
+    /// <param name="version">
+    /// Which version of the rule draws it: 1 is the frozen original, 2 the fine-grained seamless one that
+    /// exists because a tile laid at its true metre length repeats every few centimetres under a walker's
+    /// eye, where version 1's seams and mid-scale motifs read as a grid rather than as ground
+    /// ([decision 0064](../../../docs/decisions/0064-surface-raster-version-2-tiles-seamlessly-and-finely.md)).
+    /// Version 1 is retained because the content published under it must still draw as it drew.
+    /// </param>
+    /// <exception cref="ArgumentOutOfRangeException">The side is not between 8 and 512, or the version is not 1 or 2.</exception>
+    public byte[] Raster(int side, int version)
     {
         if (side is < 8 or > 512)
         {
             throw new ArgumentOutOfRangeException(nameof(side), side, "A raster side is between 8 and 512 pixels.");
         }
 
+        if (version is < 1 or > 2)
+        {
+            throw new ArgumentOutOfRangeException(nameof(version), version, "This build carries derive-surface-raster versions 1 and 2.");
+        }
+
         ulong seed = Seed(Hash);
         var pixels = new byte[side * side * 4];
-        int cell = Math.Max(4, side / 6);
-        int stripe = Math.Max(2, side / 16);
+
+        // Version 2 draws every feature small enough that no motif survives the repeat: the coarsest
+        // octave is an eighth of version 1's, the cells are a quarter of the size, and the stripes are
+        // half the period. What a reader sees close up is grain, and what a reader sees far off is the
+        // average of it, which is what version 1 already got right.
+        int cell = version == 1 ? Math.Max(4, side / 6) : Math.Max(3, side / 24);
+        int stripe = version == 1 ? Math.Max(2, side / 16) : Math.Max(1, side / 32);
 
         for (int y = 0; y < side; y++)
         {
@@ -117,9 +134,9 @@ public sealed record SurfaceAppearance(
             {
                 int weight = Pattern switch
                 {
-                    "noise" => Fbm(seed, x, y, side),
+                    "noise" => version == 1 ? Fbm(seed, x, y, side) : FineFbm(seed, x, y, side),
                     "stripes" => (y / stripe) % 2 == 0 ? 0 : 256,
-                    "cells" => Cells(seed, x, y, cell),
+                    "cells" => version == 1 ? Cells(seed, x, y, cell) : SeamlessCells(seed, x, y, cell, side),
                     "speckle" => Value(seed, x, y, 1) > 220 ? 256 : 0,
                     _ => 0,
                 };
@@ -187,6 +204,72 @@ public sealed record SurfaceAppearance(
         }
 
         return Math.Clamp(total * 256 / 224, 0, 256);
+    }
+
+    /// <summary>
+    /// Version 2's noise: the same construction as <see cref="Fbm"/> over finer octaves and on a lattice
+    /// that wraps at the tile's edge, so a tile abuts its own copy without a seam and carries no feature
+    /// large enough to be recognised when it repeats.
+    /// </summary>
+    private static int FineFbm(ulong seed, int x, int y, int side)
+    {
+        int total = 0;
+        int amplitude = 128;
+        int step = Math.Max(2, side / 16);
+        for (int octave = 0; octave < 3 && step >= 1; octave++)
+        {
+            total += amplitude * SeamlessLattice(seed, x, y, step, octave, side) / 256;
+            amplitude /= 2;
+            step /= 2;
+        }
+
+        return Math.Clamp(total * 256 / 224, 0, 256);
+    }
+
+    /// <summary>
+    /// The bilinear reading of an octave whose lattice wraps every <c>side / step</c> cells, which is what
+    /// makes the tile seamless: the corner past the last cell is the corner at the first.
+    /// </summary>
+    private static int SeamlessLattice(ulong seed, int x, int y, int step, int octave, int side)
+    {
+        int cells = Math.Max(1, side / step);
+        int cellX = x / step;
+        int cellY = y / step;
+        int fractionX = ((x % step) * 256) / step;
+        int fractionY = ((y % step) * 256) / step;
+
+        int topLeft = Value(seed, cellX % cells, cellY % cells, octave + 1);
+        int topRight = Value(seed, (cellX + 1) % cells, cellY % cells, octave + 1);
+        int bottomLeft = Value(seed, cellX % cells, (cellY + 1) % cells, octave + 1);
+        int bottomRight = Value(seed, (cellX + 1) % cells, (cellY + 1) % cells, octave + 1);
+
+        int top = topLeft + ((topRight - topLeft) * fractionX / 256);
+        int bottom = bottomLeft + ((bottomRight - bottomLeft) * fractionX / 256);
+        return top + ((bottom - top) * fractionY / 256);
+    }
+
+    /// <summary>Version 2's cells: <see cref="Cells"/> on a grid that wraps with the tile, so no cell is cut at an edge.</summary>
+    private static int SeamlessCells(ulong seed, int x, int y, int cell, int side)
+    {
+        int cells = Math.Max(1, side / cell);
+        long nearest = long.MaxValue;
+        int gridX = x / cell;
+        int gridY = y / cell;
+        for (int offsetY = -1; offsetY <= 1; offsetY++)
+        {
+            for (int offsetX = -1; offsetX <= 1; offsetX++)
+            {
+                int atX = gridX + offsetX;
+                int atY = gridY + offsetY;
+                int wrappedX = ((atX % cells) + cells) % cells;
+                int wrappedY = ((atY % cells) + cells) % cells;
+                long centreX = (((long)atX * cell) + (Value(seed, wrappedX, wrappedY, 2) * cell / 256)) - x;
+                long centreY = (((long)atY * cell) + (Value(seed, wrappedX, wrappedY, 3) * cell / 256)) - y;
+                nearest = Math.Min(nearest, (centreX * centreX) + (centreY * centreY));
+            }
+        }
+
+        return (int)Math.Clamp(IntegerSqrt(nearest) * 256 / cell, 0, 256);
     }
 
     /// <summary>The bilinear reading of the octave's lattice at a pixel, in 0 to 255.</summary>

@@ -103,6 +103,7 @@ public partial class Main : Node
                 description,
                 new PrimitiveResources(destination.Graph.Source, registry),
                 registry,
+                destination.Graph.Specification.Seed,
                 Option(arguments, "--screenshot"),
                 arguments.Contains("--from-above")));
         }

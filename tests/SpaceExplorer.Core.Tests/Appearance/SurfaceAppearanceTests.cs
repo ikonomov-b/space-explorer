@@ -31,11 +31,55 @@ public class SurfaceAppearanceTests
         // The digest of the raster bytes, computed from this implementation rather than derived
         // independently: what it pins is that the image does not drift, and what makes it evidence of a
         // portable image is continuous integration comparing it on Linux and on Windows.
-        byte[] pixels = Banded.Raster(64);
+        byte[] pixels = Banded.Raster(64, 1);
 
         Assert.Equal(64 * 64 * 4, pixels.Length);
         Assert.Equal("4a9c2dd16acc0ed321b19433bfdb4cd13e413371eeb11494ba0990e8c05bf2e8", Digest(pixels));
-        Assert.Equal(Digest(pixels), Digest(Banded.Raster(64)));
+        Assert.Equal(Digest(pixels), Digest(Banded.Raster(64, 1)));
+    }
+
+    [Fact]
+    public void Version_2_tiles_without_a_seam_where_version_1_does_not()
+    {
+        // The fault decision 0061 clause 3 predicted and decision 0064 fixes: a region lays a tile at its
+        // true metre length, so the tile abuts its own copy every 35 cm and version 1's unwrapped lattice
+        // draws a line there. Seamlessness is checked as the eye checks it — across the join — rather than
+        // by trusting the modulo: the last column against the first, and the last row against the first.
+        SurfaceAppearance ground = Banded with { Pattern = "noise" };
+
+        Assert.True(EdgeDifference(ground.Raster(64, 2)) < EdgeDifference(ground.Raster(64, 1)) / 2);
+    }
+
+    [Fact]
+    public void Version_1_is_unmoved_by_version_2_existing()
+    {
+        // A rule version is frozen at its first vectored result, so the digest above is version 1's for
+        // good; what a second version may not do is quietly become the first.
+        Assert.Equal("4a9c2dd16acc0ed321b19433bfdb4cd13e413371eeb11494ba0990e8c05bf2e8", Digest(Banded.Raster(64, 1)));
+        Assert.NotEqual(Digest(Banded.Raster(64, 1)), Digest(Banded.Raster(64, 2)));
+        Assert.Throws<ArgumentOutOfRangeException>(() => Banded.Raster(64, 0));
+        Assert.Throws<ArgumentOutOfRangeException>(() => Banded.Raster(64, 3));
+    }
+
+    /// <summary>The mean channel difference across the tile's two joins, which is what a seam is.</summary>
+    private static double EdgeDifference(byte[] pixels)
+    {
+        const int side = 64;
+        long total = 0;
+        for (int at = 0; at < side; at++)
+        {
+            for (int channel = 0; channel < 3; channel++)
+            {
+                int leftEdge = ((at * side) + side - 1) * 4;
+                int rightEdge = (at * side) * 4;
+                int bottomEdge = (((side - 1) * side) + at) * 4;
+                int topEdge = at * 4;
+                total += Math.Abs(pixels[leftEdge + channel] - pixels[rightEdge + channel]);
+                total += Math.Abs(pixels[bottomEdge + channel] - pixels[topEdge + channel]);
+            }
+        }
+
+        return total / (double)(side * 6);
     }
 
     [Fact]
@@ -44,7 +88,7 @@ public class SurfaceAppearanceTests
         SurfaceAppearance other = Banded with { ColourB = new Rgba(80, 90, 210, 255) };
 
         Assert.NotEqual(Banded.Hash, other.Hash);
-        Assert.NotEqual(Digest(Banded.Raster(64)), Digest(other.Raster(64)));
+        Assert.NotEqual(Digest(Banded.Raster(64, 1)), Digest(other.Raster(64, 1)));
 
         // The seed follows the appearance's own bytes, so two equal appearances cannot differ.
         Assert.Equal(Banded.Hash, (Banded with { }).Hash);
@@ -53,8 +97,8 @@ public class SurfaceAppearanceTests
     [Fact]
     public void A_raster_side_outside_the_bounds_is_refused()
     {
-        Assert.Throws<ArgumentOutOfRangeException>(() => Banded.Raster(4));
-        Assert.Throws<ArgumentOutOfRangeException>(() => Banded.Raster(1_024));
+        Assert.Throws<ArgumentOutOfRangeException>(() => Banded.Raster(4, 1));
+        Assert.Throws<ArgumentOutOfRangeException>(() => Banded.Raster(1_024, 1));
     }
 
     [Fact]
