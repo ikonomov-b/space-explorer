@@ -1,4 +1,5 @@
 using SpaceExplorer.Core.Derivation;
+using SpaceExplorer.Core.Registry;
 using SpaceExplorer.Core.Shared;
 using Xunit;
 
@@ -60,6 +61,57 @@ public class RegionPayloadTests
             double share = payload.Bytes.Length / (double)(heights.Length * 2);
             Assert.True(share < ceiling, $"ground of amplitude {amplitude} and ridging {ridging} stored at {share:P1} of raw, over the {ceiling:P0} this pins");
         }
+    }
+
+    [Fact]
+    public void The_worst_ground_this_generator_draws_packs_within_the_budgeted_ceiling()
+    {
+        // What [decision 0069](../../../docs/decisions/0069-decision-0068s-ceiling-is-the-generators-and-the-format-admits-18-bits.md)
+        // asks to be a test rather than a reading, because the number was got wrong twice in prose before
+        // it was got right: decision 0068 budgets a campaign on a per-region ceiling of 17 bits a residual,
+        // which is what the vocabulary's extremes reach and not what the format admits. A residual is one
+        // int16 less the planar prediction of three others, so it spans ±131,070 and eighteen bits
+        // zig-zagged — reachable only where four neighbouring samples sit at opposite amplitude extremes,
+        // which smoothstep interpolation over a 4 m finest wavelength cannot produce at 2 m spacing.
+        //
+        // If this goes red, the ceiling has moved and decisions 0068 and 0069 are to be revisited by name:
+        // the generator, the amplitude cap, or the sample format has changed under them.
+        ReliefField worst = Field with
+        {
+            AmplitudeMetres = CategoryRegistryRevision6.MaximumAmplitudeMetres,
+            RoughnessFraction = ReliefField.RoughnessUnit,
+            WavelengthMetres = ReliefField.FinestWavelengthMetres,
+            RidgingFraction = ReliefField.RoughnessUnit,
+        };
+
+        short[] heights = TerrainHeightfield.Sample(worst, 170_000_000, 650_000_000, 90_000_000, 2_048);
+        int across = TerrainHeightfield.SamplesAcross(2_048);
+
+        int widest = 0;
+        for (int row = 0; row < across; row++)
+        {
+            for (int column = 0; column < across; column++)
+            {
+                int index = (row * across) + column;
+                long prediction = row == 0
+                    ? (column == 0 ? 0 : heights[index - 1])
+                    : column == 0
+                        ? heights[index - across]
+                        : heights[index - 1] + heights[index - across] - heights[index - across - 1];
+
+                long zigZagged = ((heights[index] - prediction) << 1) ^ ((heights[index] - prediction) >> 63);
+                int bits = 0;
+                for (long value = zigZagged; value > 0; value >>= 1)
+                {
+                    bits++;
+                }
+
+                widest = Math.Max(widest, bits);
+            }
+        }
+
+        Assert.Equal(17, widest);
+        Assert.InRange(RegionPayload.Of("solar-system/orbit/0/surface-anchor/0", TerrainHeightfield.RidgedRule, worst.Hash, 2_048, heights).Bytes.Length, 1, 2_234_560);
     }
 
     [Fact]

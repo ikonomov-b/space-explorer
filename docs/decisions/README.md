@@ -78,4 +78,5 @@ File name: `NNNN-short-title.md`. Use [0000-template.md](0000-template.md). A re
 | [0067](0067-a-destinations-ground-is-generated-when-it-is-composed.md) | A destination's ground is generated when it is composed, because storing all of it fits | Accepted |
 | [0068](0068-campaign-storage-budget-re-derived-from-the-payload-ceiling.md) | The campaign storage budget is re-derived from the payload format's ceiling, not from an assumed ratio | Accepted |
 | [0069](0069-decision-0068s-ceiling-is-the-generators-and-the-format-admits-18-bits.md) | Decision 0068's ceiling is the generator's, not the format's: the format admits 18 bits a residual | Proposed |
+| [0070](0070-a-biome-is-a-derived-set-registry-revision-9-and-grammar-version-10.md) | A biome is a derived set: the `biome-element` category, `biome-patches/1`, the ocean datum, registry revision 9 and grammar version 10 | Proposed |
 <!-- generated:end decisions -->
