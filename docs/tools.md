@@ -150,17 +150,22 @@ godot --path src/SpaceExplorer.Game -- --surface --tier starter --seed 1
 # legend says "loaded from the data root"; "generated and stored" appears only for a destination
 # published before decision 0067 or a field whose parameters have moved, which is the fallback and
 # not a contradiction (decisions 0066, 0067)
-# from rung 3 (decision 0070, accepted, being built; these lines state the record and are replaced by
-# the built options and printed lines when its view lands): the ground wears each cell's biome
-# material, derived on load from the stored biome patches, the heights and the planet's sea level by
-# derive-biome-index/1 and never stored; a flat opaque plane at the sea level wears the submerged
-# biome's material where the palette holds one; the legend lists the palette, each biome's material
-# and claim, and the sea level as stored lines, and names as supplied the blend at a boundary, the
-# water plane's flatness with its 2.0 m tangent-plane error, and how the mesh carries more than one
-# material (clause 11); the sweep draws one region per body kind, the seed's index selecting the kind
-# and falling back to the first region where that kind is absent, and the row prints the kind beside
-# each frame (clause 12); the row's two new counts, distinct biome elements across the sample and
-# biomes actually present per region, are what the build's list form is expected to print (clause 15)
+# rung 3 (decision 0070) is built. --kind <rocky|icy|ocean|gas-giant> draws the first region whose body
+# is of that type, falling back to the first region where the destination has none, and says which
+# before it draws: "kind          ocean: region 2", or "kind          ocean: absent, falling back to
+# region 0". A sweep rotating the kind by seed therefore covers rock, ice and ocean in the same
+# forty-eight frames, where drawing each destination's first region drew a rocky body every time
+# (clause 12). The ground wears each cell's biome material, one mesh surface per biome over shared
+# vertices, derived on load by derive-biome-index/1 from the stored patches, the heights and the
+# planet's sea level, and stored nowhere; a flat water plane stands at the sea level where the planet
+# declares one. The legend gains two lines:
+#   biomes     3 in the planet's palette, 64 patches stored, 3 present here, drawn in 3 surface(s)
+#   sea        -12 m above the reference sphere, 79.3% of cells under it
+#   sea        none: the planet declares no datum
+# the second form where the datum is the floor, which is every rocky and icy body the basic vocabulary
+# draws. --list is unchanged and prints only the region lines, so the two counts a row carries —
+# distinct biome elements across the sample, and biomes present per region — are read from the legend
+# per frame and from the set, not from --list.
 # --tier, --seed, --set, --data-root, --no-publish and --screenshot are the system view's, unchanged
 # w a s d walk the ground, shift is faster, drag turns, and the eye stays at its 2 m: the walk frame
 # is walkable in an interactive run, held inside the region's own extent, because a repeat is a
