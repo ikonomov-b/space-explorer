@@ -55,7 +55,7 @@ File name: `NNNN-short-title.md`. Use [0000-template.md](0000-template.md). A re
 | [0044](0044-tiered-system-composition-one-star-and-explorability-by-validation.md) | Tiered system composition: one star, a single lifeless explorable planet at the starter tier, explorability as a validation outcome, and per-tier planet and region counts | Accepted |
 | [0045](0045-close-views-only-in-the-surface-sky-and-a-derived-system-description.md) | Other bodies are seen only in the surface sky; a system description derived from the graph at M0b and M1 | Accepted |
 | [0046](0046-artifact-families-human-height-cap-cargo-by-mass-and-material-rarity.md) | Artifacts: three families with relics covering technical pieces and art, a human-height cap, cargo by mass and size class, and material rarity through the rarity factor | Accepted |
-| [0047](0047-usable-storage-and-structure-generation-then-solar-system-iterations.md) | Next steps: usable primitive storage and structure generation, then solar-system randomization in description-judged iterations | Accepted |
+| [0047](0047-usable-storage-and-structure-generation-then-solar-system-iterations.md) | Next steps: usable primitive storage and structure generation, then solar-system randomization in description-judged iterations | Accepted; order-of-the-rest clause superseded by [0061](0061-surface-iterations-by-an-escalating-ladder-registry-revision-5-and-grammar-version-6.md) |
 | [0048](0048-composition-grammar-version-1-graph-records-and-graph-publication.md) | Composition grammar version 1, the graph record, and graph publication | Accepted |
 | [0049](0049-suit-profile-and-system-description-version-1-and-derivation-rules-as-named-implementations.md) | Suit profile and system description version 1, and derivation rules as named implementations | Accepted |
 | [0050](0050-registry-revision-2-grammar-version-2-and-versioned-record-growth.md) | Registry revision 2 derives what contradicted itself, grammar version 2 spaces the orbits, and a versioned record may grow | Accepted |
@@ -69,4 +69,5 @@ File name: `NNNN-short-title.md`. Use [0000-template.md](0000-template.md). A re
 | [0058](0058-tier-rules-are-a-pinned-record.md) | The tier rules are a versioned record a destination pins | Accepted |
 | [0059](0059-region-limits-are-a-pinned-record.md) | The minimum landable radius is a region-limits record, and the description that prints it is version 3 | Accepted |
 | [0060](0060-registry-revision-4-units-defaults-and-validation-limits.md) | Category registry revision 4: a unit and a default on every parameter, the validation limits in the record, and a barycentre's derived mass | Accepted |
+| [0061](0061-surface-iterations-by-an-escalating-ladder-registry-revision-5-and-grammar-version-6.md) | Surface iterations by an escalating ladder, registry revision 5's region, and grammar version 6 | Accepted |
 <!-- generated:end decisions -->
