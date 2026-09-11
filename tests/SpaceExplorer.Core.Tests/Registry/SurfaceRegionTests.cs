@@ -31,8 +31,8 @@ public class SurfaceRegionTests
 
         // A revision and a grammar are added, never edited: every earlier record keeps the bytes and the
         // hash the content published under it was pinned by (decisions 0035, 0050).
-        Assert.Equal(7, CategoryRegistries.Supported.Registries.Count);
-        Assert.Equal(8, CompositionGrammars.Supported.Grammars.Count);
+        Assert.Equal(8, CategoryRegistries.Supported.Registries.Count);
+        Assert.Equal(9, CompositionGrammars.Supported.Grammars.Count);
         Assert.Equal(6u, CompositionGrammars.Supported.Newest(5)!.Version);
         Assert.Equal(5u, CompositionGrammars.Supported.Newest(4)!.Version);
         Assert.Equal(4u, CompositionGrammars.Supported.Newest(3)!.Version);

@@ -1,5 +1,7 @@
 using Godot;
 using SpaceExplorer.Core.Derivation;
+using SpaceExplorer.Core.Shared;
+using SpaceExplorer.Persistence;
 using SpaceExplorer.Core.Description;
 using SpaceExplorer.Core.Registry;
 using GraphNode = SpaceExplorer.Core.Registry.GraphNode;
@@ -57,6 +59,8 @@ public partial class SurfaceView : Node3D
     private readonly ReliefField _relief;
     private readonly short[] _heights;
     private readonly int _across;
+    private readonly int _storedBytes;
+    private readonly bool _groundWasGenerated;
 
     private Camera3D _camera = null!;
     private Label _legend = null!;
@@ -79,6 +83,8 @@ public partial class SurfaceView : Node3D
         PrimitiveResources resources,
         CategoryRegistry registry,
         ulong compositionSeed,
+        DataRoot root,
+        PackId graphPack,
         string? screenshot = null,
         bool fromAbove = false)
     {
@@ -117,14 +123,26 @@ public partial class SurfaceView : Node3D
             // cycle two's ground (decision 0065).
             body.Definition.TryParameter(registry, CategoryRegistryRevision7.RidgingParameter)?.Value.AsInteger);
 
-        _heights = TerrainHeightfield.Sample(
+        // The ground comes off the disk, never out of a rule run here: where none has been stored, the
+        // store generates and publishes one and hands back what it wrote, so the picture is of bytes the
+        // data root holds either way
+        // ([decision 0066](../../../docs/decisions/0066-generation-writes-to-the-database-and-the-view-only-reads.md)
+        // clause 1). Nothing in this class calls `terrain-heightfield`.
+        RegionPayload payload = PayloadStore.Resolve(
+            root,
+            graphPack,
+            region.Path,
             _relief,
             (int)(region.Transform?.Component("latitude") ?? 0),
             (int)(region.Transform?.Component("longitude") ?? 0),
             (int)(region.Transform?.Component("heading") ?? 0),
-            _extentMetres);
+            _extentMetres,
+            out bool generated);
 
-        _across = TerrainHeightfield.SamplesAcross(_extentMetres);
+        _heights = payload.Heights;
+        _across = payload.Across;
+        _storedBytes = payload.Bytes.Length;
+        _groundWasGenerated = generated;
     }
 
     public override void _Ready()
@@ -431,6 +449,7 @@ public partial class SurfaceView : Node3D
             Invariant($"material   tiled {repeats:N0} times across, {metresPerTile:0.000} m a tile, {(metresPerTile * 100 / 128):0.00} cm a texel"),
             Invariant($"relief     {_relief.AmplitudeMetres:N0} m amplitude, roughness {_relief.RoughnessFraction / (double)ReliefField.RoughnessUnit:0.000}, ridging {Ridging()}, {_relief.WavelengthMetres:N0} m coarsest over {_relief.Octaves} octaves"),
             Invariant($"field      {_relief.Hash.ToString()[..8]} by {(_relief.RidgingFraction is null ? TerrainHeightfield.Rule : TerrainHeightfield.RidgedRule)}, {_across} x {_across} samples, {Lowest():0.0} m to {Highest():0.0} m here"),
+            Invariant($"ground     {(_groundWasGenerated ? "generated and stored" : "loaded from the data root")}, {_storedBytes / 1024.0 / 1024.0:0.00} MiB of records against {_heights.Length * 2 / 1024.0 / 1024.0:0.00} MiB of samples"),
             "",
             Invariant($"frame      {(_fromAbove ? $"orthographic, the whole region; the bar below is {ScaleBarMetres():N0} m" : $"walk, eye at {EyeHeight:0} m above the ground along the stored heading")}"),
             Invariant($"supplied   the sun, {SunElevationDegrees:0} deg up and drawn in the sky, the sky itself, the eye height and"),

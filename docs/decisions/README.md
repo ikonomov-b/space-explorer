@@ -71,7 +71,8 @@ File name: `NNNN-short-title.md`. Use [0000-template.md](0000-template.md). A re
 | [0060](0060-registry-revision-4-units-defaults-and-validation-limits.md) | Category registry revision 4: a unit and a default on every parameter, the validation limits in the record, and a barycentre's derived mass | Accepted |
 | [0061](0061-surface-iterations-by-an-escalating-ladder-registry-revision-5-and-grammar-version-6.md) | Surface iterations by an escalating ladder, registry revision 5's region, and grammar version 6 | Accepted; stored-grid form of rung 2 in the ladder superseded by [0063](0063-relief-by-terrain-heightfield-registry-revision-6-and-grammar-version-7.md) |
 | [0062](0062-the-surface-harness-walks-in-an-interactive-session.md) | The surface harness walks in an interactive session, and its two screenshot frames are unchanged | Accepted |
-| [0063](0063-relief-by-terrain-heightfield-registry-revision-6-and-grammar-version-7.md) | Relief by `terrain-heightfield/1`, registry revision 6's relief field, and grammar version 7 | Accepted |
+| [0063](0063-relief-by-terrain-heightfield-registry-revision-6-and-grammar-version-7.md) | Relief by `terrain-heightfield/1`, registry revision 6's relief field, and grammar version 7 | Accepted; clauses 9 and 10 superseded by [0066](0066-generation-writes-to-the-database-and-the-view-only-reads.md) |
 | [0064](0064-surface-raster-version-2-tiles-seamlessly-and-finely.md) | `derive-surface-raster/2` tiles seamlessly and finely, because a region lays a tile at its true length | Accepted |
 | [0065](0065-terrain-heightfield-version-2-ridges-and-registry-revision-7s-ridging.md) | `terrain-heightfield/2` ridges, and registry revision 7 lets a body say how much | Accepted |
+| [0066](0066-generation-writes-to-the-database-and-the-view-only-reads.md) | Generation writes to the database and the view only reads, so a visited surface is stored in full detail | Accepted |
 <!-- generated:end decisions -->

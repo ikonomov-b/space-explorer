@@ -6,6 +6,8 @@ using SpaceExplorer.Core.Shared;
 namespace SpaceExplorer.Persistence;
 
 /// <summary>One indexed composition graph: what a loader needs before it can read the record itself.</summary>
+internal sealed record PayloadRow(ContentHash RecordHash, ContentHash FieldHash, string Rule, int ByteCount);
+
 internal sealed record GraphRow(PackId Pack, ContentHash GraphHash, PackId SourcePack, uint RegistryRevision, uint GrammarVersion, int NodeCount, CompositionDomain Domain);
 
 /// <summary>One indexed destination: the levers that name it and the graph it drew (decision 0053).</summary>
@@ -75,6 +77,15 @@ internal sealed class PackageIndex : IDisposable
                 tier INTEGER NOT NULL CHECK (tier >= 1),
                 lever_seed BLOB NOT NULL CHECK (length(lever_seed) = 8),
                 attempt INTEGER NOT NULL CHECK (attempt >= 0)
+            );
+            CREATE TABLE IF NOT EXISTS payloads (
+                graph_pack_id BLOB NOT NULL REFERENCES graphs (pack_id),
+                instance_path TEXT NOT NULL,
+                record_hash BLOB NOT NULL CHECK (length(record_hash) = 32),
+                field_hash BLOB NOT NULL CHECK (length(field_hash) = 32),
+                rule TEXT NOT NULL,
+                byte_count INTEGER NOT NULL CHECK (byte_count > 0),
+                PRIMARY KEY (graph_pack_id, instance_path)
             );
             CREATE TABLE IF NOT EXISTS dependants (
                 dependant_kind INTEGER NOT NULL,
@@ -191,6 +202,49 @@ internal sealed class PackageIndex : IDisposable
             ("$dkind", (long)DependantKindGraph), ("$did", pack), ("$ykind", (long)DependencyKindGrammar), ("$yid", specification.GrammarHash.Bytes.ToArray()));
 
         transaction.Commit();
+    }
+
+    /// <summary>
+    /// Which record holds the ground of one region, and of which field, or null where none has been
+    /// generated yet. This is what lets a revisit load rather than regenerate: a payload is named by its
+    /// own content, so nothing could ask for it by name without first producing the content
+    /// ([decision 0066](../../../docs/decisions/0066-generation-writes-to-the-database-and-the-view-only-reads.md)).
+    /// </summary>
+    public PayloadRow? FindPayload(PackId graphPack, string instancePath)
+    {
+        using SqliteCommand command = _connection.CreateCommand();
+        command.CommandText = "SELECT record_hash, field_hash, rule, byte_count FROM payloads WHERE graph_pack_id = $pack AND instance_path = $path;";
+        command.Parameters.AddWithValue("$pack", graphPack.Bytes.ToArray());
+        command.Parameters.AddWithValue("$path", instancePath);
+
+        using SqliteDataReader reader = command.ExecuteReader();
+        return reader.Read()
+            ? new PayloadRow(ContentHash.FromBytes((byte[])reader[0]), ContentHash.FromBytes((byte[])reader[1]), (string)reader[2], (int)(long)reader[3])
+            : null;
+    }
+
+    /// <summary>Names the record that holds a region's ground, last in its publish protocol.</summary>
+    public void RegisterPayload(PackId graphPack, string instancePath, ContentHash record, ContentHash field, string rule, int byteCount)
+    {
+        Execute(
+            "INSERT OR REPLACE INTO payloads (graph_pack_id, instance_path, record_hash, field_hash, rule, byte_count) VALUES ($pack, $path, $record, $field, $rule, $bytes);",
+            transaction: null,
+            ("$pack", graphPack.Bytes.ToArray()), ("$path", instancePath), ("$record", record.Bytes.ToArray()), ("$field", field.Bytes.ToArray()), ("$rule", rule), ("$bytes", (long)byteCount));
+    }
+
+    /// <summary>Every stored region ground, for a report of what a data root holds.</summary>
+    public IReadOnlyList<PayloadRow> ListPayloads()
+    {
+        using SqliteCommand command = _connection.CreateCommand();
+        command.CommandText = "SELECT record_hash, field_hash, rule, byte_count FROM payloads ORDER BY graph_pack_id, instance_path;";
+        using SqliteDataReader reader = command.ExecuteReader();
+        var rows = new List<PayloadRow>();
+        while (reader.Read())
+        {
+            rows.Add(new PayloadRow(ContentHash.FromBytes((byte[])reader[0]), ContentHash.FromBytes((byte[])reader[1]), (string)reader[2], (int)(long)reader[3]));
+        }
+
+        return rows;
     }
 
     /// <summary>The destination indexed under <paramref name="pack"/>, or null.</summary>
