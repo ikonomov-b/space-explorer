@@ -122,7 +122,7 @@ Relief was the first to need it after all. [Decision 0063](decisions/0063-relief
 
 Every figure follows from constants the decisions already fix; nothing here is an estimate.
 
-A maximal region is [decision 0017](decisions/0017-region-extent-cap-and-storage-derivation.md)'s 2,048 m per axis, so it covers 4.194 km² and is budgeted at the 2.13 MiB ceiling its payload format admits, 0.97 MiB at the measured mean ([decision 0068](decisions/0068-campaign-storage-budget-re-derived-from-the-payload-ceiling.md)).
+A maximal region is [decision 0017](decisions/0017-region-extent-cap-and-storage-derivation.md)'s 2,048 m per axis, so it covers 4.194 km² and is budgeted at the 2.13 MiB ceiling the generator's ground reaches, the payload format admitting 2.26 MiB ([decision 0069](decisions/0069-decision-0068s-ceiling-is-the-generators-and-the-format-admits-18-bits.md), `Proposed`), 0.97 MiB at the measured mean ([decision 0068](decisions/0068-campaign-storage-budget-re-derived-from-the-payload-ceiling.md)).
 
 A body of [decision 0041](decisions/0041-planet-fields-tangent-regions-minimum-radius-and-far-field.md)'s minimum landable radius, 524,288 m, has 3.454 million km² of surface, which is some 823,500 maximal regions. An Earth-sized body of 6,371 km has 510.1 million km², or some 121.6 million.
 
