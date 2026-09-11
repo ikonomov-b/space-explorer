@@ -110,18 +110,9 @@ public partial class SurfaceView : Node3D
         // where it is.
         _heading = (float)(region.Transform?.Component("heading") ?? 0) / (1L << 31) * Mathf.Pi;
 
-        _relief = new ReliefField(
-            _description.RadiusUnits,
-            Parameter(body, registry, CategoryRegistryRevision6.AmplitudeParameter),
-            Parameter(body, registry, CategoryRegistryRevision6.RoughnessParameter),
-            Parameter(body, registry, CategoryRegistryRevision6.WavelengthParameter),
-            compositionSeed,
-            body.Path,
-
-            // Null and not zero where the revision has no such parameter: a body that cannot declare
-            // ridging is a different thing from one that declares none, and only the first reproduces
-            // cycle two's ground (decision 0065).
-            body.Definition.TryParameter(registry, CategoryRegistryRevision7.RidgingParameter)?.Value.AsInteger);
+        // Built by the same code the composer grounds a destination with, so the view cannot describe a
+        // field the generator would not have produced.
+        _relief = GroundPublisher.ReliefFieldOf(body, registry, compositionSeed);
 
         // The ground comes off the disk, never out of a rule run here: where none has been stored, the
         // store generates and publishes one and hands back what it wrote, so the picture is of bytes the
@@ -300,11 +291,6 @@ public partial class SurfaceView : Node3D
             Name = "Ground",
         };
     }
-
-    /// <summary>One stored integer parameter of a definition, by the label its registry revision gives it.</summary>
-    private static long Parameter(GraphNode node, CategoryRegistry registry, string label) =>
-        node.Definition.TryParameter(registry, label)?.Value.AsInteger
-        ?? throw new ArgumentException($"Instance '{node.Path}' stores no '{label}', which registry revision 6 gives every planet.", nameof(node));
 
     /// <summary>The stored height at a sample, in metres, with the edge held rather than wrapped.</summary>
     private float HeightAt(int i, int j) =>

@@ -217,6 +217,7 @@ public partial class Main : Node
         if (!noPublish)
         {
             GraphPublisher.Publish(root, composed.Graph);
+            GroundPublisher.Publish(root, composed.Graph, registry);
             DestinationStore.Publish(root, DestinationRecord.Of(composed, set, grammar, registry, SuitProfile.Version1, TierProfile.Version1, RegionLimits.Version1));
             GD.Print($"destination   {specification.PackId} composed and published; graph {composed.Graph.Pack}");
         }

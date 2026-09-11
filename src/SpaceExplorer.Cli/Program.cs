@@ -300,7 +300,12 @@ static int Destination(string[] options)
         else
         {
             GraphPublisher.Publish(root, destination.Graph);
+
+            // Every region's ground before the destination row names the world, so a stored destination is
+            // never one whose ground is missing (decision 0067).
+            GroundPublishResult ground = GroundPublisher.Publish(root, destination.Graph, registry);
             DestinationPublishResult published = DestinationStore.Publish(root, DestinationRecord.Of(destination, source, grammar, registry, suit, tiers, regions));
+            Console.WriteLine($"ground        {ground.Regions} region(s), {ground.Generated} generated, {ground.BytesWritten / 1024.0 / 1024.0:0.00} MiB written");
             status = published.AlreadyPublished ? "composed; already published" : "composed and published";
         }
     }

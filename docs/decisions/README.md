@@ -75,4 +75,5 @@ File name: `NNNN-short-title.md`. Use [0000-template.md](0000-template.md). A re
 | [0064](0064-surface-raster-version-2-tiles-seamlessly-and-finely.md) | `derive-surface-raster/2` tiles seamlessly and finely, because a region lays a tile at its true length | Accepted |
 | [0065](0065-terrain-heightfield-version-2-ridges-and-registry-revision-7s-ridging.md) | `terrain-heightfield/2` ridges, and registry revision 7 lets a body say how much | Accepted |
 | [0066](0066-generation-writes-to-the-database-and-the-view-only-reads.md) | Generation writes to the database and the view only reads, so a visited surface is stored in full detail | Accepted |
+| [0067](0067-a-destinations-ground-is-generated-when-it-is-composed.md) | A destination's ground is generated when it is composed, because storing all of it fits | Accepted |
 <!-- generated:end decisions -->

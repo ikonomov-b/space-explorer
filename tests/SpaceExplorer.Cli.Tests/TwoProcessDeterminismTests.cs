@@ -110,13 +110,22 @@ public sealed class TwoProcessDeterminismTests : IDisposable
         Assert.Contains("status        loaded from the data root; nothing composed", again, StringComparison.Ordinal);
         Assert.Equal(Description(first), Description(again));
 
+        // Decision 0067: composing grounds every region before the destination is indexed, so the first
+        // run writes the ground and the second finds it already written and generates none of it.
+        Assert.Matches(@"ground        \d+ region\(s\), [1-9]\d* generated", first);
+        Assert.DoesNotContain("ground  ", again, StringComparison.Ordinal);
+
         string listed = Run(["list", "--data-root", Root("first")]);
         Assert.Contains($"dest  {Fields(first)["pack"]}", listed, StringComparison.Ordinal);
     }
 
-    /// <summary>The description and verdict alone, without the status line the two runs differ in.</summary>
+    /// <summary>
+    /// The description and verdict alone, without the two lines the runs differ in by design: the status,
+    /// and the ground a first run publishes and a second finds already there (decision 0067).
+    /// </summary>
     private static string Description(string output) =>
-        string.Join('\n', output.Split('\n').Where(line => !line.StartsWith("status", StringComparison.Ordinal)));
+        string.Join('\n', output.Split('\n').Where(line =>
+            !line.StartsWith("status", StringComparison.Ordinal) && !line.StartsWith("ground", StringComparison.Ordinal)));
 
     [Fact]
     public void A_different_seed_yields_a_different_pack_across_processes()
