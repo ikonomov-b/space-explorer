@@ -9,7 +9,7 @@ File name: `NNNN-short-title.md`. Use [0000-template.md](0000-template.md). A re
 <!-- generated:begin decisions -->
 | # | Decision | Status |
 | --- | --- | --- |
-| [0001](0001-materialize-authoritative-terrain.md) | Materialize authoritative terrain at world acceptance | Accepted; blanket terrain materialization superseded by [0031](0031-primitive-complete-composition-and-storage.md) |
+| [0001](0001-materialize-authoritative-terrain.md) | Materialize authoritative terrain at world acceptance | Accepted; blanket terrain materialization superseded by [0031](0031-primitive-complete-composition-and-storage.md), budget clause of decision 0017 — 1 MiB compressed per maximal region, a 300 MiB campaign, the assumed 3:1 ratio, and the 4 m biome fallback — and nothing else of it: the extent cap, the cell, the sample format, and the reasoning for keeping them stand. The 0.1 to 1 MB range superseded by [0068](0068-campaign-storage-budget-re-derived-from-the-payload-ceiling.md) |
 | [0002](0002-primitive-set-content-gate.md) | Content gate for generated primitive sets; generated-only sets; deferred set algebra | Accepted |
 | [0003](0003-network-topology-and-transport.md) | Core-owned replication, loosely coupled hosts, and connectivity timing | Accepted |
 | [0004](0004-preparation-is-real-generation-time.md) | Preparation time is real generation time; effort score is tier base plus recipe complexity | Accepted |
@@ -76,4 +76,5 @@ File name: `NNNN-short-title.md`. Use [0000-template.md](0000-template.md). A re
 | [0065](0065-terrain-heightfield-version-2-ridges-and-registry-revision-7s-ridging.md) | `terrain-heightfield/2` ridges, and registry revision 7 lets a body say how much | Accepted |
 | [0066](0066-generation-writes-to-the-database-and-the-view-only-reads.md) | Generation writes to the database and the view only reads, so a visited surface is stored in full detail | Accepted |
 | [0067](0067-a-destinations-ground-is-generated-when-it-is-composed.md) | A destination's ground is generated when it is composed, because storing all of it fits | Accepted |
+| [0068](0068-campaign-storage-budget-re-derived-from-the-payload-ceiling.md) | The campaign storage budget is re-derived from the payload format's ceiling, not from an assumed ratio | Accepted |
 <!-- generated:end decisions -->
