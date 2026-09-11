@@ -25,6 +25,7 @@ public sealed class PrimitiveResources
     private readonly PrimitiveSet _set;
     private readonly CategoryRegistry _registry;
     private readonly Dictionary<SurfaceAppearance, StandardMaterial3D> _materials = [];
+    private readonly Dictionary<(SurfaceAppearance Appearance, float Repeats), StandardMaterial3D> _grounds = [];
 
     public PrimitiveResources(PrimitiveSet set, CategoryRegistry registry)
     {
@@ -53,6 +54,52 @@ public sealed class PrimitiveResources
             : throw new ArgumentException($"Definition {definition.Id} names surface {reference.Id} at {reference.Hash}, which the pinned set does not hold with that hash.", nameof(definition));
 
         return MaterialFor(SurfaceAppearance.From(material, _set, _registry));
+    }
+
+    /// <summary>
+    /// The material a region's ground draws with: <paramref name="body"/>'s own stored surface, tiled at
+    /// the length its recipe's scale claims over <paramref name="extentMetres"/> of ground rather than at
+    /// the repeat <see cref="MaterialFor(SurfaceAppearance)"/> clamps a distant body to. A region is drawn
+    /// at its true size, so the stored scale is directly usable here and clamping it would be the view
+    /// inventing what the content stores (decisions 0057, 0061).
+    /// </summary>
+    public StandardMaterial3D GroundFor(PrimitiveDefinition body, long extentMetres)
+    {
+        ArgumentNullException.ThrowIfNull(body);
+
+        SurfaceAppearance appearance = AppearanceOf(body);
+        float repeats = (float)(extentMetres * (double)SurfaceAppearance.ScaleUnit / appearance.ScaleUnits);
+        var key = (appearance, repeats);
+        if (_grounds.TryGetValue(key, out StandardMaterial3D? cached))
+        {
+            return cached;
+        }
+
+        StandardMaterial3D ground = (StandardMaterial3D)MaterialFor(appearance).Duplicate();
+        ground.Uv1Scale = new Vector3(repeats, repeats, 1f);
+        _grounds[key] = ground;
+        return ground;
+    }
+
+    /// <summary>How many times a body's texture repeats across <paramref name="extentMetres"/>, as the ground draws it.</summary>
+    public float GroundRepeats(PrimitiveDefinition body, long extentMetres) =>
+        (float)(extentMetres * (double)SurfaceAppearance.ScaleUnit / AppearanceOf(body).ScaleUnits);
+
+    /// <summary>The appearance a body's stored surface material describes.</summary>
+    private SurfaceAppearance AppearanceOf(PrimitiveDefinition body)
+    {
+        if (body.TryParameter(_registry, CategoryRegistryRevision3.SurfaceParameter) is not { } parameter
+            || parameter.Descriptor.Kind != ParameterKind.PrimitiveRef)
+        {
+            throw new ArgumentException($"Definition {body.Id} stores no surface material, so nothing says what its ground is made of.", nameof(body));
+        }
+
+        PrimitiveRevisionRef reference = parameter.Value.AsRef;
+        PrimitiveDefinition material = _set.TryFind(reference.Id) is { } found && found.Hash == reference.Hash
+            ? found
+            : throw new ArgumentException($"Definition {body.Id} names surface {reference.Id} at {reference.Hash}, which the pinned set does not hold with that hash.", nameof(body));
+
+        return SurfaceAppearance.From(material, _set, _registry);
     }
 
     /// <summary>The engine material an appearance describes, built once per appearance.</summary>

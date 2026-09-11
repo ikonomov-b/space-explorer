@@ -133,6 +133,32 @@ godot --path src/SpaceExplorer.Game --resolution 1600x900 -- --system --tier sta
 # shell's directory, and the save fails where that directory does not exist
 ```
 
+The surface review view of [decision 0061](decisions/0061-surface-iterations-by-an-escalating-ladder-registry-revision-5-and-grammar-version-6.md),
+which draws one region of that same destination. It needs a set published under registry revision 5 or
+later, because no earlier revision has a `region` category:
+
+```sh
+godot --path src/SpaceExplorer.Game -- --surface --tier starter --seed 1
+# lists every region the destination carries, then draws the first at eye height: the ground at its
+# true extent, wearing the body's own stored material tiled at the length its recipe's scale claims
+# --region <n> draws another of the listed regions; --from-above draws the whole region orthographic
+# with a scale bar, since a flat 2,048 m plane is illegible from inside it
+# --tier, --seed, --set, --data-root, --no-publish and --screenshot are the system view's, unchanged
+# the legend names what the view supplied rather than read: the light direction, the sky colour and
+# the eye height are the harness's own, because no celestial solution exists yet (decision 0032)
+# --list prints the regions and quits, which is how a sweep counts a sample's regions and the distinct
+# surfaces they wear; it is the only form that works under --headless, since a headless run has no
+# viewport to save a screenshot from
+# escape or q quits
+
+godot --path src/SpaceExplorer.Game --resolution 1600x900 -- --surface --tier starter --seed 1 \
+  --region 0 --screenshot /tmp/surface.png
+```
+
+**A destination with no landable body has no region to draw** and the view says so by name, exit 1: a
+region is placed only where the body is both large enough for one ([decision 0059](decisions/0059-region-limits-are-a-pinned-record.md))
+and declares the `solid-surface` tag, which the `basic` vocabulary withholds from a gas giant.
+
 Exports. The preset names are exactly `Linux` and `Windows Desktop`, and they must be quoted:
 
 ```sh

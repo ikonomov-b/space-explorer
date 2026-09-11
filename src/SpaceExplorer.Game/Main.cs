@@ -3,13 +3,15 @@ using SpaceExplorer.Core.Description;
 using SpaceExplorer.Core.Registry;
 using SpaceExplorer.Core.Shared;
 using SpaceExplorer.Persistence;
+using GraphNode = SpaceExplorer.Core.Registry.GraphNode;
 
 namespace SpaceExplorer.Game;
 
 /// <summary>
 /// Root node of the game. Runs the exported-build smoke check when launched with <c>-- --smoke</c>, opens
-/// the solar-system review view of <see cref="SystemView"/> with <c>-- --system</c>, and otherwise shows
-/// the materials and environment preview the scene holds.
+/// the solar-system review view of <see cref="SystemView"/> with <c>-- --system</c>, opens the surface
+/// review view of <see cref="SurfaceView"/> with <c>-- --surface</c>, and otherwise shows the materials
+/// and environment preview the scene holds.
 /// </summary>
 public partial class Main : Node
 {
@@ -26,8 +28,98 @@ public partial class Main : Node
         if (arguments.Contains("--system"))
         {
             OpenSystemView(arguments);
+            return;
+        }
+
+        if (arguments.Contains("--surface"))
+        {
+            OpenSurfaceView(arguments);
         }
     }
+
+    /// <summary>
+    /// Shows one region of the destination the levers name: the ground a planet carries, at its true size
+    /// and in the body's own stored material, from the walk frame or, with <c>--from-above</c>, the map
+    /// frame (decision 0061). <c>--region &lt;n&gt;</c> picks among the destination's regions in graph
+    /// order, and every region is listed on the way, so a sweep can name what it read.
+    /// </summary>
+    private void OpenSurfaceView(string[] arguments)
+    {
+        try
+        {
+            DataRoot root = Option(arguments, "--data-root") is { } path ? DataRoot.At(path) : DataRoot.Resolve();
+            DistanceTier tier = TierRules.TryParse(Option(arguments, "--tier") ?? "starter")
+                ?? throw new ArgumentException($"--tier takes one of {string.Join(", ", TierRules.Labels)}.");
+            ulong seed = ulong.Parse(Option(arguments, "--seed") ?? "1", System.Globalization.CultureInfo.InvariantCulture);
+
+            PrimitiveSet set = SourceSet(root, Option(arguments, "--set"));
+            CategoryRegistry registry = CategoryRegistries.Supported.Find(set.Manifest.RegistryRevision);
+            CompositionGrammar grammar = GrammarOver(registry);
+            Destination destination = Draw(root, tier, seed, set, grammar, registry, arguments.Contains("--no-publish"));
+
+            (GraphNode Body, GraphNode Region)[] regions = [.. Regions(destination.Graph.Root)];
+            if (regions.Length == 0)
+            {
+                throw new ArgumentException($"The destination of tier {tier} seed {seed} carries no region: no body of it is both large enough and made of ground.");
+            }
+
+            // Every region is listed with the material it wears, so a sweep can count the distinct
+            // surfaces a sample shows without opening each picture: repetition made visible rather than
+            // corrected, which is the cheap first step review finding 55 asks for.
+            foreach ((GraphNode body, GraphNode region) in regions)
+            {
+                PrimitiveRevisionRef surface = body.Definition.TryParameter(registry, CategoryRegistryRevision3.SurfaceParameter)!.Value.Value.AsRef;
+                uint template = destination.Graph.Source.TryFind(surface.Id)?.Provenance.TemplateId ?? 0;
+                GD.Print($"region        {region.Path} on {body.Path} wearing surface {surface.Id.LocalId} from template {template}");
+            }
+
+            // Listing and quitting is how a sweep counts a sample's regions and the distinct surfaces they
+            // wear without opening a window, which the iteration row needs and a screenshot run cannot give
+            // headlessly: there is no viewport to save.
+            if (arguments.Contains("--list"))
+            {
+                GetTree().Quit(0);
+                return;
+            }
+
+            int index = int.Parse(Option(arguments, "--region") ?? "0", System.Globalization.CultureInfo.InvariantCulture);
+            if (index < 0 || index >= regions.Length)
+            {
+                throw new ArgumentException($"--region {index} is outside the {regions.Length} this destination carries.");
+            }
+
+            (GraphNode chosenBody, GraphNode chosenRegion) = regions[index];
+            BodyDescription description = destination.Description.Bodies.First(body => body.Path == chosenBody.Path);
+            GD.Print(destination.Description.Text);
+
+            foreach (Node child in GetChildren())
+            {
+                child.QueueFree();
+            }
+
+            AddChild(new SurfaceView(
+                chosenBody,
+                chosenRegion,
+                description,
+                new PrimitiveResources(destination.Graph.Source, registry),
+                registry,
+                Option(arguments, "--screenshot"),
+                arguments.Contains("--from-above")));
+        }
+        catch (Exception e)
+        {
+            GD.PrintErr($"error: {e.Message}");
+            GetTree().Quit(1);
+        }
+    }
+
+    /// <summary>Every region the graph holds, in graph order, with the body that carries it.</summary>
+    private static IEnumerable<(GraphNode Body, GraphNode Region)> Regions(GraphNode node) =>
+        node.Children
+            .SelectMany(connector => connector)
+            .SelectMany(child => child.Definition.Category == CategoryRegistryRevision5.Region
+                ? [(node, child)]
+                : Regions(child));
 
     private void RunSmokeCheck()
     {
