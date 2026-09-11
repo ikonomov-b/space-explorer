@@ -69,6 +69,7 @@ File name: `NNNN-short-title.md`. Use [0000-template.md](0000-template.md). A re
 | [0058](0058-tier-rules-are-a-pinned-record.md) | The tier rules are a versioned record a destination pins | Accepted |
 | [0059](0059-region-limits-are-a-pinned-record.md) | The minimum landable radius is a region-limits record, and the description that prints it is version 3 | Accepted |
 | [0060](0060-registry-revision-4-units-defaults-and-validation-limits.md) | Category registry revision 4: a unit and a default on every parameter, the validation limits in the record, and a barycentre's derived mass | Accepted |
-| [0061](0061-surface-iterations-by-an-escalating-ladder-registry-revision-5-and-grammar-version-6.md) | Surface iterations by an escalating ladder, registry revision 5's region, and grammar version 6 | Accepted |
+| [0061](0061-surface-iterations-by-an-escalating-ladder-registry-revision-5-and-grammar-version-6.md) | Surface iterations by an escalating ladder, registry revision 5's region, and grammar version 6 | Accepted; stored-grid form of rung 2 in the ladder superseded by [0063](0063-relief-by-terrain-heightfield-registry-revision-6-and-grammar-version-7.md) |
 | [0062](0062-the-surface-harness-walks-in-an-interactive-session.md) | The surface harness walks in an interactive session, and its two screenshot frames are unchanged | Accepted |
+| [0063](0063-relief-by-terrain-heightfield-registry-revision-6-and-grammar-version-7.md) | Relief by `terrain-heightfield/1`, registry revision 6's relief field, and grammar version 7 | Proposed |
 <!-- generated:end decisions -->
