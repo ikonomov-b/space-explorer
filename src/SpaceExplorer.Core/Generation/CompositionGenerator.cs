@@ -89,6 +89,15 @@ public static class CompositionGenerator
                 IReadOnlyList<string> declared = definition.Connectors[index].RequiredTags;
                 uint count = (uint)ParameterSampler.SampleInclusive(stream, rule.MinCount, rule.MaxCount);
 
+                // A gate asks what this parent can carry, where a tag asks what a child suits; where it
+                // refuses, the connector is not offered at all. The draw above happens either way, so a
+                // parent's own stream reads the same whether its gate opened or closed and a later
+                // change to what the gate admits moves no sibling's transform (decision 0061).
+                if (rule.Gate.Length != 0 && !ConnectorGates.Admits(rule.Gate, definition, registry))
+                {
+                    count = 0;
+                }
+
                 // A rule may scale its bands by something about the parent; a star's scale by the square
                 // root of its luminosity, so one set of bands means one range of temperatures around any
                 // star (decision 0051).

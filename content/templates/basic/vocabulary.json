@@ -41,23 +41,25 @@
     // derives the radius from the two, so a body's size and density can no longer contradict each other.
     // Densities are kg/m^3: rock and iron above 3,000, ice and volatiles below it.
     //
-    // The orbit connector's tags decide where a body may sit and what may orbit it. It PROVIDES the zones
+    // A body that has ground to stand on says so with the `solid-surface` tag, which grammar version 6's
+    // surface anchor reads: a gas giant declares none and takes no region, however large it is
+    // (decision 0061). The orbit connector's tags decide where a body may sit and what may orbit it. It PROVIDES the zones
     // it can occupy, which grammar version 3 demands per band, and a mass class; it REQUIRES of its own
     // moons a class below its own, so a moon can no longer outweigh its planet. Nothing provides
     // "mass-none", so the smallest bodies keep no moons at all.
-    { "id": 14, "label": "small-rocky-body", "category": "planet",
+    { "id": 14, "label": "small-rocky-body", "category": "planet", "tags": ["solid-surface"],
       "parameters": { "mass": [30, 2000], "density": [3300, 8000], "albedo": [3000, 45000], "pole-right-ascension": [-2147483648, 2147483647], "prime-meridian-phase": [-2147483648, 2147483647], "pole-declination": [-536870912, 536870912], "sidereal-period": [720000, 172800000], "body-type": ["rocky"] , "surface": ["for-rocky"] },
       "connectors": { "orbit": { "provides": ["zone-hot", "zone-temperate", "zone-cold", "mass-small"], "requires": ["mass-none"] } } },
-    { "id": 15, "label": "large-rocky-body", "category": "planet",
+    { "id": 15, "label": "large-rocky-body", "category": "planet", "tags": ["solid-surface"],
       "parameters": { "mass": [2000, 300000], "density": [3300, 8000], "albedo": [3000, 45000], "pole-right-ascension": [-2147483648, 2147483647], "prime-meridian-phase": [-2147483648, 2147483647], "pole-declination": [-536870912, 536870912], "sidereal-period": [720000, 172800000], "body-type": ["rocky"] , "surface": ["for-rocky"] },
       "connectors": { "orbit": { "provides": ["zone-hot", "zone-temperate", "zone-cold", "mass-large"], "requires": ["mass-small"] } } },
-    { "id": 16, "label": "small-icy-body", "category": "planet",
+    { "id": 16, "label": "small-icy-body", "category": "planet", "tags": ["solid-surface"],
       "parameters": { "mass": [10, 2000], "density": [900, 3300], "albedo": [20000, 62000], "pole-right-ascension": [-2147483648, 2147483647], "prime-meridian-phase": [-2147483648, 2147483647], "pole-declination": [-536870912, 536870912], "sidereal-period": [720000, 172800000], "body-type": ["icy"] , "surface": ["for-icy"] },
       "connectors": { "orbit": { "provides": ["zone-cold", "mass-small"], "requires": ["mass-none"] } } },
-    { "id": 17, "label": "large-icy-body", "category": "planet",
+    { "id": 17, "label": "large-icy-body", "category": "planet", "tags": ["solid-surface"],
       "parameters": { "mass": [2000, 60000], "density": [900, 3300], "albedo": [20000, 62000], "pole-right-ascension": [-2147483648, 2147483647], "prime-meridian-phase": [-2147483648, 2147483647], "pole-declination": [-536870912, 536870912], "sidereal-period": [720000, 172800000], "body-type": ["icy"] , "surface": ["for-icy"] },
       "connectors": { "orbit": { "provides": ["zone-cold", "mass-large"], "requires": ["mass-small"] } } },
-    { "id": 18, "label": "ocean-body", "category": "planet",
+    { "id": 18, "label": "ocean-body", "category": "planet", "tags": ["solid-surface"],
       "parameters": { "mass": [200, 200000], "density": [2000, 5500], "albedo": [6000, 30000], "pole-right-ascension": [-2147483648, 2147483647], "prime-meridian-phase": [-2147483648, 2147483647], "pole-declination": [-536870912, 536870912], "sidereal-period": [720000, 172800000], "body-type": ["ocean"] , "surface": ["for-ocean"] },
       "connectors": { "orbit": { "provides": ["zone-temperate", "mass-large"], "requires": ["mass-small"] } } },
     { "id": 19, "label": "gas-giant-body", "category": "planet",
@@ -88,7 +90,14 @@
     { "id": 27, "label": "ocean-surface", "category": "surface-material", "tags": ["for-ocean"],
       "parameters": { "shader": ["standard-opaque"], "base-colour": [[24, 70], [70, 124], [120, 190], [255, 255]], "roughness": [6000, 26000], "metallic": [0, 2048], "texture": ["for-ocean"] } },
     { "id": 28, "label": "gas-surface", "category": "surface-material", "tags": ["for-gas-giant"],
-      "parameters": { "shader": ["standard-opaque"], "base-colour": [[176, 232], [150, 206], [112, 170], [255, 255]], "roughness": [50000, 65535], "metallic": [0, 2048], "texture": ["for-gas-giant"] } }
+      "parameters": { "shader": ["standard-opaque"], "base-colour": [[176, 232], [150, 206], [112, 170], [255, 255]], "roughness": [50000, 65535], "metallic": [0, 2048], "texture": ["for-gas-giant"] } },
+
+    // The landing area itself, and rung one of decision 0061's ladder: a region stores its extent and
+    // nothing else, and wears the material its planet already carries. The extent is pinned to the cap
+    // of decision 0017, so the set holds exactly one of it and every region is maximal — which is where
+    // a tiled material is hardest on the eye and therefore where the first cycle asks its question.
+    { "id": 29, "label": "landing-region", "category": "region",
+      "parameters": { "extent": [2048, 2048] } }
   ],
   "requests": [
     { "template": 21, "count": 2 }, { "template": 22, "count": 2 },
@@ -102,6 +111,6 @@
     { "template": 11, "count": 1 }, { "template": 12, "count": 8 }, { "template": 13, "count": 6 },
     { "template": 14, "count": 8 }, { "template": 15, "count": 8 }, { "template": 16, "count": 6 },
     { "template": 17, "count": 6 }, { "template": 18, "count": 8 }, { "template": 19, "count": 6 },
-    { "template": 20, "count": 1 }
+    { "template": 20, "count": 1 }, { "template": 29, "count": 1 }
   ]
 }

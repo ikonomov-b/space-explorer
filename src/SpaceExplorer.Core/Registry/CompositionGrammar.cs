@@ -33,6 +33,16 @@ public sealed record CategoryChoice(uint Category, uint Weight);
 /// zone: it is what carries a band's demand down to a moon and to the pair of a barycentre. Carried only
 /// by grammar version 3 and later.
 /// </param>
+/// <param name="Gate">
+/// The generator revision identifier of a rule that decides whether this connector is offered at all on
+/// a given parent, or empty for a connector every parent offers. A band tag asks what a child suits; a
+/// gate asks what the parent can carry, which no tag can express because the quantity it reads is
+/// derived rather than declared. It is what lets a surface anchor appear only on a body large enough to
+/// hold a region, which is decision 0041's clause the grammar could not state before. A gate overrides
+/// this rule's own floor rather than contradicting it: where the gate refuses, the connector is not
+/// offered at all and no child is required, so a rule may demand exactly one child of every parent that
+/// passes. Carried only by grammar version 6 and later.
+/// </param>
 /// <param name="BandBase">
 /// Where the innermost band begins at unit scale, or zero to begin at the transform range's own minimum.
 /// The range is the envelope every scaled band must stay inside, which is much wider than the
@@ -48,7 +58,8 @@ public sealed record ConnectorRule(
     string BandScale = "",
     IReadOnlyList<string>? BandTags = null,
     long BandBase = 0,
-    bool InheritsBandTag = false)
+    bool InheritsBandTag = false,
+    string Gate = "")
 {
     /// <summary>The unit of <see cref="SpacingRatio"/>: a ratio of one.</summary>
     public const uint RatioUnit = 256;
@@ -58,6 +69,9 @@ public sealed record ConnectorRule(
 
     /// <summary>The first grammar version that carries a band scale and per-band tags.</summary>
     public const uint FirstVersionWithBands = 3;
+
+    /// <summary>The first grammar version that carries a connector gate.</summary>
+    public const uint FirstVersionWithGates = 6;
 
     /// <summary>The tags per band, one per band this rule admits, or empty where no band demands one.</summary>
     public IReadOnlyList<string> BandTags { get; } = [.. BandTags ?? []];
@@ -314,7 +328,14 @@ public sealed class CompositionGrammar
                     }
                 }
 
-                rules[rule] = new ConnectorRule(minCount, maxCount, transform, choices, spacing, scale, tags, bandBase, inheritsBandTag);
+                string gate = string.Empty;
+                if (expectedVersion >= ConnectorRule.FirstVersionWithGates)
+                {
+                    string named = reader.ReadPath();
+                    gate = named == "none" ? string.Empty : named;
+                }
+
+                rules[rule] = new ConnectorRule(minCount, maxCount, transform, choices, spacing, scale, tags, bandBase, inheritsBandTag, gate);
             }
 
             productions[index] = new Production(category, rules);
@@ -472,6 +493,19 @@ public sealed class CompositionGrammar
         if (rule.BandScale.Length != 0 && !Derivation.BandScaleRules.IsKnown(rule.BandScale))
         {
             throw new ArgumentException($"Rule {where} names band-scale rule '{rule.BandScale}', which this build does not retain (decision 0035).", parameterName);
+        }
+
+        if (rule.Gate.Length != 0)
+        {
+            if (version < ConnectorRule.FirstVersionWithGates)
+            {
+                throw new ArgumentException($"Rule {where} carries a gate, which no grammar before version {ConnectorRule.FirstVersionWithGates} encodes.", parameterName);
+            }
+
+            if (!Derivation.ConnectorGates.IsKnown(rule.Gate))
+            {
+                throw new ArgumentException($"Rule {where} names connector gate '{rule.Gate}', which this build does not retain (decision 0035).", parameterName);
+            }
         }
 
         if (rule.BandTags.Count != 0 && rule.BandTags.Count != rule.MaxCount)
@@ -653,6 +687,11 @@ public sealed class CompositionGrammar
                     {
                         writer.WriteText(tag);
                     }
+                }
+
+                if (Version >= ConnectorRule.FirstVersionWithGates)
+                {
+                    writer.WritePath(rule.Gate.Length == 0 ? "none" : rule.Gate);
                 }
             }
         }
