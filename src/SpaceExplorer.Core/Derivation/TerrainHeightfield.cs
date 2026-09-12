@@ -41,6 +41,27 @@ public static class TerrainHeightfield
     private const ulong LatticeZ = 0x9FB21C651E98DF25UL;
     private const ulong LatticeOctave = 0x2545F4914F6CDD1DUL;
 
+    /// <summary>
+    /// How many of <paramref name="field"/>'s octaves a stride of <paramref name="cellMetres"/> can carry:
+    /// those whose wavelength is at least twice the stride, since a coarser reading of a finer octave folds
+    /// it into false relief rather than showing it. At the region's own <see cref="CellMetres"/> the limit is
+    /// 4 m, which is <see cref="ReliefField.FinestWavelengthMetres"/>, so a region carries every octave.
+    /// </summary>
+    public static int OctavesCarried(ReliefField field, long cellMetres)
+    {
+        ArgumentNullException.ThrowIfNull(field);
+
+        int octaves = field.Octaves;
+        long finest = 2 * cellMetres;
+        int carried = 0;
+        for (long wavelength = field.WavelengthMetres; carried < octaves && wavelength >= finest; wavelength /= 2)
+        {
+            carried++;
+        }
+
+        return carried;
+    }
+
     /// <summary>How many samples a side a region of <paramref name="extentMetres"/> carries.</summary>
     /// <remarks>
     /// One more than the cell count, because a height belongs to the lattice corner four cells share and a
@@ -68,7 +89,50 @@ public static class TerrainHeightfield
             throw new ArgumentOutOfRangeException(nameof(extentMetres), extentMetres, $"A region's extent is a positive multiple of the {CellMetres} m cell.");
         }
 
-        int across = SamplesAcross(extentMetres);
+        return SampleAt(field, latitude, longitude, heading, extentMetres, CellMetres);
+    }
+
+    /// <summary>
+    /// The ground beyond a region's edge, out to <paramref name="extentMetres"/> a side about the same
+    /// anchor, generalized at <paramref name="cellMetres"/> spacing rather than the region's own fixed
+    /// <see cref="CellMetres"/>
+    /// ([decision 0071](../../../docs/decisions/0071-the-explorable-planet-is-the-subject-the-far-field-before-features-and-a-two-window-inspection.md)
+    /// clause 5, [decision 0041](../../../docs/decisions/0041-planet-fields-tangent-regions-minimum-radius-and-far-field.md)).
+    /// </summary>
+    /// <remarks>
+    /// Every sample is evaluated at the same planet-fixed position <see cref="Sample"/> would give it, and
+    /// under the same octave weights, so this rung adds no second rule: only a coarser stride through the
+    /// one the region already reads, and the band limit that stride demands.
+    ///
+    /// <b>Generalizing is dropping detail, not sampling it sparsely.</b> A stride of <c>C</c> metres cannot
+    /// carry a feature finer than <c>2C</c>, so octaves below that wavelength are not summed at all rather
+    /// than point-sampled: sampling them would fold real fine detail into false coarse spikes, which is
+    /// exactly the landscape a reader would then be asked to judge. The dropped octaves keep their weight in
+    /// the normalisation, so the far field is the region's own field with its fine detail removed and not a
+    /// taller field of its own — the two agree at the seam to within the detail the far field is generalizing
+    /// away, which is the most any generalization can promise.
+    ///
+    /// The region's own <see cref="Sample"/> is the same rule at <see cref="CellMetres"/>: its band limit is
+    /// 4 m, which is <see cref="ReliefField.FinestWavelengthMetres"/>, so every octave a field carries is
+    /// already inside it and no byte of a stored region moves.
+    /// </remarks>
+    /// <exception cref="ArgumentOutOfRangeException">The extent is not a positive multiple of <paramref name="cellMetres"/>, or the cell is not positive.</exception>
+    public static short[] SampleFar(ReliefField field, int latitude, int longitude, int heading, long extentMetres, long cellMetres)
+    {
+        ArgumentNullException.ThrowIfNull(field);
+
+        if (cellMetres <= 0 || extentMetres <= 0 || extentMetres % cellMetres != 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(extentMetres), extentMetres, $"A far field's extent is a positive multiple of its own {cellMetres} m cell.");
+        }
+
+        return SampleAt(field, latitude, longitude, heading, extentMetres, cellMetres);
+    }
+
+    /// <summary>The construction both <see cref="Sample"/> and <see cref="SampleFar"/> take, differing only in the stride through one planet-fixed field and the band limit that stride sets.</summary>
+    private static short[] SampleAt(ReliefField field, int latitude, int longitude, int heading, long extentMetres, long cellMetres)
+    {
+        int across = (int)(extentMetres / cellMetres) + 1;
         ulong seed = Seed(field.Hash);
         (Axis x, Axis up, Axis z) = Frame(latitude, longitude, heading);
 
@@ -77,6 +141,10 @@ public static class TerrainHeightfield
         long weightSum = weights.Sum();
         long amplitudeUnits = field.AmplitudeMetres * ReliefField.HeightUnit;
         long half = (across - 1) / 2;
+
+        // The weights and their sum stay over the whole octave set, so what a coarser stride gives is this
+        // field with its fine detail removed rather than a differently normalised field.
+        int carried = OctavesCarried(field, cellMetres);
 
         // Zero is version 1's construction exactly, and it is what content published before registry
         // revision 7 gets, since that content declares no ridging at all.
@@ -87,10 +155,10 @@ public static class TerrainHeightfield
         var heights = new short[across * across];
         Parallel.For(0, across, j =>
         {
-            long alongZ = (j - half) * CellMetres * 256;
+            long alongZ = (j - half) * cellMetres * 256;
             for (int i = 0; i < across; i++)
             {
-                long alongX = (i - half) * CellMetres * 256;
+                long alongX = (i - half) * cellMetres * 256;
 
                 // The planet-fixed position of this sample, in 1/256 m: the reference sphere's point under
                 // the anchor, walked out along the region's own axes. It is not projected back onto the
@@ -101,7 +169,7 @@ public static class TerrainHeightfield
 
                 Int128 total = 0;
                 long wavelength = field.WavelengthMetres;
-                for (int octave = 0; octave < octaves; octave++)
+                for (int octave = 0; octave < carried; octave++)
                 {
                     long value = Lattice(seed, positionX, positionY, positionZ, wavelength, octave);
                     total += (Int128)Ridged(value, ridging) * weights[octave];

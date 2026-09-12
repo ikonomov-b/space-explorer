@@ -192,6 +192,104 @@ public class TerrainHeightfieldTests
         Assert.Throws<ArgumentOutOfRangeException>(() => TerrainHeightfield.Sample(Portable, 0, 0, 0, 2_047));
     }
 
+    [Fact]
+    public void SampleFar_at_the_regions_own_cell_is_Sample_exactly()
+    {
+        // Rung 5's far field is the same construction at a coarser stride, not a second rule: asked for the
+        // region's own 2 m cell, it is byte-identical to Sample rather than merely close to it.
+        short[] region = TerrainHeightfield.Sample(Portable, 170_000_000, 650_000_000, 90_000_000, 1_024);
+        short[] far = TerrainHeightfield.SampleFar(Portable, 170_000_000, 650_000_000, 90_000_000, 1_024, TerrainHeightfield.CellMetres);
+
+        Assert.Equal(region, far);
+    }
+
+    [Fact]
+    public void Two_far_fields_of_one_planet_agree_on_the_ground_they_share()
+    {
+        // The same property the region's own test pins, at the far field's own stride: two far extents about
+        // one anchor describe the same ground where their samples coincide, so the generalization is a
+        // property of the planet and not of the patch — which is what lets the far field be re-cut at any
+        // extent without the landscape moving under it.
+        short[] small = TerrainHeightfield.SampleFar(Portable, 170_000_000, 650_000_000, 90_000_000, 2_048, 64);
+        short[] large = TerrainHeightfield.SampleFar(Portable, 170_000_000, 650_000_000, 90_000_000, 8_192, 64);
+
+        int smallSide = (2_048 / 64) + 1;
+        int largeSide = (8_192 / 64) + 1;
+        int offset = (largeSide - smallSide) / 2;
+
+        for (int j = 0; j < smallSide; j++)
+        {
+            for (int i = 0; i < smallSide; i++)
+            {
+                Assert.Equal(small[(j * smallSide) + i], large[((j + offset) * largeSide) + i + offset]);
+            }
+        }
+    }
+
+    [Fact]
+    public void A_coarser_stride_drops_the_detail_it_cannot_carry_rather_than_folding_it()
+    {
+        // Generalizing is a band limit, not a sparse read of the same octaves. At the anchor — the one point
+        // every stride passes through — a coarse far field differs from the region's own ground by no more
+        // than the amplitude of the octaves it declines to carry, and differs at all, because detail really
+        // was dropped. Point-sampling instead would fold those octaves into false coarse relief, which is
+        // the landscape a reader would then be asked to judge.
+        short[] region = TerrainHeightfield.Sample(Portable, 170_000_000, 650_000_000, 90_000_000, 256);
+        short[] far = TerrainHeightfield.SampleFar(Portable, 170_000_000, 650_000_000, 90_000_000, 8_192, 64);
+
+        int regionAcross = TerrainHeightfield.SamplesAcross(256);
+        int regionCentre = (((regionAcross - 1) / 2) * regionAcross) + ((regionAcross - 1) / 2);
+        int farAcross = (8_192 / 64) + 1;
+        int farCentre = (((farAcross - 1) / 2) * farAcross) + ((farAcross - 1) / 2);
+
+        // Portable's coarsest wavelength is 2,048 m over 10 octaves, so a 64 m stride carries the wavelengths
+        // down to 128 m — five octaves — and drops the five below it.
+        long dropped = DroppedAmplitudeUnits(Portable, carried: 5);
+
+        Assert.NotEqual(region[regionCentre], far[farCentre]);
+        Assert.InRange(Math.Abs(region[regionCentre] - far[farCentre]), 1, dropped);
+    }
+
+    [Fact]
+    public void A_far_field_stays_inside_the_stored_amplitude()
+    {
+        short[] far = TerrainHeightfield.SampleFar(Portable, 12_345_678, -987_654_321, 55_555, 8_192, 64);
+        long bound = Portable.AmplitudeMetres * ReliefField.HeightUnit;
+
+        Assert.All(far, height => Assert.InRange((long)height, -bound, bound));
+    }
+
+    /// <summary>The height, in 1/16 m, that the octaves past <paramref name="carried"/> could have contributed.</summary>
+    private static long DroppedAmplitudeUnits(ReliefField field, int carried)
+    {
+        var weights = new List<long>();
+        long weight = 1L << 16;
+        for (int octave = 0; octave < field.Octaves; octave++)
+        {
+            weights.Add(weight);
+            weight = weight * field.RoughnessFraction / ReliefField.RoughnessUnit;
+        }
+
+        long total = weights.Sum();
+        long shed = weights.Skip(carried).Sum();
+        return (field.AmplitudeMetres * ReliefField.HeightUnit * shed / total) + 1;
+    }
+
+    [Fact]
+    public void SampleFars_shape_follows_its_own_cell_rather_than_the_regions()
+    {
+        short[] far = TerrainHeightfield.SampleFar(Portable, 0, 0, 0, 800, 40);
+        Assert.Equal(21 * 21, far.Length);
+    }
+
+    [Theory]
+    [InlineData(100, 0)]
+    [InlineData(101, 10)]
+    public void A_far_extent_that_is_not_whole_cells_is_refused_by_name(long extentMetres, long cellMetres)
+    {
+        Assert.Throws<ArgumentOutOfRangeException>(() => TerrainHeightfield.SampleFar(Portable, 0, 0, 0, extentMetres, cellMetres));
+    }
+
     private static ulong SplitMix64Finalise(ulong state)
     {
         state ^= state >> 30;

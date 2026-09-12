@@ -38,29 +38,46 @@ public partial class Main : Node
     }
 
     /// <summary>
-    /// Shows one region of the destination the levers name: the ground a planet carries, at its true size
-    /// and in the body's own stored material, from the walk frame or, with <c>--from-above</c>, the map
-    /// frame (decision 0061). <c>--region &lt;n&gt;</c> picks among the destination's regions in graph
-    /// order, and every region is listed on the way, so a sweep can name what it read.
+    /// Shows one region of the destination the levers name, or of a stored pack with
+    /// <c>--destination &lt;pack&gt;</c>: the ground a planet carries, at its true size and in the body's
+    /// own stored material, from the walk frame or, with <c>--from-above</c>, the map frame (decision
+    /// 0061). <c>--region &lt;n&gt;</c> picks among the destination's regions in graph order, and every
+    /// region is listed on the way, so a sweep can name what it read.
     /// </summary>
     private void OpenSurfaceView(string[] arguments)
     {
         try
         {
             DataRoot root = Option(arguments, "--data-root") is { } path ? DataRoot.At(path) : DataRoot.Resolve();
-            DistanceTier tier = TierRules.TryParse(Option(arguments, "--tier") ?? "starter")
-                ?? throw new ArgumentException($"--tier takes one of {string.Join(", ", TierRules.Labels)}.");
-            ulong seed = ulong.Parse(Option(arguments, "--seed") ?? "1", System.Globalization.CultureInfo.InvariantCulture);
+            CategoryRegistry registry;
+            CompositionGrammar grammar;
+            Destination destination;
 
-            PrimitiveSet set = SourceSet(root, Option(arguments, "--set"));
-            CategoryRegistry registry = CategoryRegistries.Supported.Find(set.Manifest.RegistryRevision);
-            CompositionGrammar grammar = GrammarOver(registry);
-            Destination destination = Draw(root, tier, seed, set, grammar, registry, arguments.Contains("--no-publish"));
+            if (Option(arguments, "--destination") is { } stored)
+            {
+                DestinationRecord record = DestinationStore.Load(root, PackId.Parse(stored));
+                registry = CategoryRegistries.Supported.Find(record.Specification.RegistryRevision);
+                grammar = GrammarOver(registry);
+                CompositionGraph graph = GraphLoader.Load(root, record.GraphPack, CategoryRegistries.Supported, grammar);
+                destination = new Destination(record.Specification.Tier, record.Specification.Seed, record.Attempt, record.CompositionSeed, graph, SystemDescription.Derive(graph, registry, SuitProfile.Version1, RegionLimits.Version1));
+                GD.Print($"destination   {record.Pack} loaded; graph {record.GraphPack}");
+            }
+            else
+            {
+                DistanceTier tier = TierRules.TryParse(Option(arguments, "--tier") ?? "starter")
+                    ?? throw new ArgumentException($"--tier takes one of {string.Join(", ", TierRules.Labels)}.");
+                ulong seed = ulong.Parse(Option(arguments, "--seed") ?? "1", System.Globalization.CultureInfo.InvariantCulture);
+
+                PrimitiveSet set = SourceSet(root, Option(arguments, "--set"));
+                registry = CategoryRegistries.Supported.Find(set.Manifest.RegistryRevision);
+                grammar = GrammarOver(registry);
+                destination = Draw(root, tier, seed, set, grammar, registry, arguments.Contains("--no-publish"));
+            }
 
             (GraphNode Body, GraphNode Region)[] regions = [.. Regions(destination.Graph.Root)];
             if (regions.Length == 0)
             {
-                throw new ArgumentException($"The destination of tier {tier} seed {seed} carries no region: no body of it is both large enough and made of ground.");
+                throw new ArgumentException($"The destination of tier {destination.Tier} seed {destination.Seed} carries no region: no body of it is both large enough and made of ground.");
             }
 
             // Every region is listed with the material it wears, so a sweep can count the distinct
@@ -96,6 +113,29 @@ public partial class Main : Node
                     destination.Description.Bodies.First(body => body.Path == region.Body.Path).Type == wanted);
 
                 GD.Print($"kind          {wanted}: {(found >= 0 ? $"region {found}" : $"absent, falling back to region {index}")}");
+                if (found >= 0)
+                {
+                    index = found;
+                }
+            }
+
+            // The tier rule's own choice of explorable planet, read from its description rather than
+            // reselected here: the region a player could actually stand on, and the surface cycle's
+            // subject from this cycle on ([decision 0071](../../../docs/decisions/0071-the-explorable-planet-is-the-subject-the-far-field-before-features-and-a-two-window-inspection.md)
+            // clause 6). Falls back the same way `--kind` does where the destination's explorable planet
+            // carries no region of its own.
+            if (arguments.Contains("--landable"))
+            {
+                // A moon can be a landing candidate too, which is exactly why the tier rule counts only
+                // planets: the explorable planet is the one this flag must name, not the first landing
+                // candidate of any role a graph traversal happens to reach first.
+                int found = Array.FindIndex(regions, region =>
+                {
+                    BodyDescription described = destination.Description.Bodies.First(body => body.Path == region.Body.Path);
+                    return described.Role == BodyRole.Planet && described.LandingCandidate;
+                });
+
+                GD.Print($"landable      {(found >= 0 ? $"region {found}" : $"absent, falling back to region {index}")}");
                 if (found >= 0)
                 {
                     index = found;

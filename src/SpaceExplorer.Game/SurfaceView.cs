@@ -13,6 +13,9 @@ namespace SpaceExplorer.Game;
 /// the material the planet stores, from the two frames rung one is read in — a walk frame at eye height
 /// and a top-down frame of the whole region with a scale bar
 /// ([decision 0061](../../../docs/decisions/0061-surface-iterations-by-an-escalating-ladder-registry-revision-5-and-grammar-version-6.md)).
+/// From rung 5 the walk frame's ground no longer ends at the region's edge: a generalized far field
+/// continues it out to the geometric horizon
+/// ([decision 0071](../../../docs/decisions/0071-the-explorable-planet-is-the-subject-the-far-field-before-features-and-a-two-window-inspection.md)).
 /// Like <see cref="SystemView"/> it is a harness for reading a generator's output and not a view the core
 /// release gives a player, so decision 0045's close-views clause stands as decision 0052 left it.
 /// </summary>
@@ -25,8 +28,8 @@ namespace SpaceExplorer.Game;
 /// What the view supplies, it says on screen. There is no celestial solution yet
 /// ([decision 0032](../../../docs/decisions/0032-astronomically-consistent-surface-sky.md) is unbuilt),
 /// so the light direction, the sky colour, and the eye height are the harness's own and are named in the
-/// legend rather than passed off as derived. Rung one has no relief, so the ground is flat by
-/// construction and not by simplification.
+/// legend rather than passed off as derived; the far field's horizon distance is the flat-model geometric
+/// one decision 0041 already derives the minimum landable radius from, not decision 0032's celestial one.
 /// </remarks>
 public partial class SurfaceView : Node3D
 {
@@ -70,8 +73,17 @@ public partial class SurfaceView : Node3D
         };
     }
 
-    /// <summary>How far the walk frame sees; a maximal region's far corner is 2,896 m from its centre.</summary>
-    private const float ViewDistance = 4_096f;
+    /// <summary>How far the walk frame sees at minimum; a maximal region's far corner is 2,896 m from its centre.</summary>
+    private const float MinimumViewDistance = 4_096f;
+
+    /// <summary>
+    /// The far field's own generalized stride: a fixed sample budget for the whole far diameter, so a huge
+    /// body's ground is coarser rather than a huger mesh, and a small one's is finer — the resolution a
+    /// generalization needs, where the region itself already carries the fine ground
+    /// ([decision 0071](../../../docs/decisions/0071-the-explorable-planet-is-the-subject-the-far-field-before-features-and-a-two-window-inspection.md)
+    /// clause 5).
+    /// </summary>
+    private const int FarSamplesAcross = 129;
 
     /// <summary>A brisk human walking pace, so crossing a maximal region on foot takes minutes and not seconds.</summary>
     private const float WalkSpeed = 3.2f;
@@ -98,6 +110,13 @@ public partial class SurfaceView : Node3D
     private readonly int _across;
     private readonly int _storedBytes;
     private readonly bool _groundWasGenerated;
+
+    private readonly double _horizonMetres;
+    private readonly short[] _farHeights;
+    private readonly int _farAcross;
+    private readonly long _farCellMetres;
+    private readonly long _farExtentMetres;
+    private readonly float _viewDistance;
 
     private readonly IReadOnlyList<PrimitiveDefinition> _palette;
     private readonly byte[] _index;
@@ -157,6 +176,10 @@ public partial class SurfaceView : Node3D
         // field the generator would not have produced.
         _relief = GroundPublisher.ReliefFieldOf(body, registry, compositionSeed);
 
+        int latitude = (int)(region.Transform?.Component("latitude") ?? 0);
+        int longitude = (int)(region.Transform?.Component("longitude") ?? 0);
+        int anchorHeading = (int)(region.Transform?.Component("heading") ?? 0);
+
         // The ground comes off the disk, never out of a rule run here: where none has been stored, the
         // store generates and publishes one and hands back what it wrote, so the picture is of bytes the
         // data root holds either way
@@ -167,9 +190,9 @@ public partial class SurfaceView : Node3D
             graphPack,
             region.Path,
             _relief,
-            (int)(region.Transform?.Component("latitude") ?? 0),
-            (int)(region.Transform?.Component("longitude") ?? 0),
-            (int)(region.Transform?.Component("heading") ?? 0),
+            latitude,
+            longitude,
+            anchorHeading,
             _extentMetres,
             out bool generated);
 
@@ -178,6 +201,22 @@ public partial class SurfaceView : Node3D
         _storedBytes = payload.Bytes.Length;
         _groundWasGenerated = generated;
         _patchCount = payload.Patches?.Count ?? 0;
+
+        // Rung 5: the ground between the region's edge and the geometric horizon, from the same planet-fixed
+        // field the region itself reads and never stored, because it is a pure function of what the region's
+        // own relief field already is ([decision 0071](../../../docs/decisions/0071-the-explorable-planet-is-the-subject-the-far-field-before-features-and-a-two-window-inspection.md)
+        // clause 5, [decision 0041](../../../docs/decisions/0041-planet-fields-tangent-regions-minimum-radius-and-far-field.md)).
+        _horizonMetres = GeometricHorizon.DistanceMetres(_relief.ReferenceRadiusUnits, EyeHeight);
+
+        // A fixed sample budget for the whole far diameter, so the cell coarsens with a body's size instead
+        // of the mesh growing with it, then rounded outward to a whole number of its own cells so the extent
+        // divides the cell exactly, which is what SampleFar demands.
+        _farCellMetres = Math.Max(TerrainHeightfield.CellMetres, (long)Math.Ceiling(2.0 * _horizonMetres / (FarSamplesAcross - 1)));
+        long farHalfCells = (long)Math.Ceiling(_horizonMetres / _farCellMetres);
+        _farExtentMetres = 2 * farHalfCells * _farCellMetres;
+        _farAcross = (int)(2 * farHalfCells) + 1;
+        _farHeights = TerrainHeightfield.SampleFar(_relief, latitude, longitude, anchorHeading, _farExtentMetres, _farCellMetres);
+        _viewDistance = Math.Max(MinimumViewDistance, (float)_horizonMetres * 1.1f);
 
         // The palette is the planet's and reaches the region as data, which is what decision 0070 clause 3
         // means by parent-to-child: the region draws from it and does not own it.
@@ -195,6 +234,7 @@ public partial class SurfaceView : Node3D
     public override void _Ready()
     {
         AddChild(Ground());
+        AddChild(FarGround());
         if (Sea() is { } sea)
         {
             AddChild(sea);
@@ -244,9 +284,11 @@ public partial class SurfaceView : Node3D
         // it here is what put the walk in reverse.
         Vector3 stepped = _walkedFrom + ((flat.X * move.X) + (flat.Z * move.Z)) * speed;
 
-        // Held inside the region's own extent: what lies beyond it is rung 5's far field and edge, unbuilt,
-        // so walking off shows a missing rung rather than a fault in what rung one actually generated
-        // ([decision 0062](../../../docs/decisions/0062-the-surface-harness-walks-in-an-interactive-session.md)).
+        // Held inside the region's own extent: the region edge is the traversal primitive's boundary
+        // ([decision 0041](../../../docs/decisions/0041-planet-fields-tangent-regions-minimum-radius-and-far-field.md)),
+        // enforced here rather than by the host tick this harness does not run. The far field beyond it is
+        // drawn from rung 5 on, but has no collision, no placements and no state, so it is not a place to
+        // walk to yet ([decision 0062](../../../docs/decisions/0062-the-surface-harness-walks-in-an-interactive-session.md)).
         float half = _extentMetres / 2f;
         _walkedFrom = new Vector3(Mathf.Clamp(stepped.X, -half, half), 0f, Mathf.Clamp(stepped.Z, -half, half));
         UpdateWalkCamera();
@@ -380,6 +422,88 @@ public partial class SurfaceView : Node3D
         return drawn;
     }
 
+    /// <summary>
+    /// The ground beyond the region's edge, out to the geometric horizon, generalized rather than cut:
+    /// sampled from the same planet-fixed field the region reads, at a coarser stride, and never stored
+    /// ([decision 0071](../../../docs/decisions/0071-the-explorable-planet-is-the-subject-the-far-field-before-features-and-a-two-window-inspection.md)
+    /// clause 5, [decision 0041](../../../docs/decisions/0041-planet-fields-tangent-regions-minimum-radius-and-far-field.md)).
+    /// It wears the planet's own stored surface material rather than a biome's, because a biome's patches
+    /// are drawn on the region's own stream and have nothing to say beyond its edge.
+    /// </summary>
+    /// <remarks>
+    /// A far cell whose whole footprint already lies under the region's own fine mesh is left undrawn, so
+    /// the two meshes never compete for the same pixels. Their grids do not generally share a vertex at the
+    /// seam, since the far field's cell is a generalization's stride and not the region's own 2 m one; that
+    /// approximate join is what clause 5 accepts, and the exact one is rung 7's chunking to give.
+    /// </remarks>
+    private MeshInstance3D FarGround()
+    {
+        float step = _farCellMetres;
+        float half = (_farAcross - 1) / 2f;
+        float regionHalf = _extentMetres / 2f;
+
+        var vertices = new Vector3[_farHeights.Length];
+        var normals = new Vector3[_farHeights.Length];
+        var uvs = new Vector2[_farHeights.Length];
+        for (int j = 0; j < _farAcross; j++)
+        {
+            for (int i = 0; i < _farAcross; i++)
+            {
+                int at = (j * _farAcross) + i;
+                vertices[at] = new Vector3((i - half) * step, FarHeightAt(i, j), (j - half) * step);
+
+                float acrossX = FarHeightAt(i + 1, j) - FarHeightAt(i - 1, j);
+                float acrossZ = FarHeightAt(i, j + 1) - FarHeightAt(i, j - 1);
+                normals[at] = new Vector3(-acrossX, 2f * step, -acrossZ).Normalized();
+
+                uvs[at] = new Vector2(i / (float)(_farAcross - 1), j / (float)(_farAcross - 1));
+            }
+        }
+
+        var indices = new List<int>();
+        int cells = _farAcross - 1;
+        for (int j = 0; j < cells; j++)
+        {
+            for (int i = 0; i < cells; i++)
+            {
+                float minX = (i - half) * step;
+                float maxX = (i + 1 - half) * step;
+                float minZ = (j - half) * step;
+                float maxZ = (j + 1 - half) * step;
+
+                if (minX >= -regionHalf && maxX <= regionHalf && minZ >= -regionHalf && maxZ <= regionHalf)
+                {
+                    continue;
+                }
+
+                int corner = (j * _farAcross) + i;
+                indices.Add(corner);
+                indices.Add(corner + 1);
+                indices.Add(corner + _farAcross);
+                indices.Add(corner + 1);
+                indices.Add(corner + _farAcross + 1);
+                indices.Add(corner + _farAcross);
+            }
+        }
+
+        var mesh = new ArrayMesh();
+        var surface = new Godot.Collections.Array();
+        surface.Resize((int)Mesh.ArrayType.Max);
+        surface[(int)Mesh.ArrayType.Vertex] = vertices;
+        surface[(int)Mesh.ArrayType.Normal] = normals;
+        surface[(int)Mesh.ArrayType.TexUV] = uvs;
+        surface[(int)Mesh.ArrayType.Index] = indices.ToArray();
+        mesh.AddSurfaceFromArrays(Mesh.PrimitiveType.Triangles, surface);
+
+        var drawn = new MeshInstance3D { Mesh = mesh, Name = "FarGround" };
+        drawn.SetSurfaceOverrideMaterial(0, _resources.GroundFor(_body.Definition, _farExtentMetres));
+        return drawn;
+    }
+
+    /// <summary>The far field's own sampled height at a point, in metres, with the edge held rather than wrapped.</summary>
+    private float FarHeightAt(int i, int j) =>
+        _farHeights[(Math.Clamp(j, 0, _farAcross - 1) * _farAcross) + Math.Clamp(i, 0, _farAcross - 1)] / (float)ReliefField.HeightUnit;
+
     /// <summary>The biome definitions a planet's palette names, in palette order, or empty where it has none.</summary>
     private static IReadOnlyList<PrimitiveDefinition> Palette(GraphNode body, CategoryRegistry registry, PrimitiveResources resources)
     {
@@ -489,7 +613,7 @@ public partial class SurfaceView : Node3D
     {
         _yaw = _heading;
         _pitch = -Mathf.DegToRad(4f);
-        var camera = new Camera3D { Far = ViewDistance, Fov = 70f, Name = "WalkCamera" };
+        var camera = new Camera3D { Far = _viewDistance, Fov = 70f, Name = "WalkCamera" };
         _camera = camera;
         UpdateWalkCamera();
         return camera;
@@ -509,7 +633,7 @@ public partial class SurfaceView : Node3D
         {
             Projection = Camera3D.ProjectionType.Orthogonal,
             Size = MapMetres,
-            Far = ViewDistance,
+            Far = _viewDistance,
             Name = "MapCamera",
         };
 
@@ -547,13 +671,18 @@ public partial class SurfaceView : Node3D
             // evaluated under the process locale, which is how "100,0%" reached a frame beside an
             // invariant "0.534 AU".
             Invariant($"sea        {SeaLine()}"),
+            Invariant($"far field  generalized to the {_horizonMetres:0} m geometric horizon, {_farAcross} x {_farAcross} samples at {_farCellMetres:N0} m,"),
+            Invariant($"           carrying {TerrainHeightfield.OctavesCarried(_relief, _farCellMetres)} of the field's {_relief.Octaves} octaves and dropping the rest as detail that stride cannot"),
+            "           show, and wearing the planet's own stored surface rather than a biome's, which gives way to it at the edge",
             "",
             Invariant($"frame      {(_fromAbove ? $"orthographic, the whole region; the bar below is {ScaleBarMetres():N0} m" : $"walk, eye at {EyeHeight:0} m above the ground along the stored heading")}"),
             Invariant($"supplied   the sun, {SunElevationDegrees:0} deg up and drawn in the sky, the sky itself, the eye height and"),
             "           the shading normals are all this harness's own: no celestial solution exists yet,",
             "           so none of them is this system's star. The relief is drawn at true scale, with no",
-            "           vertical exaggeration, and its shadows are cast across the whole region",
-            "stored     extent, material, texture scale, the anchor above, and the relief the field derives",
+            "           vertical exaggeration, and its shadows are cast across the whole region. The far field's",
+            "           horizon distance is the flat-model geometric one, not yet decision 0032's celestial solution",
+            "stored     extent, material, texture scale, the anchor above, and the relief the field derives; the",
+            "           far field is derived the same way and stores nothing of its own",
             Invariant($"controls   {(_fromAbove ? "escape quits" : Invariant($"w a s d walk, drag turn, shift surveys at {SurveyMultiplier:0}x, held inside the region's extent, escape quits"))}"),
         ];
 

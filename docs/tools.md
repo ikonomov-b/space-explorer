@@ -153,9 +153,12 @@ godot --path src/SpaceExplorer.Game -- --surface --tier starter --seed 1
 # rung 3 (decision 0070) is built. --kind <rocky|icy|ocean|gas-giant> draws the first region whose body
 # is of that type, falling back to the first region where the destination has none, and says which
 # before it draws: "kind          ocean: region 2", or "kind          ocean: absent, falling back to
-# region 0". A sweep rotating the kind by seed therefore covers rock, ice and ocean in the same
-# forty-eight frames, where drawing each destination's first region drew a rocky body every time
-# (clause 12). The ground wears each cell's biome material, one mesh surface per biome over shared
+# region 0". --landable draws the destination's explorable planet directly — the body its own
+# description marks a landing candidate — falling back the same way: "landable      region 2", or
+# "landable      absent, falling back to region 0". It is the surface cycle's own selection from cycle
+# five on, superseding the kind rotation of decision 0070 clause 12
+# ([decision 0071](decisions/0071-the-explorable-planet-is-the-subject-the-far-field-before-features-and-a-two-window-inspection.md)
+# clause 2). The ground wears each cell's biome material, one mesh surface per biome over shared
 # vertices, derived on load by derive-biome-index/1 from the stored patches, the heights and the
 # planet's sea level, and stored nowhere; a flat water plane stands at the sea level where the planet
 # declares one. The legend gains two lines:
@@ -166,13 +169,30 @@ godot --path src/SpaceExplorer.Game -- --surface --tier starter --seed 1
 # draws. --list is unchanged and prints only the region lines, so the two counts a row carries —
 # distinct biome elements across the sample, and biomes present per region — are read from the legend
 # per frame and from the set, not from --list.
-# --tier, --seed, --set, --data-root, --no-publish and --screenshot are the system view's, unchanged
+# --tier, --seed, --set, --data-root, --no-publish and --screenshot are the system view's, unchanged;
+# --destination <pack> also loads a stored destination straight from the data root, like the system view
+# rung 5 is built: the ground no longer ends at the region's own extent. A generalized far field
+# continues the same planet-fixed relief out to the geometric horizon, coarser than the region's own 2 m
+# cell and wearing the planet's own stored surface rather than a biome's, since a biome's patches are
+# drawn on the region's own stream and have nothing to say past its edge
+# ([decision 0071](decisions/0071-the-explorable-planet-is-the-subject-the-far-field-before-features-and-a-two-window-inspection.md)
+# clause 5, [decision 0041](decisions/0041-planet-fields-tangent-regions-minimum-radius-and-far-field.md)).
+# Generalizing drops detail rather than sampling it sparsely: a stride of C metres carries only the
+# octaves at or above 2C and omits the rest, keeping their weight in the normalisation, so the far field
+# is the region's own field with its fine detail removed. Point-sampling instead folds real fine detail
+# into false coarse spikes, which is a landscape nobody should be asked to judge. The region's own
+# ground is the same rule at a 2 m stride, whose limit is the 4 m finest octave, so no stored byte moves.
+# The legend gains lines naming the horizon distance, the far field's sample count, cell size and how
+# many octaves it carries, and that the far field is derived and stores nothing of its own. The far
+# field has no collision, no placements and no state, so walking is still held inside the region's extent
 # w a s d walk the ground, shift is faster, drag turns, and the eye stays at its 2 m: the walk frame
 # is walkable in an interactive run, held inside the region's own extent, because a repeat is a
 # property of ground over distance and one pose can only report the pose it was taken at
 # ([decision 0062](decisions/0062-the-surface-harness-walks-in-an-interactive-session.md))
 # the legend names what the view supplied rather than read: the light direction, the sky colour, the
-# eye height and the pace are the harness's own, because no celestial solution exists yet (decision 0032)
+# eye height and the pace are the harness's own, because no celestial solution exists yet (decision
+# 0032) — the far field's horizon distance is the flat-model geometric one decision 0041 derives the
+# minimum landable radius from, not decision 0032's celestial one
 # --list prints the regions and quits, which is how a sweep counts a sample's regions and the distinct
 # surfaces they wear; it is the only form that works under --headless, since a headless run has no
 # viewport to save a screenshot from
@@ -186,7 +206,10 @@ godot --path src/SpaceExplorer.Game --resolution 1600x900 -- --surface --tier st
 
 A surface cycle's whole sample, which is the command a row's frames come from
 ([decision 0061](decisions/0061-surface-iterations-by-an-escalating-ladder-registry-revision-5-and-grammar-version-6.md)
-clauses 8 and 9, [decision 0070](decisions/0070-a-biome-is-a-derived-set-registry-revision-9-and-grammar-version-10.md)
+clauses 8 and 9). From cycle five the sample reads each destination's explorable planet directly rather
+than rotating the body kind by seed
+([decision 0071](decisions/0071-the-explorable-planet-is-the-subject-the-far-field-before-features-and-a-two-window-inspection.md)
+clause 2, superseding [decision 0070](decisions/0070-a-biome-is-a-derived-set-registry-revision-9-and-grammar-version-10.md)
 clause 12). `SET` is the published set pack and `N` the cycle number:
 
 ```sh
@@ -194,14 +217,13 @@ run() { command -v xvfb-run >/dev/null && xvfb-run -a "$@" || "$@"; }
 
 mkdir -p "build/samples/surface$N-starter"
 for seed in $(seq 1 24); do
-  case $(( (seed - 1) % 3 )) in 0) kind=rocky;; 1) kind=icy;; 2) kind=ocean;; esac
   s=$(printf "%02d" "$seed")
   dotnet run --project src/SpaceExplorer.Cli -- destination --tier starter --seed "$seed" --set "$SET"
   for frame in walk map; do
     [ "$frame" = map ] && above=--from-above || above=
     run godot --path src/SpaceExplorer.Game --resolution 1600x900 -- --surface --tier starter \
-      --seed "$seed" --set "$SET" --kind "$kind" $above \
-      --screenshot "$PWD/build/samples/surface$N-starter/seed$s-$kind-$frame.png"
+      --seed "$seed" --set "$SET" --landable $above \
+      --screenshot "$PWD/build/samples/surface$N-starter/seed$s-$frame.png"
   done
 done
 ```
@@ -215,8 +237,8 @@ with `sudo apt install xvfb`.
 
 The destination is composed before its frames because composing publishes the ground
 ([decision 0067](decisions/0067-a-destinations-ground-is-generated-when-it-is-composed.md)), and the view
-only reads. A seed whose system has no body of its turn's kind falls back to its first region and says so,
-so the sweep never skips a seed.
+only reads. A destination whose explorable planet carries no region of its own falls back to the first
+region and says so, so the sweep never skips a seed.
 
 **Two windows on one destination**, the system in the first and its ground in the second, which is the
 inspection the owner asked for on 2026-09-12 ([decision 0071](decisions/0071-the-explorable-planet-is-the-subject-the-far-field-before-features-and-a-two-window-inspection.md)
@@ -227,16 +249,16 @@ processes show one destination out of one data root.
 
 ```sh
 godot --path src/SpaceExplorer.Game -- --system --tier starter --seed 7 &
-godot --path src/SpaceExplorer.Game -- --surface --tier starter --seed 7 --region 0
+godot --path src/SpaceExplorer.Game -- --surface --tier starter --seed 7 --landable
 ```
 
 Compose the destination once before opening either, with `destination --tier starter --seed 7`, so the
 first window to open is not the one paying for the ground
-([decision 0067](decisions/0067-a-destinations-ground-is-generated-when-it-is-composed.md)). Which region
-the second window draws is still `--region <n>` or `--kind <type>`: `--landable`, which names the
-explorable planet's region directly, and `--destination <pack>` on the surface view are authorized by
-decision 0071 clause 6 and not yet built. Until they are, read the surface legend, which prints
-`landing candidate` or the refusal for the body it drew.
+([decision 0067](decisions/0067-a-destinations-ground-is-generated-when-it-is-composed.md)). `--landable`
+on the surface view names the explorable planet's own region directly, which is decision 0071 clause 6's
+selection; `--region <n>` or `--kind <type>` still choose among the rest where a reading is about a
+different body. Both views also take `--destination <pack>` to pin one stored pack instead of a pair of
+levers, when a reading is about a destination already on disk.
 
 **A destination with no landable body has no region to draw** and the view says so by name, exit 1: a
 region is placed only where the body is both large enough for one ([decision 0059](decisions/0059-region-limits-are-a-pinned-record.md))
