@@ -218,6 +218,26 @@ The destination is composed before its frames because composing publishes the gr
 only reads. A seed whose system has no body of its turn's kind falls back to its first region and says so,
 so the sweep never skips a seed.
 
+**Two windows on one destination**, the system in the first and its ground in the second, which is the
+inspection the owner asked for on 2026-09-12 ([decision 0071](decisions/0071-the-explorable-planet-is-the-subject-the-far-field-before-features-and-a-two-window-inspection.md)
+clause 6). It needs no harness: both views are the same Godot project, both take the same
+levers, and both load the stored destination those levers name rather than composing a second one
+([decision 0053](decisions/0053-a-destination-is-a-stored-record-addressed-by-its-levers.md)), so the two
+processes show one destination out of one data root.
+
+```sh
+godot --path src/SpaceExplorer.Game -- --system --tier starter --seed 7 &
+godot --path src/SpaceExplorer.Game -- --surface --tier starter --seed 7 --region 0
+```
+
+Compose the destination once before opening either, with `destination --tier starter --seed 7`, so the
+first window to open is not the one paying for the ground
+([decision 0067](decisions/0067-a-destinations-ground-is-generated-when-it-is-composed.md)). Which region
+the second window draws is still `--region <n>` or `--kind <type>`: `--landable`, which names the
+explorable planet's region directly, and `--destination <pack>` on the surface view are authorized by
+decision 0071 clause 6 and not yet built. Until they are, read the surface legend, which prints
+`landing candidate` or the refusal for the body it drew.
+
 **A destination with no landable body has no region to draw** and the view says so by name, exit 1: a
 region is placed only where the body is both large enough for one ([decision 0059](decisions/0059-region-limits-are-a-pinned-record.md))
 and declares the `solid-surface` tag, which the `basic` vocabulary withholds from a gas giant.
